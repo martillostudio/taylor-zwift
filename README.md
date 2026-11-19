@@ -18,6 +18,31 @@ make logs   # logs de Bluetooth en vivo
 
 Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8. Ver [docs/GUIA.md](docs/GUIA.md).
 
+## Taylor Mandos: los Click V2 como mando de MyWhoosh
+
+App pequeña e independiente (misma base de código) que conecta los dos Zwift Click V2
+y reenvía cada pulsación a MyWhoosh:
+
+```sh
+make mandos   # compila y abre «Taylor Mandos» en el Mac
+```
+
+1. Cierra Zwift y cualquier otra app de mandos (si no, se quedan con los Click).
+2. Abre Taylor Mandos y pulsa un botón de cada Click: se conectan solos (y se reconectan si se caen).
+3. En MyWhoosh: pantalla de conexión → icono de **OpenBikeControl** (arriba a la derecha) → «Taylor Mandos».
+   MyWhoosh puede estar en el mismo Mac o en el iPad/iPhone, con la misma wifi.
+4. Plan B (solo si MyWhoosh está en el Mac): activa «Teclado (K / I)» y da el permiso de Accesibilidad.
+   Usa solo una salida a la vez.
+
+| Botón | Acción |
+|---|---|
+| + (dcha) / Z | Subir marcha |
+| − (izq) / Y | Bajar marcha |
+| Cruceta (izq) | Navegar por menús |
+| A / B | Aceptar / Atrás |
+
+Y y Z repiten las marchas por si el mando izquierdo se bloquea (ver la guía, §5.1).
+
 ## Licencia
 
 GPL-3.0. Ver [LICENSE](LICENSE).

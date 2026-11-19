@@ -47,3 +47,42 @@ targets:
         "CODE_SIGN_IDENTITY[sdk=macosx*]": "-"
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": TaylorZwift.entitlements
         "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+
+  # App puente: usa los Zwift Click V2 como mando de MyWhoosh (red OpenBikeControl o teclado).
+  TaylorMandos:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: BridgeSources
+    dependencies:
+      - package: CicloKit
+        product: CicloKit
+      - package: CicloKit
+        product: CicloBluetooth
+      - package: CicloKit
+        product: CicloNetwork
+    info:
+      path: TaylorMandos-Info.plist
+      properties:
+        # Necesario en iOS para anunciarnos por Bonjour en la red local.
+        NSBonjourServices: [_openbikecontrol._tcp]
+    settings:
+      base:
+        PRODUCT_NAME: TaylorMandos
+        PRODUCT_BUNDLE_IDENTIFIER: studio.martillo.taylormandos
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Taylor Mandos
+        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: Taylor Mandos usa Bluetooth para conectarse a tus Zwift Click.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: Taylor Mandos se anuncia en tu red local para que MyWhoosh pueda usar tus Zwift Click como mando.
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.healthcare-fitness
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        # En el Mac: firma local y SIN sandbox (para poder simular teclas en MyWhoosh).
+        "CODE_SIGN_IDENTITY[sdk=macosx*]": "-"
+        "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES

@@ -6,8 +6,9 @@ XCODEGEN ?= $(shell command -v xcodegen || echo $(HOME)/.local/bin/xcodegen)
 PROJECT  := App/TaylorZwift.xcodeproj
 DERIVED  := build/DerivedData
 APP      := $(DERIVED)/Build/Products/Debug/TaylorZwift.app
+MANDOS   := $(DERIVED)/Build/Products/Debug/TaylorMandos.app
 
-.PHONY: test project build build-ios run logs clean
+.PHONY: test project build build-ios run logs clean build-mandos mandos build-mandos-ios
 
 test:            ## Tests de CicloKit (sin hardware)
 	cd CicloKit && swift test
@@ -29,6 +30,17 @@ build-ios: project ## Comprueba que compila para iPhone/iPad (sin firmar)
 
 run: build       ## Compila y abre la app de Mac
 	open $(APP)
+
+build-mandos: project ## Compila «Taylor Mandos» (Click V2 → MyWhoosh) para Mac
+	xcodebuild -project $(PROJECT) -scheme TaylorMandos -destination 'platform=macOS,arch=arm64' \
+		-derivedDataPath $(DERIVED) -quiet build
+
+mandos: build-mandos ## Compila y abre «Taylor Mandos»
+	open $(MANDOS)
+
+build-mandos-ios: project ## Comprueba que «Taylor Mandos» compila para iPhone/iPad
+	xcodebuild -project $(PROJECT) -scheme TaylorMandos -destination 'generic/platform=iOS' \
+		-derivedDataPath $(DERIVED) -quiet CODE_SIGNING_ALLOWED=NO build
 
 logs:            ## Muestra en vivo los logs de Bluetooth de la app
 	/usr/bin/log stream --style compact --predicate 'subsystem == "studio.martillo.taylorzwift"'

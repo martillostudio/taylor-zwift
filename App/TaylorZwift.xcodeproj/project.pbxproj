@@ -8,25 +8,47 @@
 
 /* Begin PBXBuildFile section */
 		1F7E58A93F3223F2E6AC08FC /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = EFA79C8CCB44F8868239749D /* CicloKit */; };
+		2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = 570D26A06E2F4B00568A69EC /* CicloKit */; };
 		2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C242BF3F6159617EB38F4BBF /* TrainerView.swift */; };
+		32397EFA7DC9D54BF1C8D269 /* TaylorMandosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */; };
+		4494A2257C90AE51AA73A8C0 /* BridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */; };
+		5BB8932B175C34562307D088 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 73886A525BAFEF0B64906260 /* CicloBluetooth */; };
 		79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDA2488F1654582F648AE11 /* ControllersView.swift */; };
+		7A79021544CDD0DC2162DBBE /* BridgeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863663EEE45FBB2051721FB9 /* BridgeModel.swift */; };
 		7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F12F33A425BD8EE3BA6369 /* LogView.swift */; };
+		ADC16D87744078AA0851B2EA /* CicloNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = 63F04261BFB7770CF70BCBA9 /* CicloNetwork */; };
 		B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */; };
 		E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E4515ABF42AF0C84D91FE /* ScanSection.swift */; };
+		EB447ED12A5E35725FBF231F /* KeyboardSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */; };
 		F91C8515C7D0727DF3D65842 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7D07120B56B3DD2608D5FD /* CicloBluetooth */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		016E4515ABF42AF0C84D91FE /* ScanSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanSection.swift; sourceTree = "<group>"; };
 		2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorZwiftApp.swift; sourceTree = "<group>"; };
+		2AE35A2B67F635CBEFA1BF27 /* TaylorMandos.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaylorMandos.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardSender.swift; sourceTree = "<group>"; };
 		4AF3EF73BB829F6F5855356F /* CicloKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CicloKit; path = ../CicloKit; sourceTree = SOURCE_ROOT; };
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
+		863663EEE45FBB2051721FB9 /* BridgeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModel.swift; sourceTree = "<group>"; };
 		B07644EFF6B1887C7FB084FE /* TaylorZwift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaylorZwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C242BF3F6159617EB38F4BBF /* TrainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerView.swift; sourceTree = "<group>"; };
+		EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorMandosApp.swift; sourceTree = "<group>"; };
+		FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		1B16C809D8FA7D919E8EA6EE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */,
+				5BB8932B175C34562307D088 /* CicloBluetooth in Frameworks */,
+				ADC16D87744078AA0851B2EA /* CicloNetwork in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3819170ACFACD1ED684E88C5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -50,6 +72,7 @@
 		51298314B928A914EB16B74D = {
 			isa = PBXGroup;
 			children = (
+				921B905C36856747286C8EFA /* BridgeSources */,
 				0503DEF6E91EC07037F5B2D2 /* Packages */,
 				E63781A9FFEAF255E208F7FF /* Sources */,
 				5F48B1CEB3999E8978407B2A /* Products */,
@@ -59,9 +82,21 @@
 		5F48B1CEB3999E8978407B2A /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				2AE35A2B67F635CBEFA1BF27 /* TaylorMandos.app */,
 				B07644EFF6B1887C7FB084FE /* TaylorZwift.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		921B905C36856747286C8EFA /* BridgeSources */ = {
+			isa = PBXGroup;
+			children = (
+				863663EEE45FBB2051721FB9 /* BridgeModel.swift */,
+				FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */,
+				3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */,
+				EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */,
+			);
+			path = BridgeSources;
 			sourceTree = "<group>";
 		};
 		E63781A9FFEAF255E208F7FF /* Sources */ = {
@@ -79,6 +114,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		620BB1E2C52502DED6AFBF1F /* TaylorMandos */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6E1E4D2CE0C4A83E3E9873FE /* Build configuration list for PBXNativeTarget "TaylorMandos" */;
+			buildPhases = (
+				2E107A67834024F6D2B7D7B2 /* Sources */,
+				1B16C809D8FA7D919E8EA6EE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TaylorMandos;
+			packageProductDependencies = (
+				570D26A06E2F4B00568A69EC /* CicloKit */,
+				73886A525BAFEF0B64906260 /* CicloBluetooth */,
+				63F04261BFB7770CF70BCBA9 /* CicloNetwork */,
+			);
+			productName = TaylorMandos;
+			productReference = 2AE35A2B67F635CBEFA1BF27 /* TaylorMandos.app */;
+			productType = "com.apple.product-type.application";
+		};
 		BE3E127428CE693DA1A1DB4D /* TaylorZwift */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 90E1AC58A86C719775EFC233 /* Build configuration list for PBXNativeTarget "TaylorZwift" */;
@@ -108,6 +164,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					620BB1E2C52502DED6AFBF1F = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					BE3E127428CE693DA1A1DB4D = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -132,11 +192,23 @@
 			projectRoot = "";
 			targets = (
 				BE3E127428CE693DA1A1DB4D /* TaylorZwift */,
+				620BB1E2C52502DED6AFBF1F /* TaylorMandos */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		2E107A67834024F6D2B7D7B2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7A79021544CDD0DC2162DBBE /* BridgeModel.swift in Sources */,
+				4494A2257C90AE51AA73A8C0 /* BridgeView.swift in Sources */,
+				EB447ED12A5E35725FBF231F /* KeyboardSender.swift in Sources */,
+				32397EFA7DC9D54BF1C8D269 /* TaylorMandosApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A9E11B339EA337A8A23439F1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -176,6 +248,40 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = studio.martillo.taylorzwift;
 				PRODUCT_NAME = TaylorZwift;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		7848973B283F67B1D7C15B8C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "TaylorMandos-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taylor Mandos";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Taylor Mandos usa Bluetooth para conectarse a tus Zwift Click.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Taylor Mandos se anuncia en tu red local para que MyWhoosh pueda usar tus Zwift Click como mando.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = studio.martillo.taylormandos;
+				PRODUCT_NAME = TaylorMandos;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -284,6 +390,40 @@
 			};
 			name = Debug;
 		};
+		DB7F4714A7767693DF769825 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "TaylorMandos-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Taylor Mandos";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Taylor Mandos usa Bluetooth para conectarse a tus Zwift Click.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Taylor Mandos se anuncia en tu red local para que MyWhoosh pueda usar tus Zwift Click como mando.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = studio.martillo.taylormandos;
+				PRODUCT_NAME = TaylorMandos;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		F41C7A8B7DCC038B320E00B4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -346,6 +486,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		6E1E4D2CE0C4A83E3E9873FE /* Build configuration list for PBXNativeTarget "TaylorMandos" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DB7F4714A7767693DF769825 /* Debug */,
+				7848973B283F67B1D7C15B8C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		90E1AC58A86C719775EFC233 /* Build configuration list for PBXNativeTarget "TaylorZwift" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -374,6 +523,18 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		570D26A06E2F4B00568A69EC /* CicloKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CicloKit;
+		};
+		63F04261BFB7770CF70BCBA9 /* CicloNetwork */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CicloNetwork;
+		};
+		73886A525BAFEF0B64906260 /* CicloBluetooth */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CicloBluetooth;
+		};
 		9B7D07120B56B3DD2608D5FD /* CicloBluetooth */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CicloBluetooth;

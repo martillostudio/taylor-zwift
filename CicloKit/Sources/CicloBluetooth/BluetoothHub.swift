@@ -86,6 +86,17 @@ public final class BluetoothHub: NSObject {
 
     public private(set) var log: [LogEntry] = []
 
+    // MARK: Modo puente (app «Taylor Mandos»)
+
+    /// Busca y conecta solos los mandos, y los reconecta si se caen. Ver `startBridgeMode()`.
+    public private(set) var autoConnectClicks = false
+    /// Se llama con cada pulsación nueva, ya sin ecos del otro mando.
+    @ObservationIgnored public var onButtonPress: (@MainActor (ZwiftButton) -> Void)?
+    /// Segundos sin noticias de un mando (los Click mandan la batería cada ~5 s) antes de reconectarlo.
+    @ObservationIgnored public var silenceBeforeReconnect: Double = 20
+    @ObservationIgnored private var lastClickMessage: [UUID: Double] = [:]
+    @ObservationIgnored private var watchdog: Timer?
+
     // MARK: CoreBluetooth
 
     @ObservationIgnored private var central: CBCentralManager!
@@ -182,6 +193,29 @@ public final class BluetoothHub: NSObject {
         sendWithControl(.setTargetPower(watts: watts))
     }
 
+    /// Modo puente: escanea, conecta todos los Click que encuentre y los mantiene conectados.
+    /// No toca el rodillo (lo controla la otra app, p. ej. MyWhoosh).
+    public func startBridgeMode() {
+        guard !autoConnectClicks else { return }
+        autoConnectClicks = true
+        addLog("Modo puente: conecto los mandos automáticamente y los reconecto si se caen")
+        if central.state == .poweredOn {
+            startScan()
+            adoptSystemConnectedClicks()
+        }
+        watchdog = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.checkSilentClicks()
+                self?.adoptSystemConnectedClicks()
+            }
+        }
+    }
+
+    /// Añade una línea al log desde fuera (p. ej. el servidor OpenBikeControl).
+    public func appendLog(_ text: String) {
+        addLog(text)
+    }
+
     public func clearLog() {
         log.removeAll()
     }
@@ -196,6 +230,35 @@ public final class BluetoothHub: NSObject {
 
     private func isConnected(_ id: UUID) -> Bool {
         peripherals[id]?.state == .connected
+    }
+
+    /// Un mando que ya está conectado al sistema (por otra app o por macOS) deja de anunciarse
+    /// y el escaneo no lo ve. Se los pedimos directamente a CoreBluetooth.
+    private func adoptSystemConnectedClicks() {
+        guard autoConnectClicks, central.state == .poweredOn else { return }
+        for p in central.retrieveConnectedPeripherals(withServices: [Self.clickService]) {
+            let known = clicks.first(where: { $0.id == p.identifier })
+            guard (known?.connection ?? .disconnected) == .disconnected else { continue }
+            if known == nil {
+                addLog("Mando ya conectado al sistema: «\(p.name ?? "?")» [\(p.identifier.uuidString.prefix(4))]; me conecto también")
+            }
+            handleDiscovery(p, localName: nil, services: [ZwiftClickUUID.service], rssi: 0)
+        }
+    }
+
+    /// Si un mando conectado se queda callado (¿bloqueado?), lo desconectamos para que se reconecte.
+    private func checkSilentClicks() {
+        let now = ProcessInfo.processInfo.systemUptime
+        // Solo vigilamos los mandos que mandan la batería cada pocos segundos (el izquierdo);
+        // el derecho se queda callado en reposo y reconectarlo solo haría perder pulsaciones.
+        for click in clicks where click.connection == .connected && click.handshakeDone && click.batteryPercent != nil {
+            guard let last = lastClickMessage[click.id] else { continue }
+            if now - last > silenceBeforeReconnect, let p = peripherals[click.id] {
+                addLog("⏱ «\(click.label)» lleva \(Int(now - last)) s sin mandar nada: lo reconecto")
+                lastClickMessage[click.id] = now
+                central.cancelPeripheralConnection(p)
+            }
+        }
     }
 
     private func sendWithControl(_ command: FTMSCommand) {
@@ -272,6 +335,9 @@ public final class BluetoothHub: NSObject {
         addLog("Bluetooth: \(bluetoothState)")
         if state != .poweredOn {
             isScanning = false
+        } else if autoConnectClicks && !isScanning {
+            startScan()
+            adoptSystemConnectedClicks()
         }
     }
 
@@ -291,6 +357,11 @@ public final class BluetoothHub: NSObject {
             if kind != .other {
                 addLog("Encontrado \(kind.rawValue.lowercased()): «\(name)» [\(p.identifier.uuidString.prefix(4))] (RSSI \(rssi), servicios \(device.advertisedServices))")
             }
+        }
+
+        if autoConnectClicks, kind == .click,
+           (clicks.first(where: { $0.id == p.identifier })?.connection ?? .disconnected) == .disconnected {
+            connect(device)
         }
     }
 
@@ -321,6 +392,14 @@ public final class BluetoothHub: NSObject {
         }
         buttonAggregator.remove(source: p.identifier)
         buttonsPressed = buttonAggregator.pressed
+
+        // Modo puente: volvemos a pedir la conexión. CoreBluetooth la deja pendiente
+        // y conecta en cuanto el mando vuelve a estar a tiro (o se despierta).
+        if autoConnectClicks, clicks.contains(where: { $0.id == p.identifier }) {
+            updateClick(p.identifier) { $0.connection = .connecting }
+            addLog("↻ Reconectando «\(label(p))»…")
+            central.connect(p, options: nil)
+        }
     }
 
     private func handleServices(_ p: CBPeripheral, error: Error?) {
@@ -431,6 +510,7 @@ public final class BluetoothHub: NSObject {
     }
 
     private func handleClickMessage(_ p: CBPeripheral, bytes: [UInt8], channel: String) {
+        lastClickMessage[p.identifier] = ProcessInfo.processInfo.systemUptime
         do {
             switch try ZwiftClickMessage(parsing: bytes) {
             case .rideOnAck(let extra):
@@ -452,6 +532,7 @@ public final class BluetoothHub: NSObject {
                     lastButtonNames = newOverall.names
                     buttonPressCount += 1
                     addLog("🔘 \(newOverall.names.joined(separator: " + ")) — vía «\(label(p))» (mapa 0x\(String(raw, radix: 16, uppercase: true)))")
+                    onButtonPress?(newOverall)
                 } else if !newForThisClick.isEmpty {
                     addLog("   ↺ eco de \(newForThisClick.names.joined(separator: " + ")) vía «\(label(p))» (ignorado)")
                 }
