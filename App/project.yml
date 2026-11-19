@@ -70,6 +70,7 @@ targets:
       base:
         PRODUCT_NAME: TaylorMandos
         PRODUCT_BUNDLE_IDENTIFIER: studio.martillo.taylormandos
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Taylor Mandos
         INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: Taylor Mandos usa Bluetooth para conectarse a tus Zwift Click.

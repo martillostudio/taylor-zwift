@@ -24,7 +24,8 @@ App pequeña e independiente (misma base de código) que conecta los dos Zwift C
 y reenvía cada pulsación a MyWhoosh:
 
 ```sh
-make mandos   # compila y abre «Taylor Mandos» en el Mac
+make mandos            # compila y abre «Taylor Mandos» en el Mac (para desarrollar)
+make instalar-mandos   # versión final en /Applications: luego se abre con doble clic
 ```
 
 1. Cierra Zwift y cualquier otra app de mandos (si no, se quedan con los Click).

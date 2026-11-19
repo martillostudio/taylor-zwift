@@ -11,6 +11,7 @@
 		2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = 570D26A06E2F4B00568A69EC /* CicloKit */; };
 		2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C242BF3F6159617EB38F4BBF /* TrainerView.swift */; };
 		32397EFA7DC9D54BF1C8D269 /* TaylorMandosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */; };
+		3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */; };
 		4494A2257C90AE51AA73A8C0 /* BridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */; };
 		5BB8932B175C34562307D088 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 73886A525BAFEF0B64906260 /* CicloBluetooth */; };
 		79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDA2488F1654582F648AE11 /* ControllersView.swift */; };
@@ -32,6 +33,7 @@
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
 		863663EEE45FBB2051721FB9 /* BridgeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModel.swift; sourceTree = "<group>"; };
+		9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B07644EFF6B1887C7FB084FE /* TaylorZwift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaylorZwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C242BF3F6159617EB38F4BBF /* TrainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerView.swift; sourceTree = "<group>"; };
 		EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorMandosApp.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 		921B905C36856747286C8EFA /* BridgeSources */ = {
 			isa = PBXGroup;
 			children = (
+				9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */,
 				863663EEE45FBB2051721FB9 /* BridgeModel.swift */,
 				FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */,
 				3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */,
@@ -119,6 +122,7 @@
 			buildConfigurationList = 6E1E4D2CE0C4A83E3E9873FE /* Build configuration list for PBXNativeTarget "TaylorMandos" */;
 			buildPhases = (
 				2E107A67834024F6D2B7D7B2 /* Sources */,
+				E9143A668477484B5F50F6BB /* Resources */,
 				1B16C809D8FA7D919E8EA6EE /* Frameworks */,
 			);
 			buildRules = (
@@ -196,6 +200,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E9143A668477484B5F50F6BB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		2E107A67834024F6D2B7D7B2 /* Sources */ = {
