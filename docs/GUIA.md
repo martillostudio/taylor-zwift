@@ -158,6 +158,21 @@ Desarrollos (`CicloKit/Ride/Drivetrain.swift`):
 
 **Botones** (los mismos que «Taylor Mandos»): + (dcha) o Z, marcha más dura / +10 W; − (izq) o Y, más blanda / −10 W.
 
+### Fase 2b — Entrenador (19-nov: primera versión escrita)
+Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simulador.
+
+- [x] Perfil: FTP y peso (se guardan), W/kg y zonas de potencia de Coggan (Z1–Z7) en vatios.
+- [x] Entrenos estructurados: pasos (constante, rampa, intervalos, libre) → tramos; objetivo en % del FTP mandado en **ERG**; tramos libres en SIM llano con marchas. IF y TSS previstos.
+- [x] Biblioteca de referencia (`CicloKit/Workouts/WorkoutLibrary.swift`), escrita desde cero con estructuras clásicas: test de rampa, test de 20', recuperación, Z2 60'/90', tempo 3×10', sweet spot 2×20' y 3×15', umbral 3×12', over-unders, VO2max 4×4' (tipo noruego), 5×3', 30/15 (Rønnestad), 30/30 (Billat), anaeróbico 8×1'.
+- [x] Tests de FTP: rampa (75 % del mejor minuto) y 20' (95 % de la media). Al terminar propone el FTP nuevo.
+- [x] VO2max estimado con la ecuación del ACSM (10,8 · W/kg de la mejor potencia de 5' + 7). Aproximado.
+- [x] Importar `.zwo` (formato de Zwift) para usar entrenos de otras fuentes.
+- [x] Intensidad ±2 % con los Click durante un entreno.
+- [ ] Probarlo en el rodillo.
+- [ ] Planes de varias semanas (con lo anterior como bloques) y calendario.
+- [ ] Analizar el histórico de Garmin Connect (ficheros `.fit`) para estimar FTP/VO2max y proponer el plan.
+- [ ] Guardar cada sesión (`.fit`) y subirla a Strava / intervals.icu.
+
 ### Fase 3 — Extras
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
 
@@ -209,3 +224,4 @@ Notas:
 | 2026-11-19 | App aparte **Taylor Mandos** (target `TaylorMandos`): reenvía los Click V2 a MyWhoosh como mando **OpenBikeControl** por red (Bonjour `_openbikecontrol._tcp` + TCP, paquete `CicloNetwork`) y, como plan B en el Mac, como teclas K/I. Sin sandbox en macOS (simular teclas lo exige). Reconexión automática de los mandos y reconexión si un mando pasa 20 s sin mandar nada. |
 | 2026-11-19 | Fase 2, primera versión: pestaña «Rodar» con rutas en SIM, 24 marchas virtuales (escalando pendiente·k, Crr·k y CdA·k³ en el comando SIM), ERG ±10 W y reconexión automática que recupera el último modo. Lógica en `CicloKit/Ride` con tests. |
 | 2026-11-19 | Marchas con desarrollos reales (carretera 2×12 en 24 marchas repartidas, GRX y XPLR 1×12) y calibración del rodillo (0,356 km/h por rpm). Pulsómetro 0x180D. Vista 2D con colores de pendiente de Garmin, adelanto de 2 km y panel de subida tipo ClimbPro. |
+| 2026-11-19 | Cambio de prioridad: **entrenador antes que simulador**. Pestaña «Entrenar»: FTP/zonas, biblioteca de entrenos de referencia, tests de FTP (rampa y 20'), VO2max estimado, ejecución en ERG, importar `.zwo`. Lógica en `CicloKit/Workouts` con tests. |

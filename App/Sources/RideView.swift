@@ -83,7 +83,7 @@ struct RideView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 } else {
-                    Metric(title: "Objetivo", value: "\(ride.ergWatts)", unit: "W")
+                    Metric(title: "Objetivo", value: ride.targetWatts.map { "\($0)" } ?? "libre", unit: "W")
                 }
                 Spacer()
                 HeartTile(bpm: hub.heartRateBpm)
@@ -218,13 +218,15 @@ struct RideView: View {
                 }
                 Button("A cero", systemImage: "arrow.counterclockwise") { ride.reset() }
                 Spacer()
-                Button(ride.mode == .route ? "Marcha −" : "−\(RideController.ergStep) W",
+                Button(ride.usesGears ? "Marcha −" : ride.mode == .erg ? "−\(RideController.ergStep) W" : "Intensidad −",
                        systemImage: "minus.circle") { ride.easier() }
-                Button(ride.mode == .route ? "Marcha +" : "+\(RideController.ergStep) W",
+                Button(ride.usesGears ? "Marcha +" : ride.mode == .erg ? "+\(RideController.ergStep) W" : "Intensidad +",
                        systemImage: "plus.circle") { ride.harder() }
             }
         } footer: {
-            Text(ride.mode == .route
+            Text(ride.mode == .workout
+                 ? "Entreno estructurado: elígelo y síguelo en la pestaña «Entrenar»."
+                 : ride.mode == .route
                  ? "Mandos: + (dcha) o Z, marcha más dura; − (izq) o Y, más blanda. En una subida, baja de marcha para mantener la cadencia."
                  : "Mandos: + (dcha) o Z, +\(RideController.ergStep) W; − (izq) o Y, −\(RideController.ergStep) W. En ERG, mantén la cadencia por encima de ~70 rpm.")
         }

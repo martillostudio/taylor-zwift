@@ -29,6 +29,8 @@ struct ContentView: View {
         TabView {
             RideView()
                 .tabItem { Label("Rodar", systemImage: "figure.outdoor.cycle") }
+            WorkoutsView()
+                .tabItem { Label("Entrenar", systemImage: "figure.indoor.cycle") }
             TrainerView()
                 .tabItem { Label("Rodillo", systemImage: "bicycle") }
             ControllersView()

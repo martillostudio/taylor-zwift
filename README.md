@@ -25,6 +25,12 @@ Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8
 3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG); **− (izq) o Y** = más blanda (−10 W).
 4. Desarrollo: carretera 2×12 (24 marchas), GRX 1×12 o SRAM XPLR 1×12. El pulsómetro se conecta solo si lo llevas puesto.
 
+## Entrenos (pestaña «Entrenar»)
+
+1. Pon tu **FTP** y tu peso (o haz el **test de rampa**: al acabar te propone el FTP).
+2. Elige un entreno de la biblioteca (Z2, sweet spot, umbral, VO2max 4×4, 30/15…) o importa un `.zwo`.
+3. «Cargar este entreno» → «Empezar». El rodillo va en ERG; los Click suben/bajan la intensidad un 2 %.
+
 ## Taylor Mandos: los Click V2 como mando de MyWhoosh
 
 App pequeña e independiente (misma base de código) que conecta los dos Zwift Click V2
