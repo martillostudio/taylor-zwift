@@ -23,6 +23,7 @@ Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8
 1. `make run`, pestaña **Rodar** → «Conectar rodillo y mandos».
 2. Elige **Ruta (SIM)** y una ruta, o **ERG**, y pulsa **Empezar**.
 3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG); **− (izq) o Y** = más blanda (−10 W).
+4. Desarrollo: carretera 2×12 (24 marchas), GRX 1×12 o SRAM XPLR 1×12. El pulsómetro se conecta solo si lo llevas puesto.
 
 ## Taylor Mandos: los Click V2 como mando de MyWhoosh
 

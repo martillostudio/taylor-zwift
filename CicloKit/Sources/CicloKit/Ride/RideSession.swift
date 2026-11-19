@@ -7,6 +7,9 @@ public struct RideSession: Equatable, Sendable {
     public private(set) var movingSeconds = 0.0
     public private(set) var energyJoules = 0.0
     public private(set) var maxPowerWatts = 0
+    public private(set) var maxHeartRateBpm: Int?
+    private var heartBeatsTimesSeconds = 0.0
+    private var heartRateSeconds = 0.0
 
     /// Huecos más largos que esto (pausa, desconexión) no se integran.
     public static let maxGapSeconds = 3.0
@@ -15,7 +18,8 @@ public struct RideSession: Equatable, Sendable {
 
     public init() {}
 
-    public mutating func update(speedKmh: Double, powerWatts: Int, cadenceRpm: Double, at time: Double) {
+    public mutating func update(speedKmh: Double, powerWatts: Int, cadenceRpm: Double,
+                                heartRateBpm: Int? = nil, at time: Double) {
         defer { lastTime = time }
         guard let last = lastTime else { return }
         let dt = time - last
@@ -27,6 +31,11 @@ public struct RideSession: Equatable, Sendable {
         distanceMeters += max(speedKmh, 0) / 3.6 * dt
         energyJoules += Double(max(powerWatts, 0)) * dt
         maxPowerWatts = max(maxPowerWatts, powerWatts)
+        if let hr = heartRateBpm, hr > 0 {
+            heartBeatsTimesSeconds += Double(hr) * dt
+            heartRateSeconds += dt
+            maxHeartRateBpm = max(maxHeartRateBpm ?? 0, hr)
+        }
     }
 
     /// Al pausar, la siguiente muestra empieza de cero (no se cuenta el rato parado).
@@ -36,6 +45,10 @@ public struct RideSession: Equatable, Sendable {
 
     public var averagePowerWatts: Int? {
         movingSeconds > 0 ? Int((energyJoules / movingSeconds).rounded()) : nil
+    }
+
+    public var averageHeartRateBpm: Int? {
+        heartRateSeconds > 0 ? Int((heartBeatsTimesSeconds / heartRateSeconds).rounded()) : nil
     }
 
     /// Kilojulios de trabajo (≈ kcal quemadas, con una eficiencia típica del 24 %).

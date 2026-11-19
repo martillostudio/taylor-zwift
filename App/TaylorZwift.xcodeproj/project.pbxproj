@@ -10,8 +10,6 @@
 		1F7E58A93F3223F2E6AC08FC /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = EFA79C8CCB44F8868239749D /* CicloKit */; };
 		2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = 570D26A06E2F4B00568A69EC /* CicloKit */; };
 		2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C242BF3F6159617EB38F4BBF /* TrainerView.swift */; };
-		A1F0000000000000000000B2 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F0000000000000000000A2 /* RideView.swift */; };
-		A1F0000000000000000000B1 /* RideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F0000000000000000000A1 /* RideController.swift */; };
 		32397EFA7DC9D54BF1C8D269 /* TaylorMandosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */; };
 		3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */; };
 		4494A2257C90AE51AA73A8C0 /* BridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */; };
@@ -19,8 +17,10 @@
 		79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDA2488F1654582F648AE11 /* ControllersView.swift */; };
 		7A79021544CDD0DC2162DBBE /* BridgeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863663EEE45FBB2051721FB9 /* BridgeModel.swift */; };
 		7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F12F33A425BD8EE3BA6369 /* LogView.swift */; };
+		9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AE67EA9B3F5BDCB7270A503 /* RideView.swift */; };
 		ADC16D87744078AA0851B2EA /* CicloNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = 63F04261BFB7770CF70BCBA9 /* CicloNetwork */; };
 		B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */; };
+		BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E10DC2A8D445E089A9F7EB6 /* RideController.swift */; };
 		E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E4515ABF42AF0C84D91FE /* ScanSection.swift */; };
 		EB447ED12A5E35725FBF231F /* KeyboardSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */; };
 		F91C8515C7D0727DF3D65842 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7D07120B56B3DD2608D5FD /* CicloBluetooth */; };
@@ -35,11 +35,11 @@
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
 		863663EEE45FBB2051721FB9 /* BridgeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModel.swift; sourceTree = "<group>"; };
+		8E10DC2A8D445E089A9F7EB6 /* RideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideController.swift; sourceTree = "<group>"; };
 		9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9AE67EA9B3F5BDCB7270A503 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
 		B07644EFF6B1887C7FB084FE /* TaylorZwift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaylorZwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C242BF3F6159617EB38F4BBF /* TrainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerView.swift; sourceTree = "<group>"; };
-		A1F0000000000000000000A2 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
-		A1F0000000000000000000A1 /* RideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideController.swift; sourceTree = "<group>"; };
 		EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorMandosApp.swift; sourceTree = "<group>"; };
 		FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -111,11 +111,11 @@
 			children = (
 				7BDA2488F1654582F648AE11 /* ControllersView.swift */,
 				75F12F33A425BD8EE3BA6369 /* LogView.swift */,
+				8E10DC2A8D445E089A9F7EB6 /* RideController.swift */,
+				9AE67EA9B3F5BDCB7270A503 /* RideView.swift */,
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
 				2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */,
 				C242BF3F6159617EB38F4BBF /* TrainerView.swift */,
-				A1F0000000000000000000A2 /* RideView.swift */,
-				A1F0000000000000000000A1 /* RideController.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -236,11 +236,11 @@
 			files = (
 				79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */,
 				7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */,
+				BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */,
+				9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */,
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
 				B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */,
 				2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */,
-				A1F0000000000000000000B2 /* RideView.swift in Sources */,
-				A1F0000000000000000000B1 /* RideController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,7 +4,7 @@ import Foundation
 import Observation
 
 /// El entrenamiento en marcha: junta la ruta, las marchas virtuales, el modo ERG,
-/// los botones de los Click y lo que manda el rodillo.
+/// los botones de los Click y lo que mandan el rodillo y el pulsómetro.
 ///
 /// Solo manda órdenes al rodillo mientras el entrenamiento está en marcha, para no
 /// pisar lo que hagas a mano en la pestaña «Rodillo».
@@ -36,8 +36,13 @@ final class RideController {
 
     static let ergStep = 10
     static let ergRange = 50...1000
+    /// Cada cuánto se escribe en el log una línea con el estado del entrenamiento.
+    static let statusLogSeconds = 5.0
 
+    @ObservationIgnored private var calibration = TrainerCalibration()
     @ObservationIgnored private var lastSentTime = 0.0
+    @ObservationIgnored private var lastStatusLog = 0.0
+    @ObservationIgnored private var lastClimbAnnounced: Double?
     @ObservationIgnored private var ticker: Task<Void, Never>?
 
     init(hub: BluetoothHub) {
@@ -51,12 +56,30 @@ final class RideController {
         }
     }
 
+    /// Desarrollo de la bici (carretera 2×12, monoplato…). Al cambiarlo te quedas en la marcha más parecida.
+    var drivetrain: Drivetrain {
+        get { gears.drivetrain }
+        set {
+            guard newValue != gears.drivetrain else { return }
+            gears.change(to: newValue)
+            hub.appendLog("⚙️ Desarrollo: \(newValue.name) · marcha \(gearText)")
+            applyTarget(force: true)
+        }
+    }
+
+    /// La subida en la que estás o la que viene (en los próximos 2 km).
+    var climbStatus: ClimbStatus? {
+        mode == .route ? route.climbStatus(atDistance: session.distanceMeters) : nil
+    }
+
+    var gearText: String { "\(gears.number)/\(gears.count) (\(gears.gear.label))" }
+
     // MARK: Acciones
 
     func start() {
         guard !isRunning else { return }
         isRunning = true
-        hub.appendLog("▶︎ Entrenamiento en marcha (\(mode == .route ? route.name : "ERG \(ergWatts) W"))")
+        hub.appendLog("▶︎ Entrenamiento en marcha (\(mode == .route ? "\(route.name), marcha \(gearText)" : "ERG \(ergWatts) W"))")
         applyTarget(force: true)
     }
 
@@ -70,6 +93,7 @@ final class RideController {
     func reset() {
         session = RideSession()
         currentGrade = route.grade(atDistance: 0)
+        lastClimbAnnounced = nil
         hub.appendLog("⟲ Entrenamiento a cero (\(route.name))")
         applyTarget(force: true)
     }
@@ -78,7 +102,11 @@ final class RideController {
     func harder() {
         switch mode {
         case .route:
-            if gears.shiftUp() { hub.appendLog("⚙️ Marcha \(gears.number)/\(gears.count) (×\(ratioText))") }
+            if gears.shiftUp() {
+                hub.appendLog("⚙️ Marcha \(gearText)")
+            } else {
+                hub.appendLog("⚙️ Ya vas en la marcha más dura (\(gearText))")
+            }
         case .erg:
             ergWatts = min(ergWatts + Self.ergStep, Self.ergRange.upperBound)
             hub.appendLog("⚙️ ERG \(ergWatts) W")
@@ -90,15 +118,17 @@ final class RideController {
     func easier() {
         switch mode {
         case .route:
-            if gears.shiftDown() { hub.appendLog("⚙️ Marcha \(gears.number)/\(gears.count) (×\(ratioText))") }
+            if gears.shiftDown() {
+                hub.appendLog("⚙️ Marcha \(gearText)")
+            } else {
+                hub.appendLog("⚙️ Ya vas en la marcha más blanda (\(gearText))")
+            }
         case .erg:
             ergWatts = max(ergWatts - Self.ergStep, Self.ergRange.lowerBound)
             hub.appendLog("⚙️ ERG \(ergWatts) W")
         }
         applyTarget(force: true)
     }
-
-    var ratioText: String { gears.ratio.formatted(.number.precision(.fractionLength(2))) }
 
     // MARK: Interno
 
@@ -118,6 +148,14 @@ final class RideController {
         let data = hub.bikeData
         let trainerConnected = hub.trainerConnection == .connected
 
+        // Afinamos cuánto avanza el rodillo por pedalada (de ello depende cómo se sienten las marchas).
+        if trainerConnected, let kmh = data.speedKmh, let rpm = data.cadenceRpm {
+            calibration.add(speedKmh: kmh, cadenceRpm: rpm)
+            if abs(calibration.trainerRatio - gears.trainerRatio) > 0.005 {
+                gears.trainerRatio = calibration.trainerRatio
+            }
+        }
+
         if trainerConnected, let kmh = data.speedKmh {
             speedKmh = mode == .route ? gears.virtualSpeed(fromTrainerKmh: kmh) : kmh
         } else {
@@ -130,6 +168,7 @@ final class RideController {
                     speedKmh: speedKmh ?? 0,
                     powerWatts: data.powerWatts ?? 0,
                     cadenceRpm: data.cadenceRpm ?? 0,
+                    heartRateBpm: hub.heartRateBpm,
                     at: now
                 )
             } else {
@@ -137,9 +176,42 @@ final class RideController {
             }
             if mode == .route {
                 currentGrade = route.grade(atDistance: session.distanceMeters)
+                announceClimb()
+            }
+            if now - lastStatusLog >= Self.statusLogSeconds {
+                lastStatusLog = now
+                logStatus()
             }
         }
         applyTarget(force: false, now: now)
+    }
+
+    private func logStatus() {
+        let km = (session.distanceMeters / 1000).formatted(.number.precision(.fractionLength(2)))
+        let speed = speedKmh.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—"
+        let heart = hub.heartRateBpm.map { " · ❤️ \($0)" } ?? ""
+        switch mode {
+        case .route:
+            let grade = currentGrade.formatted(.number.precision(.fractionLength(1)))
+            let k = gears.k.formatted(.number.precision(.fractionLength(2)))
+            hub.appendLog("🛣 km \(km) · pendiente \(grade) % · marcha \(gearText) ×\(k) · \(speed) km/h\(heart)")
+        case .erg:
+            hub.appendLog("🛣 km \(km) · ERG \(ergWatts) W · \(speed) km/h\(heart)")
+        }
+    }
+
+    /// Avisa en el log al llegar al pie de una subida.
+    private func announceClimb() {
+        guard let status = climbStatus, status.isOnClimb else {
+            lastClimbAnnounced = nil // así en una ruta circular se vuelve a avisar en cada vuelta
+            return
+        }
+        guard lastClimbAnnounced != status.climb.id else { return }
+        lastClimbAnnounced = status.climb.id
+        let c = status.climb
+        let km = (c.lengthMeters / 1000).formatted(.number.precision(.fractionLength(1)))
+        let avg = c.averageGradePercent.formatted(.number.precision(.fractionLength(1)))
+        hub.appendLog("⛰ Empieza la subida: \(km) km al \(avg) % (+\(Int(c.ascentMeters)) m, \(c.category.label))")
     }
 
     private var desiredTarget: TrainerTarget {

@@ -48,12 +48,12 @@ public struct Route: Identifiable, Hashable, Sendable {
         let length = lengthMeters
         if isLoop {
             let laps = (d / length).rounded(.down)
-            let lapGain = elevationWithinLap(length)
-            return laps * lapGain + elevationWithinLap(d - laps * length)
+            let lapGain = elevationInLap(length)
+            return laps * lapGain + elevationInLap(d - laps * length)
         }
         if d <= 0 { return d * segments[0].gradePercent / 100 }
-        if d >= length { return elevationWithinLap(length) } // después del final: llano
-        return elevationWithinLap(d)
+        if d >= length { return elevationInLap(length) } // después del final: llano
+        return elevationInLap(d)
     }
 
     /// Pendiente en `d`, en %, suavizada en los cambios de tramo.
@@ -81,11 +81,12 @@ public struct Route: Identifiable, Hashable, Sendable {
         let length = lengthMeters
         return (0..<n).map { i in
             let d = length * Double(i) / Double(n - 1)
-            return RoutePoint(distanceMeters: d, elevationMeters: elevationWithinLap(d))
+            return RoutePoint(distanceMeters: d, elevationMeters: elevationInLap(d))
         }
     }
 
-    private func elevationWithinLap(_ d: Double) -> Double {
+    /// Altura dentro de una vuelta (`d` entre 0 y la longitud).
+    func elevationInLap(_ d: Double) -> Double {
         var start = 0.0
         var elevation = 0.0
         for s in segments {
@@ -115,5 +116,11 @@ extension Route {
         RouteSegment(2_000, 7), RouteSegment(2_000, 6), RouteSegment(1_000, 0),
     ])
 
-    public static let builtIn: [Route] = [.flat, .rolling, .climb]
+    /// Dos subidas cortas: una sin categoría (1,5 km al 5 %) y una de 4.ª (2 km al 7 %).
+    public static let punchy = Route(id: "rompepiernas", name: "Rompepiernas (12,8 km, circular)", isLoop: true, segments: [
+        RouteSegment(1_000, 0), RouteSegment(1_500, 5), RouteSegment(1_000, -4), RouteSegment(1_000, 0),
+        RouteSegment(2_000, 7), RouteSegment(2_000, -6), RouteSegment(1_500, 0), RouteSegment(2_750, -2),
+    ])
+
+    public static let builtIn: [Route] = [.flat, .rolling, .punchy, .climb]
 }

@@ -136,13 +136,25 @@ Pestaña **«Rodar»** de la app TaylorZwift (19-nov: primera versión escrita, 
 
 - [x] Pantalla de rodaje: potencia, cadencia, velocidad, distancia, tiempo, media, trabajo, pendiente, marcha y perfil de la ruta.
 - [x] Modo **SIM** con rutas sencillas incluidas (llano, ondulado, puerto 8 km al 6 %): la pendiente sale de la distancia recorrida, suavizada en 50 m y mandada como mucho 1 vez/s.
-- [x] **Marchas virtuales** (24, de 0,5× a 1,7×): ver abajo.
+- [x] **Marchas virtuales** con desarrollos de bici real: ver abajo.
+- [x] **Pulsómetro** Bluetooth estándar (servicio `0x180D`): pulso en vivo, medio y máximo; se conecta y reconecta solo.
+- [x] **Vista 2D tipo Garmin/Wahoo**: pendiente con su color, adelanto de los próximos 2 km, perfil de la ruta coloreado por pendiente (lo recorrido en gris) y panel de subida tipo ClimbPro (lo que queda: km, metros y pendiente media; categoría).
 - [x] Modo **ERG** con los mismos botones (±10 W).
 - [x] **Reconexión automática** del rodillo y los mandos; al volver, el rodillo recupera el último modo. Botón «Conectar rodillo y mandos».
-- [ ] Probarlo en el rodillo: ¿se notan las marchas en llano y en subida? ¿Respeta el Kickr el Crr y el CdA del comando SIM?
+- [x] Primera prueba en el rodillo (19-nov): todo conecta y las marchas cambian la resistencia, pero la marcha más blanda era demasiado dura → desarrollos reales.
+- [ ] Probar los desarrollos reales, el pulsómetro y la vista 2D.
 
-**Cómo funcionan las marchas virtuales.** El rodillo tiene un desarrollo real fijo: la velocidad de su volante solo depende de la cadencia. Para una marcha *k* veces más dura, la velocidad «de carretera» es *k* veces la del volante y hay que pedir *k* veces la fuerza de pendiente y rodadura y *k³* la del aire:
-`F' = k·m·g·(pendiente + Crr) + k³·½ρCdA·v²`. Eso se consigue mandando en el comando SIM `pendiente·k`, `Crr·k` y `CdA·k³`; el rodillo hace el resto con su física, sin bucles de control. El tope de 1,7× sale del máximo de CdA de FTMS (2,55 kg/m con 0,51 de base). Código: `CicloKit/Ride/VirtualGears.swift`.
+**Cómo funcionan las marchas virtuales.** El rodillo tiene un desarrollo real fijo: la velocidad de su volante solo depende de la cadencia. Medido en el Kickr Core 2: **0,356 km/h por rpm** (relación ≈ 2,82 con rueda de 2,105 m, como un 50×18); la app lo va afinando sola. Una marcha de bici con relación *r* es *k = r / 2,82* veces más dura que el rodillo «a pelo». Para esa *k*, la velocidad «de carretera» es *k* veces la del volante y hay que pedir *k* veces la fuerza de pendiente y rodadura y *k³* la del aire:
+`F' = k·m·g·(pendiente + Crr) + k³·½ρCdA·v²`. Eso se consigue mandando en el comando SIM `pendiente·k`, `Crr·k` y `CdA·k³`; el rodillo hace el resto con su física, sin bucles de control. El tope es *k* ≈ 1,71 (máximo de CdA de FTMS: 2,55 kg/m con 0,51 de base); la marcha más dura de carretera (50×11) es *k* = 1,61.
+
+Desarrollos (`CicloKit/Ride/Drivetrain.swift`):
+- **Carretera 2×12** (50/34 · 11-34): 24 marchas repartidas por igual (cada salto ≈ 6,8 %) entre 34×34 y 50×11, con el nombre de la combinación real más parecida. Un doble plato real tiene marchas repetidas; repartirlas es lo que hacen los cambios virtuales.
+- **Gravel GRX 1×12** (40 · 10-51) y **SRAM XPLR 1×12** (40 · 10-44): las 12 marchas reales.
+- Pendiente: SRAM 1×13 (falta confirmar el cassette) y los platos/piñones exactos de la Grizl.
+
+*19-nov, primera prueba:* con las 24 marchas antiguas (0,5×–1,7× del rodillo) la marcha 1 equivalía a un 34×24 y el 3 % no se subía «de molinillo». Con el desarrollo real, la marcha 1 (34×34) pide al rodillo un 35 % de la pendiente (antes, un 50 %).
+
+**Vista 2D.** Colores de pendiente de Garmin ClimbPro: verde 0–3 %, amarillo 3–6 %, naranja 6–9 %, rojo 9–12 %, rojo oscuro > 12 %; bajadas en azul. Subida = al menos 500 m, 3 % de media y longitud × pendiente ≥ 3.500 (criterio de Garmin); categoría por esa puntuación (4.ª > 8.000, 3.ª > 16.000, 2.ª > 32.000, 1.ª > 64.000, HC > 80.000). Adelanto de 2 km como Wahoo Summit. Código: `CicloKit/Ride/Climb.swift`, `App/Sources/GradeColors.swift`.
 
 **Botones** (los mismos que «Taylor Mandos»): + (dcha) o Z, marcha más dura / +10 W; − (izq) o Y, más blanda / −10 W.
 
@@ -196,3 +208,4 @@ Notas:
 | 2026-11-19 | Opcode `0x19` del Click = batería (campo 2, %). |
 | 2026-11-19 | App aparte **Taylor Mandos** (target `TaylorMandos`): reenvía los Click V2 a MyWhoosh como mando **OpenBikeControl** por red (Bonjour `_openbikecontrol._tcp` + TCP, paquete `CicloNetwork`) y, como plan B en el Mac, como teclas K/I. Sin sandbox en macOS (simular teclas lo exige). Reconexión automática de los mandos y reconexión si un mando pasa 20 s sin mandar nada. |
 | 2026-11-19 | Fase 2, primera versión: pestaña «Rodar» con rutas en SIM, 24 marchas virtuales (escalando pendiente·k, Crr·k y CdA·k³ en el comando SIM), ERG ±10 W y reconexión automática que recupera el último modo. Lógica en `CicloKit/Ride` con tests. |
+| 2026-11-19 | Marchas con desarrollos reales (carretera 2×12 en 24 marchas repartidas, GRX y XPLR 1×12) y calibración del rodillo (0,356 km/h por rpm). Pulsómetro 0x180D. Vista 2D con colores de pendiente de Garmin, adelanto de 2 km y panel de subida tipo ClimbPro. |

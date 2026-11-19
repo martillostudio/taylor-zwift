@@ -8,6 +8,7 @@ import os
 public enum DeviceKind: String, Sendable {
     case trainer = "Rodillo"
     case click = "Mando"
+    case heartRate = "Pulsómetro"
     case other = "Otro"
 }
 
@@ -80,6 +81,11 @@ public final class BluetoothHub: NSObject {
     public private(set) var trainerTarget: TrainerTarget?
 
     public private(set) var clicks: [ClickState] = []
+
+    public private(set) var heartRateName: String?
+    public private(set) var heartRateConnection: ConnectionState = .disconnected
+    /// Pulsaciones del pulsómetro (o del rodillo, si se lo pasa él). `nil` si no hay dato.
+    public private(set) var heartRateBpm: Int?
     /// Botones pulsados ahora en cualquiera de los mandos (sin duplicados).
     public private(set) var buttonsPressed: ZwiftButton = []
     /// Último botón pulsado (se queda aunque lo sueltes, para verlo bien en pantalla).
@@ -99,6 +105,8 @@ public final class BluetoothHub: NSObject {
     @ObservationIgnored private var lastClickMessage: [UUID: Double] = [:]
     /// Conectar solo el primer rodillo que aparezca (ver `connectEverything()`).
     @ObservationIgnored private var autoConnectTrainer = false
+    @ObservationIgnored private var heartRateMonitor: CBPeripheral?
+    @ObservationIgnored private var heartRateWanted = false
     /// El usuario quiere el rodillo conectado: si se cae, lo reconectamos.
     @ObservationIgnored private var trainerWanted = false
     /// Mandos que el usuario ha desconectado a mano: esos no se reconectan solos.
@@ -127,6 +135,8 @@ public final class BluetoothHub: NSObject {
     private static let clickAsyncUUID = CBUUID(string: ZwiftClickUUID.async)
     private static let clickSyncRXUUID = CBUUID(string: ZwiftClickUUID.syncRX)
     private static let clickSyncTXUUID = CBUUID(string: ZwiftClickUUID.syncTX)
+    private static let heartRateService = CBUUID(string: HeartRateUUID.service)
+    private static let heartRateMeasurementUUID = CBUUID(string: HeartRateUUID.measurement)
 
     public override init() {
         super.init()
@@ -171,6 +181,13 @@ public final class BluetoothHub: NSObject {
             }
             userDisconnected.remove(p.identifier)
             updateClick(p.identifier) { $0.connection = .connecting }
+        case .heartRate:
+            if let old = heartRateMonitor, old.identifier != p.identifier { central.cancelPeripheralConnection(old) }
+            heartRateMonitor = p
+            heartRateWanted = true
+            heartRateName = device.name
+            heartRateConnection = .connecting
+            heartRateBpm = nil
         case .other:
             addLog("«\(device.name)» no es ni rodillo ni mando: conecto solo para listar sus servicios")
         }
@@ -182,6 +199,11 @@ public final class BluetoothHub: NSObject {
         guard let p = peripherals[id] else { return }
         userDisconnected.insert(id)
         central.cancelPeripheralConnection(p)
+    }
+
+    public func disconnectHeartRate() {
+        heartRateWanted = false
+        if let heartRateMonitor { central.cancelPeripheralConnection(heartRateMonitor) }
     }
 
     public func disconnectTrainer() {
@@ -223,6 +245,9 @@ public final class BluetoothHub: NSObject {
         // Si ya habíamos visto un rodillo, no hace falta esperar al escaneo.
         if trainerConnection == .disconnected, let t = devices.first(where: { $0.kind == .trainer }) {
             connect(t)
+        }
+        if heartRateConnection == .disconnected, let h = devices.first(where: { $0.kind == .heartRate }) {
+            connect(h)
         }
     }
 
@@ -338,7 +363,8 @@ public final class BluetoothHub: NSObject {
         let power = d.powerWatts.map { "\($0)" } ?? "—"
         let cadence = d.cadenceRpm.map { "\(Int($0))" } ?? "—"
         let speed = d.speedKmh.map { String(format: "%.1f", $0) } ?? "—"
-        addLog("🚴 \(power) W · \(cadence) rpm · \(speed) km/h")
+        let heart = heartRateBpm.map { " · ❤️ \($0)" } ?? ""
+        addLog("🚴 \(power) W · \(cadence) rpm · \(speed) km/h\(heart)")
     }
 
     private func addLog(_ text: String) {
@@ -351,6 +377,7 @@ public final class BluetoothHub: NSObject {
         let services = services.map { $0.uppercased() }
         if services.contains(FTMSUUID.service) { return .trainer }
         if services.contains(ZwiftClickUUID.service) { return .click }
+        if services.contains(HeartRateUUID.service) { return .heartRate }
         let lower = name.lowercased()
         if lower.contains("zwift click") || lower.contains("zwift ride") { return .click }
         if lower.hasPrefix("kickr") { return .trainer }
@@ -403,6 +430,10 @@ public final class BluetoothHub: NSObject {
         if autoConnectTrainer, kind == .trainer, trainer == nil, trainerConnection == .disconnected {
             connect(device)
         }
+        // El primer pulsómetro que aparezca (junto con el rodillo, en la conexión automática).
+        if autoConnectTrainer, kind == .heartRate, heartRateMonitor == nil, heartRateConnection == .disconnected {
+            connect(device)
+        }
     }
 
     private func handleConnect(_ p: CBPeripheral) {
@@ -411,6 +442,8 @@ public final class BluetoothHub: NSObject {
         p.discoverServices(nil)
         if p.identifier == trainer?.identifier {
             trainerConnection = .connected
+        } else if p.identifier == heartRateMonitor?.identifier {
+            heartRateConnection = .connected
         } else {
             updateClick(p.identifier) { $0.connection = .connected }
         }
@@ -431,6 +464,16 @@ public final class BluetoothHub: NSObject {
             } else {
                 trainerMode = "—"
                 trainerTarget = nil
+            }
+        }
+        if p.identifier == heartRateMonitor?.identifier {
+            heartRateBpm = nil
+            if heartRateWanted {
+                heartRateConnection = .connecting
+                addLog("↻ Reconectando «\(label(p))»…")
+                central.connect(p, options: nil)
+            } else {
+                heartRateConnection = .disconnected
             }
         }
         clickSyncRX[p.identifier] = nil
@@ -455,7 +498,7 @@ public final class BluetoothHub: NSObject {
         if let error { addLog("⚠️ Error buscando servicios: \(error.localizedDescription)"); return }
         let services = p.services ?? []
         addLog("Servicios de «\(label(p))»: \(services.map(\.uuid.uuidString).joined(separator: ", "))")
-        for s in services where s.uuid == Self.ftmsService || s.uuid == Self.clickService {
+        for s in services where s.uuid == Self.ftmsService || s.uuid == Self.clickService || s.uuid == Self.heartRateService {
             p.discoverCharacteristics(nil, for: s)
         }
         if p.identifier == trainer?.identifier, !services.contains(where: { $0.uuid == Self.ftmsService }) {
@@ -475,7 +518,7 @@ public final class BluetoothHub: NSObject {
             case Self.controlPointUUID:
                 controlPoint = c
                 p.setNotifyValue(true, for: c) // las respuestas llegan como «indicate»
-            case Self.clickAsyncUUID, Self.clickSyncTXUUID:
+            case Self.clickAsyncUUID, Self.clickSyncTXUUID, Self.heartRateMeasurementUUID:
                 p.setNotifyValue(true, for: c)
             case Self.clickSyncRXUUID:
                 clickSyncRX[p.identifier] = c
@@ -519,6 +562,10 @@ public final class BluetoothHub: NSObject {
         case Self.bikeDataUUID:
             do {
                 bikeData = bikeData.merging(try IndoorBikeData(parsing: bytes))
+                // Si no hay pulsómetro conectado y el rodillo trae pulsaciones, las usamos.
+                if heartRateConnection != .connected, let hr = bikeData.heartRateBpm, hr > 0 {
+                    heartRateBpm = hr
+                }
                 logBikeDataIfNeeded()
             } catch { addLog("⚠️ Indoor Bike Data no válido [\(bytes.hexString)]: \(error)") }
 
@@ -535,6 +582,12 @@ public final class BluetoothHub: NSObject {
 
         case Self.clickAsyncUUID, Self.clickSyncTXUUID:
             handleClickMessage(p, bytes: bytes, channel: c.uuid == Self.clickAsyncUUID ? "async" : "syncTX")
+
+        case Self.heartRateMeasurementUUID:
+            do {
+                let m = try HeartRateMeasurement(parsing: bytes)
+                heartRateBpm = m.skinContact == false || m.bpm == 0 ? nil : m.bpm
+            } catch { addLog("⚠️ Medida del pulsómetro no válida [\(bytes.hexString)]") }
 
         default:
             addLog("← \(c.uuid.uuidString): [\(bytes.hexString)]")
