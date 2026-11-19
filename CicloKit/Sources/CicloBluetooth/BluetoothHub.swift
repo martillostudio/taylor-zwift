@@ -103,6 +103,11 @@ public final class BluetoothHub: NSObject {
     /// Segundos sin noticias de un mando (los Click mandan la batería cada ~5 s) antes de reconectarlo.
     @ObservationIgnored public var silenceBeforeReconnect: Double = 20
     @ObservationIgnored private var lastClickMessage: [UUID: Double] = [:]
+    /// Segundos sin pulsaciones del mando izquierdo antes de «refrescarlo» (reconectarlo).
+    /// El izquierdo puede seguir conectado y mandando estado pero dejar de mandar botones
+    /// a apps que no son Zwift (guía §5.1); reconectarlo es lo que hace BikeControl.
+    @ObservationIgnored public var leftRefreshSeconds: Double = 60
+    @ObservationIgnored private var lastClickButtons: [UUID: Double] = [:]
     /// Conectar solo el primer rodillo que aparezca (ver `connectEverything()`).
     @ObservationIgnored private var autoConnectTrainer = false
     @ObservationIgnored private var heartRateMonitor: CBPeripheral?
@@ -318,6 +323,13 @@ public final class BluetoothHub: NSObject {
             if now - last > silenceBeforeReconnect, let p = peripherals[click.id] {
                 addLog("⏱ «\(click.label)» lleva \(Int(now - last)) s sin mandar nada: lo reconecto")
                 lastClickMessage[click.id] = now
+                central.cancelPeripheralConnection(p)
+            } else if let buttons = lastClickButtons[click.id], now - buttons > leftRefreshSeconds,
+                      let p = peripherals[click.id] {
+                // Conectado pero sin botones: puede estar bloqueado. Lo refrescamos en silencio
+                // (tarda 1–2 s; una pulsación justo en ese momento se pierde).
+                addLog("🔄 «\(click.label)» lleva \(Int(now - buttons)) s sin botones: lo refresco por si se ha bloqueado")
+                lastClickButtons[click.id] = now
                 central.cancelPeripheralConnection(p)
             }
         }
@@ -624,8 +636,10 @@ public final class BluetoothHub: NSObject {
             case .rideOnAck(let extra):
                 addLog("← «\(label(p))»: RideOn recibido ✅ (extra [\(extra.hexString)])")
                 updateClick(p.identifier) { $0.handshakeDone = true }
+                lastClickButtons[p.identifier] = ProcessInfo.processInfo.systemUptime
 
             case .buttons(let pressed, let raw):
+                lastClickButtons[p.identifier] = ProcessInfo.processInfo.systemUptime
                 var newForThisClick: ZwiftButton = []
                 updateClick(p.identifier) { s in
                     newForThisClick = pressed.subtracting(s.pressed)
