@@ -4,6 +4,9 @@ import Foundation
 public struct Gear: Hashable, Sendable {
     public var ratio: Double
     public var label: String
+
+    /// Metros por pedalada con rueda de carretera (lo que los ciclistas llaman «desarrollo»).
+    public var developmentMeters: Double { ratio * Drivetrain.wheelCircumference }
 }
 
 /// Desarrollo de una bici real (platos y piñones) del que salen las marchas virtuales.
@@ -44,14 +47,17 @@ public struct Drivetrain: Identifiable, Hashable, Sendable {
         self.gears = (0..<count).map { i in
             let ratio = lo * pow(hi / lo, Double(i) / Double(max(count - 1, 1)))
             let nearest = real.min(by: { abs(log($0.ratio / ratio)) < abs(log($1.ratio / ratio)) })!
-            return Gear(ratio: ratio, label: nearest.label)
+            // Si no coincide con una combinación real (±0,5 %), se marca como aproximada.
+            let exact = abs(log(nearest.ratio / ratio)) < 0.005
+            return Gear(ratio: ratio, label: exact ? nearest.label : "≈\(nearest.label)")
         }
     }
 
-    /// Metros que avanza la bici por cada pedalada con la marcha `gear`.
+    /// Metros que avanza la bici por cada pedalada con la marcha `gear` («desarrollo»).
     public func metersPerPedalStroke(_ gear: Gear) -> Double {
         gear.ratio * Self.wheelCircumference
     }
+
 }
 
 extension Drivetrain {

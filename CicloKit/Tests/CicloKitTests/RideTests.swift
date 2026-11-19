@@ -10,6 +10,9 @@ struct VirtualGearsTests {
         #expect(abs(d.gears[23].ratio - 50.0 / 11) < 1e-9) // 50×11
         #expect(d.gears[0].label == "34×34")
         #expect(d.gears[23].label == "50×11")
+        // Las intermedias que no son una combinación real se marcan como aproximadas.
+        #expect(d.gears.dropFirst().dropLast().allSatisfy { $0.label.hasPrefix("≈") || $0.label.contains("×") })
+        #expect(abs(d.gears[0].developmentMeters - 2.105) < 1e-9)
         // Repartidas por igual: todos los saltos son el mismo %.
         let steps = zip(d.gears, d.gears.dropFirst()).map { $1.ratio / $0.ratio }
         #expect(steps.allSatisfy { abs($0 - steps[0]) < 1e-9 })

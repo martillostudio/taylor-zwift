@@ -79,7 +79,8 @@ struct RideView: View {
                         Text("Marcha").font(.caption).foregroundStyle(.secondary)
                         Text("\(ride.gears.number)")
                             .font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
-                        Text(ride.gears.gear.label).font(.caption).foregroundStyle(.secondary)
+                        Text("\(ride.gears.gear.label) · \(ride.gears.gear.developmentMeters.formatted(.number.precision(.fractionLength(1)))) m")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                 } else {
                     Metric(title: "Objetivo", value: "\(ride.ergWatts)", unit: "W")
