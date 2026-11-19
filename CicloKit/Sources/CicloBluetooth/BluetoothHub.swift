@@ -74,6 +74,8 @@ public final class BluetoothHub: NSObject {
     public private(set) var hasControl = false
     public private(set) var lastControlResult = "—"
     public private(set) var lastMachineStatus = "—"
+    /// Último modo que le hemos mandado al rodillo («SIM 0,0 %», «ERG 150 W»…).
+    public private(set) var trainerMode = "—"
 
     public private(set) var clicks: [ClickState] = []
     /// Botones pulsados ahora en cualquiera de los mandos (sin duplicados).
@@ -170,11 +172,13 @@ public final class BluetoothHub: NSObject {
 
     /// Modo SIM: cambia la pendiente.
     public func setGrade(_ percent: Double) {
+        trainerMode = "SIM \(percent.formatted(.number.precision(.fractionLength(1)))) %"
         sendWithControl(.setSimulation(SimulationParameters(gradePercent: percent)))
     }
 
     /// Modo ERG: fija la potencia.
     public func setTargetPower(_ watts: Int) {
+        trainerMode = "ERG \(watts) W"
         sendWithControl(.setTargetPower(watts: watts))
     }
 
@@ -307,6 +311,7 @@ public final class BluetoothHub: NSObject {
             trainerConnection = .disconnected
             hasControl = false
             controlPoint = nil
+            trainerMode = "—"
         }
         clickSyncRX[p.identifier] = nil
         updateClick(p.identifier) {
@@ -358,6 +363,12 @@ public final class BluetoothHub: NSObject {
             return
         }
         addLog("Suscrito a \(c.uuid.uuidString)")
+        // El rodillo recuerda el último modo (p. ej. un ERG de otra sesión o de otra app)
+        // mientras siga encendido. Al conectar lo dejamos en llano para empezar limpios.
+        if c.uuid == Self.controlPointUUID, p.identifier == trainer?.identifier {
+            addLog("Rodillo listo: lo pongo en llano (SIM 0 %) para borrar el modo anterior")
+            setGrade(0)
+        }
         // Cuando ya escuchamos las respuestas del mando, le mandamos el saludo.
         if c.uuid == Self.clickSyncTXUUID, let rx = clickSyncRX[p.identifier] {
             let type: CBCharacteristicWriteType = rx.properties.contains(.write) ? .withResponse : .withoutResponse

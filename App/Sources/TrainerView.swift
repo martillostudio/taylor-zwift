@@ -20,6 +20,7 @@ struct TrainerView: View {
                 LabeledContent("Dispositivo", value: hub.trainerName ?? "—")
                 LabeledContent("Estado", value: hub.trainerConnection.description)
                 LabeledContent("Control", value: hub.hasControl ? "concedido ✅" : "no")
+                LabeledContent("Modo", value: hub.trainerMode)
                 LabeledContent("Última respuesta", value: hub.lastControlResult)
                 LabeledContent("Último estado", value: hub.lastMachineStatus)
                 if hub.trainerConnection != .disconnected {
