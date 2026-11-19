@@ -308,6 +308,7 @@ struct RideView: View {
                     M3SectionTitle(title: "Resumen", subtitle: ride.lastSaved.map { "Guardado en el historial: \($0.name)" })
                     Spacer()
                     if let saved = ride.lastSaved {
+                        GarminImportButton(activity: saved)
                         StravaBadge(activity: saved)
                     }
                 }
@@ -369,9 +370,6 @@ struct StravaBadge: View {
             }
             .buttonStyle(.m3Tonal)
             .disabled(strava.isUploading)
-        } else {
-            Button("Conectar Strava", systemImage: "link") { ride.selectedTab = "historial" }
-                .buttonStyle(.m3Text)
         }
     }
 }

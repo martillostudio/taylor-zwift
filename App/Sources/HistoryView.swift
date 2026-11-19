@@ -19,6 +19,7 @@ struct HistoryView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Historial").font(M3.font(.headlineMedium)).foregroundStyle(M3.onSurface)
                     TotalsCard()
+                    GarminCard()
                     StravaCard()
                     if store.activities.isEmpty {
                         M3Card(style: .outlined) {
@@ -90,7 +91,7 @@ struct StravaCard: View {
                         .frame(width: 36, height: 36).background(M3.strava, in: RoundedRectangle(cornerRadius: M3.Shape.small))
                     M3SectionTitle(title: "Strava", subtitle: strava.isConnected
                                    ? "Conectado como \(strava.athleteName ?? "tu cuenta")"
-                                   : "Sube cada entreno a Strava al terminarlo.")
+                                   : "Opcional. Strava exige suscripción para usar su API: sin ella, no se puede conectar.")
                     Spacer()
                     if strava.isConnected {
                         Toggle("Subir al terminar", isOn: $strava.autoUpload).toggleStyle(.switch).fixedSize()
@@ -129,6 +130,56 @@ struct StravaCard: View {
                 await strava.handleCallback(callback)
             } catch {
                 // Cancelado por el usuario: no hace falta avisar.
+            }
+        }
+    }
+}
+
+/// Lleva un entreno a Garmin Connect por la vía oficial: abre su página «Importar datos» en el
+/// navegador y te deja el .fit a mano (en el Mac, seleccionado en el Finder para arrastrarlo).
+/// La API personal de Garmin solo permite descargar, no subir.
+struct GarminImportButton: View {
+    let activity: Activity
+    @Environment(ActivityStore.self) private var store
+    @Environment(\.openURL) private var openURL
+
+    static let importPage = URL(string: "https://connect.garmin.com/modern/import-data")!
+
+    var body: some View {
+        #if os(macOS)
+        Button("Subir a Garmin Connect", systemImage: "arrow.up.forward.app") {
+            let fit = store.fitURL(activity)
+            if !FileManager.default.fileExists(atPath: fit.path) {
+                try? store.fitData(activity).write(to: fit)
+            }
+            NSWorkspace.shared.activateFileViewerSelecting([fit])
+            openURL(Self.importPage)
+        }
+        .buttonStyle(.m3Tonal)
+        .help("Abre «Importar datos» de Garmin Connect y te enseña el .fit en el Finder: arrástralo a la página.")
+        #else
+        HStack {
+            ShareLink(item: store.fitURL(activity)) { Label(".fit", systemImage: "square.and.arrow.up") }
+                .buttonStyle(.m3Tonal)
+            Button("Garmin Connect", systemImage: "arrow.up.forward.app") { openURL(Self.importPage) }
+                .buttonStyle(.m3Tonal)
+        }
+        #endif
+    }
+}
+
+/// Explica cómo llevar los entrenos a Garmin Connect.
+struct GarminCard: View {
+    var body: some View {
+        M3Card(style: .outlined) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "applewatch.side.right").foregroundStyle(.white)
+                    .frame(width: 36, height: 36).background(Color(red: 0, green: 0.48, blue: 0.76), in: RoundedRectangle(cornerRadius: M3.Shape.small))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Garmin Connect").font(M3.font(.titleLarge))
+                    Text("Cada entreno se guarda como .fit. Con «Subir a Garmin Connect» se abre su página de importar y el fichero aparece seleccionado en el Finder: arrástralo a la página y listo. Si la página no reacciona, prueba con Chrome o Edge (Safari a veces falla al importar).")
+                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                }
             }
         }
     }
@@ -237,6 +288,7 @@ struct ActivityDetailView: View {
                                     .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
                             }
                             Spacer()
+                            GarminImportButton(activity: a)
                             StravaBadge(activity: a)
                         }
                         HStack(spacing: 16) {

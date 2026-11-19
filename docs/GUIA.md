@@ -179,7 +179,8 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 - [ ] Analizar el histórico de Garmin Connect (ficheros `.fit`) para estimar FTP/VO2max y proponer el plan.
 - [x] **Historial:** cada entreno de más de 1' se guarda al terminar (o al ponerlo a cero) como JSON (muestras a 1 Hz: potencia, cadencia, velocidad, distancia, pulso, altura virtual) y como `.fit` (codificador propio en `CicloKit/Activity/FITEncoder.swift`, con tests que releen el fichero y comprueban los CRC). Pestaña «Historial»: totales de semana y mes, tarjetas, detalle con gráficas, mejores marcas, tiempo por zonas, exportar `.fit`.
 - [x] **Strava:** OAuth (WebAuthenticationSession, `taylorzwift://localhost`), subida del `.fit` a `/api/v3/uploads` (permiso `activity:write`) con `trainer=1`, seguimiento hasta que Strava la procesa, subida automática opcional. Hace falta crear una «app» en strava.com/settings/api con *Authorization Callback Domain* = `localhost`.
-- [ ] Garmin Connect: su API personal solo permite *descargar* datos, no subir. Decisión (19-nov): los entrenos del rodillo van **solo a Strava**; el `.fit` se puede importar a mano en Garmin Connect si algún día hace falta.
+- [x] **Garmin Connect** (vía oficial): su API personal solo permite *descargar*, así que el botón «Subir a Garmin Connect» abre su página «Importar datos» y selecciona el `.fit` en el Finder para arrastrarlo (Safari a veces falla al importar: mejor Chrome o Edge).
+- Nota (19-nov): **Strava exige suscripción para crear una app de la API**; sin ella la subida a Strava no se puede usar (queda como opción).
 
 ### Fase 3 — Extras
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
@@ -237,3 +238,4 @@ Notas:
 | 2026-11-19 | Modo **Libre** (pendiente a elección y marchas), «Terminar» con resumen en todos los modos, desarrollo 1×12 por defecto y guardado. |
 | 2026-11-19 | Diseño **Material 3 en SwiftUI** (tokens de color claro/oscuro, escala tipográfica, formas, botones, chips, segmentados, navegación lateral/inferior) en `App/Sources/M3.swift`; `material-components-ios` está archivado y es UIKit, así que no se usa. Rediseño de Rodar, Entrenar, detalle del entreno; pestañas nuevas Historial y Equipo. |
 | 2026-11-19 | Historial con `.fit` propio y subida a Strava; Garmin Connect fuera (su API personal es solo de lectura). |
+| 2026-11-19 | Sin suscripción de Strava no hay API: los entrenos van a **Garmin Connect** por importación manual asistida (botón que abre «Importar datos» y deja el `.fit` seleccionado). Strava queda como opción. |

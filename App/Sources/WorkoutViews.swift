@@ -649,7 +649,10 @@ struct WorkoutDetailView: View {
                 HStack {
                     M3SectionTitle(title: "Resumen", subtitle: ride.lastSaved.map { "Guardado en el historial: \($0.name)" })
                     Spacer()
-                    if let saved = ride.lastSaved { StravaBadge(activity: saved) }
+                    if let saved = ride.lastSaved {
+                        GarminImportButton(activity: saved)
+                        StravaBadge(activity: saved)
+                    }
                 }
                 HStack(spacing: 16) {
                     M3Stat(title: "Mejor 1'", value: w(s.best1Min), unit: "W", size: .headlineSmall)

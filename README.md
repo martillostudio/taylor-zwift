@@ -35,7 +35,11 @@ Pestaña **Rodar → Libre** (o «Rodar libre» en Entrenar): eliges la pendient
 2. Elige un entreno de la biblioteca (Z2, sweet spot, umbral, VO2max 4×4, 30/15…) o importa un `.zwo`.
 3. «Cargar este entreno» → «Empezar». El rodillo va en ERG; los Click suben/bajan la intensidad un 2 %.
 
-## Historial y Strava
+## Historial, Garmin Connect y Strava
+
+**Garmin Connect:** en el resumen o en el historial, «Subir a Garmin Connect» abre su página de importar y te deja el `.fit` seleccionado en el Finder: arrástralo a la página (mejor con Chrome o Edge).
+
+**Strava (opcional, necesita suscripción para usar su API):**
 
 Cada entreno de más de 1 minuto se guarda al terminar (pestaña **Historial**), con su `.fit` para exportarlo.
 
