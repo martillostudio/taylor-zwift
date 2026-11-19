@@ -377,12 +377,17 @@ final class RideController {
         } else if mode == .erg {
             ergWatts = min(ergWatts + Self.ergStep, Self.ergRange.upperBound)
             hub.appendLog("⚙️ ERG \(ergWatts) W")
+        } else if intensityLocked {
+            hub.appendLog("🔒 En los test la intensidad va fija al 100 % (si no, el FTP sale mal)")
         } else {
             intensity = min(intensity + Self.intensityStep, 1.5)
             hub.appendLog("⚙️ Intensidad \(Int((intensity * 100).rounded())) %")
         }
         applyTarget(force: true)
     }
+
+    /// En los test de FTP no se toca la intensidad: los vatios tienen que ser los del protocolo.
+    var intensityLocked: Bool { mode == .workout && workout?.ftpTest != nil }
 
     /// Más blando: lo contrario de `harder()`.
     func easier() {
@@ -395,6 +400,8 @@ final class RideController {
         } else if mode == .erg {
             ergWatts = max(ergWatts - Self.ergStep, Self.ergRange.lowerBound)
             hub.appendLog("⚙️ ERG \(ergWatts) W")
+        } else if intensityLocked {
+            hub.appendLog("🔒 En los test la intensidad va fija al 100 % (si no, el FTP sale mal)")
         } else {
             intensity = max(intensity - Self.intensityStep, 0.5)
             hub.appendLog("⚙️ Intensidad \(Int((intensity * 100).rounded())) %")

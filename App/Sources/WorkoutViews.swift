@@ -627,14 +627,19 @@ struct WorkoutDetailView: View {
                 } else if ride.summary == nil {
                     Text("Pulsa «Empezar» cuando estés listo.").font(M3.font(.bodyLarge)).foregroundStyle(M3.onSurfaceVariant)
                 }
-                HStack(spacing: 12) {
-                    Text("Intensidad").font(M3.font(.labelLarge)).foregroundStyle(M3.onSurfaceVariant)
-                    M3IconButton(systemImage: "minus", size: 40) { ride.easier() }
-                    Text("\(Int((ride.intensity * 100).rounded())) %").font(M3.font(.titleLarge, numeric: true)).monospacedDigit()
-                    M3IconButton(systemImage: "plus", size: 40) { ride.harder() }
-                    Spacer()
-                    Text("Mandos: + / Z suben, − / Y bajan (en tramos libres, marchas).")
-                        .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                if ride.intensityLocked {
+                    Label("Test: intensidad fija al 100 %. Mantén la cadencia alta (85–95 rpm) hasta el final.", systemImage: "lock.fill")
+                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                } else {
+                    HStack(spacing: 12) {
+                        Text("Intensidad").font(M3.font(.labelLarge)).foregroundStyle(M3.onSurfaceVariant)
+                        M3IconButton(systemImage: "minus", size: 40) { ride.easier() }
+                        Text("\(Int((ride.intensity * 100).rounded())) %").font(M3.font(.titleLarge, numeric: true)).monospacedDigit()
+                        M3IconButton(systemImage: "plus", size: 40) { ride.harder() }
+                        Spacer()
+                        Text("Mandos: + / Z suben, − / Y bajan (en tramos libres, marchas).")
+                            .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                    }
                 }
             }
         }

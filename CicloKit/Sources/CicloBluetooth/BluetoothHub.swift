@@ -653,6 +653,8 @@ public final class BluetoothHub: NSObject {
                 }
                 if changed { addLog("🔋 «\(label(p))»: \(percent) %") }
 
+            case .other(0xFF, _):
+                break // estado interno del mando (cada pocos minutos); no aporta nada al log
             case .other(let opcode, let payload):
                 addLog(String(format: "← «%@» (%@) opcode 0x%02X: [%@]", label(p), channel, opcode, payload.hexString))
             }
