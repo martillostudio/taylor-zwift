@@ -39,11 +39,14 @@ public struct ClickState: Identifiable, Equatable, Sendable {
     public var name: String
     public var connection: ConnectionState = .connecting
     public var handshakeDone = false
+    /// Botones que **este** mando dice que están pulsados (puede incluir los reenviados del otro).
     public var pressed: ZwiftButton = []
     public var rawMap: UInt32?
-    /// Último botón pulsado (se queda aunque lo sueltes, para verlo bien en pantalla).
-    public var lastPressedNames: [String] = []
-    public var pressCount = 0
+    public var batteryPercent: Int?
+
+    /// Los dos Click se llaman igual: usamos el principio de su identificador para distinguirlos.
+    public var shortID: String { String(id.uuidString.prefix(4)) }
+    public var label: String { "\(name) \(shortID)" }
 }
 
 public struct LogEntry: Identifiable, Sendable {
@@ -73,6 +76,11 @@ public final class BluetoothHub: NSObject {
     public private(set) var lastMachineStatus = "—"
 
     public private(set) var clicks: [ClickState] = []
+    /// Botones pulsados ahora en cualquiera de los mandos (sin duplicados).
+    public private(set) var buttonsPressed: ZwiftButton = []
+    /// Último botón pulsado (se queda aunque lo sueltes, para verlo bien en pantalla).
+    public private(set) var lastButtonNames: [String] = []
+    public private(set) var buttonPressCount = 0
 
     public private(set) var log: [LogEntry] = []
 
@@ -85,6 +93,8 @@ public final class BluetoothHub: NSObject {
     @ObservationIgnored private var clickSyncRX: [UUID: CBCharacteristic] = [:]
     /// Comando que espera a que el rodillo nos conceda el control.
     @ObservationIgnored private var commandAfterControl: FTMSCommand?
+    @ObservationIgnored private var buttonAggregator = ZwiftButtonAggregator<UUID>()
+    @ObservationIgnored private var lastBikeLog: (date: Date, idle: Bool)?
 
     @ObservationIgnored private let logger = Logger(subsystem: "studio.martillo.taylorzwift", category: "bluetooth")
 
@@ -132,6 +142,7 @@ public final class BluetoothHub: NSObject {
             trainerConnection = .connecting
             hasControl = false
             bikeData = IndoorBikeData()
+            lastBikeLog = nil
         case .click:
             if !clicks.contains(where: { $0.id == p.identifier }) {
                 clicks.append(ClickState(id: p.identifier, name: device.name))
@@ -206,6 +217,26 @@ public final class BluetoothHub: NSObject {
         change(&clicks[i])
     }
 
+    /// Nombre para el log: los mandos llevan además el principio de su identificador.
+    private func label(_ p: CBPeripheral) -> String {
+        clicks.first(where: { $0.id == p.identifier })?.label ?? p.name ?? "?"
+    }
+
+    private func logBikeDataIfNeeded() {
+        let d = bikeData
+        let idle = (d.powerWatts ?? 0) == 0 && (d.cadenceRpm ?? 0) == 0
+        let now = Date()
+        if let last = lastBikeLog {
+            if now.timeIntervalSince(last.date) < 1 { return }
+            if idle && last.idle { return } // parado: no llenamos el log de ceros
+        }
+        lastBikeLog = (now, idle)
+        let power = d.powerWatts.map { "\($0)" } ?? "—"
+        let cadence = d.cadenceRpm.map { "\(Int($0))" } ?? "—"
+        let speed = d.speedKmh.map { String(format: "%.1f", $0) } ?? "—"
+        addLog("🚴 \(power) W · \(cadence) rpm · \(speed) km/h")
+    }
+
     private func addLog(_ text: String) {
         logger.log("\(text, privacy: .public)")
         log.append(LogEntry(date: Date(), text: text))
@@ -254,13 +285,13 @@ public final class BluetoothHub: NSObject {
         } else {
             devices.append(device)
             if kind != .other {
-                addLog("Encontrado \(kind.rawValue.lowercased()): «\(name)» (RSSI \(rssi), servicios \(device.advertisedServices))")
+                addLog("Encontrado \(kind.rawValue.lowercased()): «\(name)» [\(p.identifier.uuidString.prefix(4))] (RSSI \(rssi), servicios \(device.advertisedServices))")
             }
         }
     }
 
     private func handleConnect(_ p: CBPeripheral) {
-        addLog("Conectado a «\(p.name ?? "?")». Buscando servicios…")
+        addLog("Conectado a «\(label(p))». Buscando servicios…")
         p.delegate = self
         p.discoverServices(nil)
         if p.identifier == trainer?.identifier {
@@ -271,7 +302,7 @@ public final class BluetoothHub: NSObject {
     }
 
     private func handleDisconnect(_ p: CBPeripheral, error: Error?) {
-        addLog("Desconectado de «\(p.name ?? "?")»\(error.map { ": \($0.localizedDescription)" } ?? "")")
+        addLog("Desconectado de «\(label(p))»\(error.map { ": \($0.localizedDescription)" } ?? "")")
         if p.identifier == trainer?.identifier {
             trainerConnection = .disconnected
             hasControl = false
@@ -283,12 +314,14 @@ public final class BluetoothHub: NSObject {
             $0.handshakeDone = false
             $0.pressed = []
         }
+        buttonAggregator.remove(source: p.identifier)
+        buttonsPressed = buttonAggregator.pressed
     }
 
     private func handleServices(_ p: CBPeripheral, error: Error?) {
         if let error { addLog("⚠️ Error buscando servicios: \(error.localizedDescription)"); return }
         let services = p.services ?? []
-        addLog("Servicios de «\(p.name ?? "?")»: \(services.map(\.uuid.uuidString).joined(separator: ", "))")
+        addLog("Servicios de «\(label(p))»: \(services.map(\.uuid.uuidString).joined(separator: ", "))")
         for s in services where s.uuid == Self.ftmsService || s.uuid == Self.clickService {
             p.discoverCharacteristics(nil, for: s)
         }
@@ -328,7 +361,7 @@ public final class BluetoothHub: NSObject {
         // Cuando ya escuchamos las respuestas del mando, le mandamos el saludo.
         if c.uuid == Self.clickSyncTXUUID, let rx = clickSyncRX[p.identifier] {
             let type: CBCharacteristicWriteType = rx.properties.contains(.write) ? .withResponse : .withoutResponse
-            addLog("→ Mando: RideOn [\(ZwiftClickProtocol.rideOn.hexString)]")
+            addLog("→ «\(label(p))»: RideOn [\(ZwiftClickProtocol.rideOn.hexString)]")
             p.writeValue(Data(ZwiftClickProtocol.rideOn), for: rx, type: type)
         }
     }
@@ -339,8 +372,10 @@ public final class BluetoothHub: NSObject {
 
         switch c.uuid {
         case Self.bikeDataUUID:
-            do { bikeData = bikeData.merging(try IndoorBikeData(parsing: bytes)) }
-            catch { addLog("⚠️ Indoor Bike Data no válido [\(bytes.hexString)]: \(error)") }
+            do {
+                bikeData = bikeData.merging(try IndoorBikeData(parsing: bytes))
+                logBikeDataIfNeeded()
+            } catch { addLog("⚠️ Indoor Bike Data no válido [\(bytes.hexString)]: \(error)") }
 
         case Self.controlPointUUID:
             handleControlPointResponse(bytes)
@@ -388,27 +423,38 @@ public final class BluetoothHub: NSObject {
         do {
             switch try ZwiftClickMessage(parsing: bytes) {
             case .rideOnAck(let extra):
-                addLog("← Mando: RideOn recibido ✅ (extra [\(extra.hexString)])")
+                addLog("← «\(label(p))»: RideOn recibido ✅ (extra [\(extra.hexString)])")
                 updateClick(p.identifier) { $0.handshakeDone = true }
 
             case .buttons(let pressed, let raw):
-                var newlyPressed: [String] = []
+                var newForThisClick: ZwiftButton = []
                 updateClick(p.identifier) { s in
-                    newlyPressed = pressed.subtracting(s.pressed).names
+                    newForThisClick = pressed.subtracting(s.pressed)
                     s.pressed = pressed
                     s.rawMap = raw
                     s.handshakeDone = true
-                    if !newlyPressed.isEmpty {
-                        s.lastPressedNames = newlyPressed
-                        s.pressCount += 1
-                    }
                 }
-                if !newlyPressed.isEmpty {
-                    addLog("🔘 «\(p.name ?? "?")»: \(newlyPressed.joined(separator: " + ")) (mapa 0x\(String(raw, radix: 16, uppercase: true)))")
+                let newOverall = buttonAggregator.update(
+                    source: p.identifier, pressed: pressed, at: ProcessInfo.processInfo.systemUptime)
+                buttonsPressed = buttonAggregator.pressed
+                if !newOverall.isEmpty {
+                    lastButtonNames = newOverall.names
+                    buttonPressCount += 1
+                    addLog("🔘 \(newOverall.names.joined(separator: " + ")) — vía «\(label(p))» (mapa 0x\(String(raw, radix: 16, uppercase: true)))")
+                } else if !newForThisClick.isEmpty {
+                    addLog("   ↺ eco de \(newForThisClick.names.joined(separator: " + ")) vía «\(label(p))» (ignorado)")
                 }
 
+            case .battery(let percent):
+                var changed = false
+                updateClick(p.identifier) { s in
+                    changed = s.batteryPercent != percent
+                    s.batteryPercent = percent
+                }
+                if changed { addLog("🔋 «\(label(p))»: \(percent) %") }
+
             case .other(let opcode, let payload):
-                addLog(String(format: "← Mando (%@) opcode 0x%02X: [%@]", channel, opcode, payload.hexString))
+                addLog(String(format: "← «%@» (%@) opcode 0x%02X: [%@]", label(p), channel, opcode, payload.hexString))
             }
         } catch {
             addLog("⚠️ Mensaje del mando no válido (\(channel)) [\(bytes.hexString)]")

@@ -14,6 +14,8 @@ public enum ZwiftClickProtocol {
     public static let rideOn: [UInt8] = Array("RideOn".utf8)
     /// Opcode de los mensajes con el estado de los botones.
     public static let buttonStatusOpcode: UInt8 = 0x23
+    /// Opcode del nivel de batería (protobuf, campo 2 = porcentaje). Llega cada ~5 s.
+    public static let batteryOpcode: UInt8 = 0x19
 }
 
 /// Botones de los mandos Zwift (mapa de bits del protocolo de Zwift Ride).
@@ -66,7 +68,9 @@ public enum ZwiftClickMessage: Equatable, Sendable {
     case buttons(pressed: ZwiftButton, rawMap: UInt32)
     /// El mando responde a nuestro «RideOn».
     case rideOnAck(extra: [UInt8])
-    /// Cualquier otra cosa (batería, etc.): se muestra en el log.
+    /// Nivel de batería en porcentaje (0–100).
+    case battery(percent: Int)
+    /// Cualquier otra cosa: se muestra en el log.
     case other(opcode: UInt8, payload: [UInt8])
 
     public init(parsing data: some Sequence<UInt8>) throws {
@@ -78,33 +82,39 @@ public enum ZwiftClickMessage: Equatable, Sendable {
             return
         }
 
-        guard opcode == ZwiftClickProtocol.buttonStatusOpcode,
-              let map = try Self.buttonMap(inProtobuf: bytes.dropFirst())
-        else {
+        let fields = try Self.varintFields(inProtobuf: bytes.dropFirst())
+
+        if opcode == ZwiftClickProtocol.buttonStatusOpcode, let value = fields[1] {
+            let map = UInt32(truncatingIfNeeded: value)
+            let pressed = ZwiftButton(rawValue: ~map & ZwiftButton.all.rawValue)
+            self = .buttons(pressed: pressed, rawMap: map)
+        } else if opcode == ZwiftClickProtocol.batteryOpcode, let value = fields[2], value <= 100 {
+            self = .battery(percent: Int(value))
+        } else {
             self = .other(opcode: opcode, payload: Array(bytes.dropFirst()))
-            return
         }
-        let pressed = ZwiftButton(rawValue: ~map & ZwiftButton.all.rawValue)
-        self = .buttons(pressed: pressed, rawMap: map)
     }
 
-    /// Busca el campo 1 (ButtonMap, varint) en un mensaje protobuf.
-    private static func buttonMap(inProtobuf bytes: some Sequence<UInt8>) throws -> UInt32? {
+    /// Lee los campos varint de primer nivel de un mensaje protobuf (número de campo → valor).
+    /// Si encuentra algo que no entiende, devuelve lo leído hasta ahí.
+    private static func varintFields(inProtobuf bytes: some Sequence<UInt8>) throws -> [UInt64: UInt64] {
         var r = ByteReader(bytes)
-        var map: UInt32?
-        while r.remaining > 0 {
-            let tag = try r.varint()
-            let field = tag >> 3
-            switch tag & 0x7 {
-            case 0:
-                let value = try r.varint()
-                if field == 1 { map = UInt32(truncatingIfNeeded: value) }
-            case 1: try r.skip(8)
-            case 2: try r.skip(Int(try r.varint()))
-            case 5: try r.skip(4)
-            default: return map // tipo desconocido: paramos con lo que tengamos
+        var fields: [UInt64: UInt64] = [:]
+        do {
+            while r.remaining > 0 {
+                let tag = try r.varint()
+                let field = tag >> 3
+                switch tag & 0x7 {
+                case 0: fields[field] = try r.varint()
+                case 1: try r.skip(8)
+                case 2: try r.skip(Int(try r.varint()))
+                case 5: try r.skip(4)
+                default: return fields // tipo desconocido: paramos con lo que tengamos
+                }
             }
+        } catch {
+            // Mensajes que no son protobuf (p. ej. opcode 0xFF): nos quedamos con lo leído.
         }
-        return map
+        return fields
     }
 }

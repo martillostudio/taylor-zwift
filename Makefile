@@ -12,8 +12,12 @@ APP      := $(DERIVED)/Build/Products/Debug/TaylorZwift.app
 test:            ## Tests de CicloKit (sin hardware)
 	cd CicloKit && swift test
 
-project:         ## Regenera el .xcodeproj desde App/project.yml
-	cd App && $(XCODEGEN) generate
+project:         ## Regenera el .xcodeproj desde App/project.yml (si xcodegen está instalado)
+	@if [ -x "$(XCODEGEN)" ] || command -v "$(XCODEGEN)" >/dev/null 2>&1; then \
+		cd App && "$(XCODEGEN)" generate; \
+	else \
+		echo "Aviso: xcodegen no está instalado; uso el $(PROJECT) del repo (brew install xcodegen para regenerarlo)."; \
+	fi
 
 build: project   ## Compila la app de Mac
 	xcodebuild -project $(PROJECT) -scheme TaylorZwift -destination 'platform=macOS,arch=arm64' \

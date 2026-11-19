@@ -74,7 +74,9 @@ Regla de oro: **el código que traduce bytes y hace cálculos no toca CoreBlueto
 **Zwift Click V2** (servicio `0xFC82`)
 - Handshake: escribir `RideOn` en la característica sync RX.
 - Botones: mensaje con opcode `0x23`, protobuf con `ButtonMap`; **bit a 0 = pulsado**.
-- Mando derecho (+, A, B, Y, Z) funciona libre. **El izquierdo está bloqueado para Zwift** (ver riesgos).
+- Mando derecho (+, A, B, Y, Z) funciona libre. Según BikeControl, **el izquierdo está bloqueado para Zwift** (ver riesgos); el 19-nov funcionó.
+- El izquierdo **reenvía los botones del derecho**: conectando solo el izquierdo se leen los dos mandos.
+- Batería: opcode `0x19`, protobuf campo 2 = %.
 
 Referencias (solo para leer, no copiar código): BikeControl (protocolo Click), Auuki (FTMS y física). Ver doc del proyecto «repos-y-protocolos».
 
@@ -82,11 +84,29 @@ Referencias (solo para leer, no copiar código): BikeControl (protocolo Click), 
 
 | Riesgo | Impacto | Qué haremos |
 |---|---|---|
-| **Mando izquierdo del Click V2 bloqueado** | Solo un mando útil | Diseñar las marchas para que funcionen **solo con el derecho** (p. ej. `+` sube, `A`/`B` bajan…). El izquierdo, como extra si se desbloquea. |
+| **Mando izquierdo del Click V2 bloqueado** (deja de enviar botones a apps de terceros tras ~1 min) | **Requisito: tienen que funcionar los dos mandos** | Ver §5.1. Se mide en la prueba B antes de nada más. *19-nov: el izquierdo envió botones durante ~11 min sin cortes; falta la prueba de 30 min.* |
 | **Una sola app controlando el rodillo** | Si Zwift/MyWhoosh/Wahoo están abiertos, no conectamos o no nos deja controlar | Cerrar esas apps al probar. La app mostrará un error claro si el control point rechaza `0x00`. |
-| **Mandos emparejados con el rodillo** (Kickr Core 2 + Zwift) | El Click puede estar vinculado al rodillo y no anunciarse a nosotros | Comprobarlo en la prueba B (Fase 1). |
+| **Mandos emparejados con el rodillo** (Kickr Core 2 + Zwift) | El Click puede estar vinculado al rodillo y no anunciarse a nosotros | Comprobarlo en la prueba B (Fase 1). *19-nov: no pasa; los dos se anuncian y conectan con el Kickr también conectado.* |
 | **Caducidad 7 días (cuenta gratuita)** | Molestia en iPhone/iPad | Iterar en el Mac; decidir cuenta de pago más adelante. |
 | **Claude no puede ejecutar Xcode ni Bluetooth** | Bucle de prueba más lento | Lógica pura con tests; logs claros en pantalla para que copies y pegues lo que ves. |
+
+### 5.1 Plan para que funcionen los dos mandos
+
+Situación conocida (nov. 2026, según el issue #68 de BikeControl y su guía de problemas): el mando **derecho** funciona sin restricciones; el **izquierdo** deja de mandar pulsaciones a apps que no sean Zwift tras un minuto aproximadamente, salvo que Zwift lo «desbloquee» antes. Los resultados que cuenta la gente son irregulares y el mecanismo exacto no se conoce.
+
+Estrategia en capas (de más a menos fiable):
+
+1. **Reconexión automática del izquierdo.** La app detecta que el mando izquierdo ha dejado de responder y lo reconecta sola en segundo plano (es lo que hace BikeControl: «reiniciar cada minuto»). Objetivo: que no lo notes al pedalear. Riesgo: perder alguna pulsación durante la reconexión → lo mediremos.
+2. **Desbloqueo previo con Zwift.** Antes de entrenar, abrir Zwift, conectar los Click 10–30 s y cerrarlo del todo. La app mostrará un aviso si detecta el mando bloqueado. Hay que comprobar si funciona **sin suscripción** de Zwift.
+3. **Plan B de mapeo.** Si aun así el izquierdo falla, todas las funciones críticas (subir/bajar marcha) estarán también disponibles en el derecho, para que el entrenamiento no se pare nunca.
+
+Qué **no** haremos: intentar romper el mecanismo de bloqueo/desafío de Zwift (nadie lo ha conseguido de forma fiable y entra en terreno de términos de uso).
+
+Precauciones:
+- **No actualizar el firmware de los Click V2** sin comprobarlo antes (BikeControl recomienda no hacerlo; la versión 1.2.0 de marzo de 2026 tiene resultados inciertos).
+- El **KICKR Bridge** del Core 2 puede reenviar los Click V2, pero solo hacia Zwift; para otras apps solo reenvía pulsómetro. No es una vía para nosotros.
+
+Observado el 19-nov: el **izquierdo reenvía los botones del derecho** (no al revés). Si el izquierdo se bloquea, hay que ver si también deja de reenviar; el derecho conectado directamente sigue dando sus propios botones.
 
 ## 6. Plan por fases
 
@@ -97,16 +117,19 @@ Salida: este documento + decisiones pendientes resueltas (ver §7 y registro).
 Dos pantallas mínimas dentro de la app, sin diseño:
 
 - **Prueba A — Rodillo**
-  - [ ] Escanea y lista dispositivos FTMS. *(código listo, falta probar)*
-  - [ ] Conecta al Kickr y muestra potencia, cadencia y velocidad en vivo.
-  - [ ] Pide control (`0x00`) y cambia la pendiente (`0x11`) con un slider: notas la resistencia.
-  - [ ] Pone 150 W en ERG (`0x05`).
+  - [x] Escanea y lista dispositivos FTMS. *(19-nov: encuentra «KICKR CORE 7A53»)*
+  - [x] Conecta al Kickr y muestra potencia, cadencia y velocidad en vivo.
+  - [x] Pide control (`0x00`) y cambia la pendiente (`0x11`) con un slider: notas la resistencia. *(19-nov: OK, se nota)*
+  - [x] Pone 150 W en ERG (`0x05`). *(19-nov: a 70 W se mantiene 67–73 W entre 48 y 55 rpm)*
 - **Prueba B — Mandos**
-  - [ ] Escanea y encuentra el Click V2 derecho (y el izquierdo si se deja). *(código listo, falta probar)*
-  - [ ] Hace el handshake `RideOn`.
-  - [ ] Muestra en pantalla qué botón pulsas.
+  - [x] Escanea y encuentra **los dos** Click V2. *(19-nov)*
+  - [x] Hace el handshake `RideOn` con cada uno.
+  - [x] Muestra en pantalla qué botón pulsas y de qué mando. *(19-nov: el log dice por qué mando llega cada pulsación; ecos filtrados)*
+  - [ ] Registra con hora cada pulsación y desconexión del izquierdo (¿se corta al minuto?). *(19-nov: ~11 min sin cortes, sin saber si Zwift lo había desbloqueado antes)*
+  - [ ] Reconexión automática del izquierdo: ¿cuánto tarda? ¿se pierden pulsaciones?
+  - [ ] Probar con y sin desbloqueo previo en Zwift; anotar si hace falta suscripción.
 
-Criterio para pasar a Fase 2: A y B funcionan **en el Mac**. Si algo falla, se corrige el plan aquí antes de seguir.
+Criterio para pasar a Fase 2: A funciona y **los dos mandos son usables durante 30 min seguidos** en el Mac. Si algo falla, se corrige el plan aquí antes de seguir.
 
 ### Fase 2 — MVP para entrenar
 - Pantalla de rodaje: potencia, cadencia, velocidad, distancia, tiempo, pendiente, marcha.
@@ -158,3 +181,8 @@ Notas:
 | 2026-11-19 | Cuenta de Apple gratuita por ahora. Fase 0 cerrada. |
 | 2026-11-19 | Trabajo desde terminal: XcodeGen (`project.yml`) + `Makefile`; VS Code como editor. |
 | 2026-11-19 | `CicloKit` dividido en `CicloKit` (lógica pura) y `CicloBluetooth` (CoreBluetooth). |
+| 2026-11-19 | Prueba con hardware: Kickr conecta, control y SIM OK; los dos Click V2 conectan y leen botones. |
+| 2026-11-19 | El Click **izquierdo reenvía los botones del derecho** (el derecho no reenvía los del izquierdo): con los dos conectados, cada pulsación del derecho llega dos veces, con 30–150 ms de diferencia y en cualquier orden. `ZwiftButtonAggregator` asigna un mando «dueño» a cada botón e ignora los ecos de otro mando en 0,4 s. |
+| 2026-11-19 | Requisito: los dos Click V2 deben funcionar. Estrategia en capas (§5.1); la prueba B es la primera validación. |
+| 2026-11-19 | **Prueba A superada** (datos, control, SIM y ERG). Prueba B: los dos mandos y todos los botones funcionan; falta la prueba de 30 min del izquierdo. |
+| 2026-11-19 | Opcode `0x19` del Click = batería (campo 2, %). |
