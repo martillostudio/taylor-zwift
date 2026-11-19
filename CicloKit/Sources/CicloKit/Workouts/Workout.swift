@@ -210,7 +210,7 @@ public struct Workout: Identifiable, Equatable, Sendable {
 
     /// Potencia normalizada (en las mismas unidades que `values`, muestras de 1 s):
     /// media móvil de 30 s, a la cuarta, media y raíz cuarta.
-    static func normalized(_ values: [Double]) -> Double {
+    public static func normalized(_ values: [Double]) -> Double {
         guard !values.isEmpty else { return 0 }
         let window = min(30, values.count)
         var sum = values.prefix(window).reduce(0, +)

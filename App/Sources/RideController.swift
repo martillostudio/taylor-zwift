@@ -33,6 +33,17 @@ final class RideController {
     }
 
     let hub: BluetoothHub
+    let store: ActivityStore
+    let strava: StravaService
+
+    /// Entreno que se está grabando (se guarda al terminar).
+    private(set) var recording: Activity?
+    /// Último entreno guardado (para el resumen y la subida a Strava).
+    private(set) var lastSaved: Activity?
+    @ObservationIgnored private var virtualElevation = 0.0
+    @ObservationIgnored private var lastDistance = 0.0
+    /// Menos de esto no se guarda (pruebas, arranques en falso).
+    static let minimumSecondsToSave = 60
 
     var mode: Mode = .route {
         didSet { if mode != oldValue { applyTarget(force: true) } }
@@ -111,8 +122,10 @@ final class RideController {
     @ObservationIgnored private var lastSegmentID: Int?
     @ObservationIgnored private var ticker: Task<Void, Never>?
 
-    init(hub: BluetoothHub) {
+    init(hub: BluetoothHub, store: ActivityStore, strava: StravaService) {
         self.hub = hub
+        self.store = store
+        self.strava = strava
         let defaults = UserDefaults.standard
         let savedFTP = defaults.integer(forKey: Self.ftpKey)
         ftp = savedFTP > 0 ? savedFTP : 200
@@ -184,6 +197,12 @@ final class RideController {
         guard !isRunning else { return }
         isRunning = true
         lastTick = nil
+        if recording == nil {
+            recording = Activity(start: Date(), name: activityName, kind: mode.rawValue,
+                                 workoutID: mode == .workout ? workout?.id : nil, ftp: ftp)
+            lastDistance = session.distanceMeters
+            virtualElevation = mode == .route ? route.elevation(atDistance: session.distanceMeters) : 0
+        }
         let what = switch mode {
         case .free: "libre, pendiente \(freeGradeText), marcha \(gearText)"
         case .route: "\(route.name), marcha \(gearText)"
@@ -201,7 +220,18 @@ final class RideController {
         hub.appendLog("⏸ En pausa")
     }
 
+    /// Nombre con el que se guarda (y se sube a Strava).
+    var activityName: String {
+        switch mode {
+        case .free: "Entreno libre en rodillo"
+        case .route: "\(route.name.components(separatedBy: " (").first ?? route.name) (rodillo)"
+        case .erg: "ERG \(ergWatts) W (rodillo)"
+        case .workout: workout?.name ?? "Entreno en rodillo"
+        }
+    }
+
     func reset() {
+        saveRecording()
         session = RideSession()
         currentGrade = route.grade(atDistance: 0)
         lastClimbAnnounced = nil
@@ -244,6 +274,7 @@ final class RideController {
             vo2max: best5.flatMap { Physiology.vo2maxEstimate(best5MinWatts: $0, weightKg: weightKg) }
         )
         summary = s
+        saveRecording()
         func w(_ v: Double?) -> String { v.map { "\(Int($0.rounded())) W" } ?? "—" }
         var line = "🏁 \(s.title): mejor 1' \(w(s.best1Min)) · 5' \(w(s.best5Min)) · 20' \(w(s.best20Min))"
         if let ftp = s.suggestedFTP { line += " · FTP estimado \(ftp) W" }
@@ -315,6 +346,62 @@ final class RideController {
             hub.appendLog("⚙️ Intensidad \(Int((intensity * 100).rounded())) %")
         }
         applyTarget(force: true)
+    }
+
+    // MARK: Grabación e historial
+
+    private func recordSample(_ data: IndoorBikeData) {
+        guard let start = recording?.start else { return }
+        let distance = session.distanceMeters
+        switch mode {
+        case .route: virtualElevation = route.elevation(atDistance: distance)
+        case .free: virtualElevation += freeGrade / 100 * (distance - lastDistance)
+        case .erg, .workout: break
+        }
+        lastDistance = distance
+        recording?.samples.append(ActivitySample(
+            t: Date().timeIntervalSince(start),
+            power: data.powerWatts,
+            cadence: data.cadenceRpm.map { Int($0.rounded()) },
+            speedKmh: speedKmh,
+            distance: distance,
+            heartRate: hub.heartRateBpm,
+            elevation: mode == .route || mode == .free ? virtualElevation : nil
+        ))
+    }
+
+    /// Guarda lo grabado (si pasa del minuto) y, si está activado, lo sube a Strava.
+    private func saveRecording() {
+        guard let rec = recording else { return }
+        recording = nil
+        guard rec.samples.count >= Self.minimumSecondsToSave else {
+            if !rec.samples.isEmpty { hub.appendLog("🗑 No se guarda: menos de 1 minuto grabado") }
+            return
+        }
+        do {
+            try store.save(rec)
+            lastSaved = rec
+            hub.appendLog("💾 Guardado: \(rec.name) · \(Int(rec.timerSeconds / 60))' · \(rec.tss.map { "TSS \($0)" } ?? "")")
+            if strava.autoUpload, strava.isConnected { uploadToStrava(rec) }
+        } catch {
+            hub.appendLog("⚠️ No se pudo guardar el entreno: \(error.localizedDescription)")
+        }
+    }
+
+    /// Sube un entreno guardado a Strava y apunta el id de la actividad.
+    func uploadToStrava(_ a: Activity) {
+        Task {
+            do {
+                let id = try await strava.upload(a, fit: store.fitData(a))
+                var updated = a
+                updated.stravaActivityID = id
+                try? store.save(updated)
+                if lastSaved?.id == a.id { lastSaved = updated }
+                hub.appendLog("🟧 Subido a Strava: \(a.name) (actividad \(id))")
+            } catch {
+                hub.appendLog("⚠️ Strava: \(error.localizedDescription)")
+            }
+        }
     }
 
     // MARK: Entrenos importados (.zwo)
@@ -392,6 +479,7 @@ final class RideController {
             powerSampleDebt += dt
             while powerSampleDebt >= 1 {
                 powerHistory.append(data.powerWatts ?? 0)
+                recordSample(data)
                 powerSampleDebt -= 1
             }
         } else {

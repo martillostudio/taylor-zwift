@@ -60,7 +60,7 @@ struct WorkoutsView: View {
 
                     if ride.mode == .workout, let w = ride.workout {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Entreno cargado").font(.title3.bold())
+                            Text("Entreno cargado").font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
                             NavigationLink { WorkoutDetailView(workout: w) } label: {
                                 WorkoutCard(workout: w).frame(maxWidth: 380)
                             }
@@ -72,7 +72,7 @@ struct WorkoutsView: View {
                         let items = Workout.library.filter { $0.category == category }
                         if !items.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text(category.rawValue).font(.title3.bold())
+                                Text(category.rawValue).font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
                                 LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                                     ForEach(items) { w in
                                         NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutCard(workout: w) }
@@ -85,9 +85,10 @@ struct WorkoutsView: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text(WorkoutCategory.imported.rawValue).font(.title3.bold())
+                            Text(WorkoutCategory.imported.rawValue).font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
                             Spacer()
                             Button("Importar .zwo…", systemImage: "square.and.arrow.down") { importing = true }
+                                .buttonStyle(.m3Tonal)
                         }
                         if ride.importedWorkouts.isEmpty {
                             Text("Ficheros .zwo (el formato de Zwift): los que hagas tú o descargues.")
@@ -104,8 +105,9 @@ struct WorkoutsView: View {
                         }
                     }
                 }
-                .padding(20)
+                .padding(24)
             }
+            .background(M3.surface)
             .navigationTitle("Entrenar")
             .fileImporter(isPresented: $importing, allowedContentTypes: zwoTypes, allowsMultipleSelection: true) { result in
                 importFiles(result)
@@ -147,16 +149,17 @@ private struct FreeRideCard: View {
         HStack(spacing: 16) {
             Image(systemName: "bicycle.circle.fill").font(.system(size: 40)).foregroundStyle(Color.accentColor)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Entreno libre").font(.title3.bold())
+                Text("Entreno libre").font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
                 Text("Sin plan ni intervalos: eliges la pendiente y la marcha y ruedas a tu aire. Cuenta distancia, tiempo, potencia y pulso.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Spacer()
             Button("Rodar libre", systemImage: "play.fill") { ride.startFreeRide() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.m3Filled)
         }
         .padding(14)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
+        .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
     }
 }
 
@@ -166,8 +169,9 @@ private struct ProfileBox: View {
 
     var body: some View {
         @Bindable var ride = ride
-        GroupBox {
+        M3Card(style: .filled) {
             VStack(alignment: .leading, spacing: 12) {
+                M3SectionTitle(title: "Tu perfil", subtitle: "FTP, peso y frecuencia cardiaca máxima: de aquí salen tus zonas.")
                 HStack(spacing: 24) {
                     Stepper("FTP: **\(ride.ftp) W**", value: $ride.ftp, in: 50...600, step: 5)
                     Stepper("Peso: **\(ride.weightKg.formatted(.number.precision(.fractionLength(1)))) kg**",
@@ -192,9 +196,6 @@ private struct ProfileBox: View {
                     }
                 }
             }
-            .padding(6)
-        } label: {
-            Label("Tu perfil", systemImage: "person.crop.circle")
         }
     }
 }
@@ -234,8 +235,9 @@ private struct PlanBox: View {
 
     var body: some View {
         @Bindable var ride = ride
-        GroupBox {
+        M3Card(style: .filled) {
             VStack(alignment: .leading, spacing: 12) {
+                M3SectionTitle(title: ride.plan.name)
                 HStack {
                     Text(ride.plan.summary).font(.callout).foregroundStyle(.secondary)
                     Spacer()
@@ -257,10 +259,8 @@ private struct PlanBox: View {
                 } label: {
                     Label("Ver las 16 semanas", systemImage: "calendar")
                 }
+                .buttonStyle(.m3Tonal)
             }
-            .padding(6)
-        } label: {
-            Label(ride.plan.name, systemImage: "calendar.badge.clock")
         }
     }
 }
@@ -273,7 +273,7 @@ struct PlanWeekView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Semana \(week.number)").font(.headline)
+                Text("Semana \(week.number)").font(M3.font(.titleMedium))
                 Text("· \(week.block) · \(week.focus)").foregroundStyle(.secondary)
                 Spacer()
                 if isCurrent {
@@ -313,7 +313,8 @@ private struct OutdoorCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
+        .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
     }
 }
 
@@ -338,8 +339,9 @@ struct PlanView: View {
                     .background(week.isRecovery ? Color.green.opacity(0.06) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
                 }
             }
-            .padding(20)
+            .padding(24)
         }
+        .background(M3.surface)
         .navigationTitle(ride.plan.name)
     }
 }
@@ -354,7 +356,7 @@ struct WorkoutCard: View {
         VStack(alignment: .leading, spacing: 8) {
             WorkoutChart(workout: workout, height: compact ? 40 : 60, showAxes: false)
             HStack(alignment: .firstTextBaseline) {
-                Text(workout.name).font(.headline).lineLimit(2)
+                Text(workout.name).font(M3.font(.titleMedium)).foregroundStyle(M3.onSurface).lineLimit(2)
                 Spacer(minLength: 4)
                 if workout.ftpTest != nil {
                     Text("TEST").font(.caption2.bold())
@@ -383,7 +385,8 @@ struct WorkoutCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
+        .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
         .overlay(alignment: .top) {
             UnevenRoundedRectangle(topLeadingRadius: 14, topTrailingRadius: 14)
                 .fill(zone.color)
@@ -394,7 +397,7 @@ struct WorkoutCard: View {
 }
 
 /// Barra con el reparto del tiempo por zonas.
-private struct ZoneBar: View {
+struct ZoneBar: View {
     let workout: Workout
 
     var body: some View {
@@ -489,46 +492,147 @@ struct WorkoutDetailView: View {
     private var isLoaded: Bool { ride.mode == .workout && ride.workout?.id == workout.id }
 
     var body: some View {
-        Form {
-            Section {
-                Text(workout.summary)
-                HStack(spacing: 24) {
-                    Info(title: "Duración", value: formatClock(Double(workout.durationSeconds)))
-                    Info(title: "TSS", value: "\(Int(workout.tss.rounded()))")
-                    Info(title: "IF", value: workout.intensityFactor.formatted(.number.precision(.fractionLength(2))))
-                    Info(title: "Zona principal", value: "Z\(workout.mainZone.rawValue) \(workout.mainZone.name)")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                header
+                if isLoaded {
+                    liveCard
+                    if let summary = ride.summary { summaryCard(summary) }
                 }
-                WorkoutChart(workout: workout, elapsed: isLoaded ? ride.workoutSeconds : nil)
-            }
-
-            if isLoaded {
-                liveSection
-                controlsSection
-                if let summary = ride.summary { summarySection(summary) }
-            } else {
-                Section {
-                    Button("Cargar este entreno", systemImage: "square.and.arrow.down.on.square") { ride.load(workout) }
-                } footer: {
-                    Text("Con FTP \(ride.ftp) W. Los objetivos se mandan al rodillo en modo ERG; en los tramos libres vas en llano con tus marchas.")
-                }
-            }
-
-            Section("Tramos") {
-                ForEach(workout.segments) { s in
-                    HStack {
-                        Text(formatClock(Double(s.startSeconds))).monospacedDigit().foregroundStyle(.secondary)
-                        Circle().fill(s.startPower.map { PowerZone(fractionOfFTP: max($0, s.endPower ?? $0)).color } ?? .gray)
-                            .frame(width: 8, height: 8)
-                        Text(s.summary)
-                        Spacer()
-                        Text(wattsText(s)).monospacedDigit().foregroundStyle(.secondary)
+                M3Card(style: .filled) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("PERFIL").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        WorkoutChart(workout: workout, elapsed: isLoaded ? ride.workoutSeconds : nil, height: 160)
+                        ZoneBar(workout: workout)
                     }
-                    .font(.callout)
+                }
+                segmentsCard
+            }
+            .padding(24)
+            .padding(.bottom, 80)
+        }
+        .background(M3.surface)
+        .navigationTitle(workout.name)
+        .overlay(alignment: .bottomTrailing) { actions.padding(24) }
+    }
+
+    private var header: some View {
+        M3Card(style: .filled) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(workout.name).font(M3.font(.headlineSmall)).foregroundStyle(M3.onSurface)
+                        Text(workout.shortDescription).font(M3.font(.titleSmall)).foregroundStyle(M3.primary)
+                    }
+                    Spacer()
+                    M3Chip(title: "Z\(workout.mainZone.rawValue) \(workout.mainZone.name)", dot: workout.mainZone.color)
+                }
+                Text(workout.summary).font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                HStack(spacing: 16) {
+                    M3Stat(title: "Duración", value: formatDuration(workout.durationSeconds), size: .headlineSmall)
+                    M3Stat(title: "TSS", value: "\(Int(workout.tss.rounded()))", size: .headlineSmall)
+                    M3Stat(title: "IF", value: workout.intensityFactor.formatted(.number.precision(.fractionLength(2))), size: .headlineSmall)
+                    M3Stat(title: "Con tu FTP", value: "\(ride.ftp)", unit: "W", size: .headlineSmall)
                 }
             }
         }
-        .formStyle(.grouped)
-        .navigationTitle(workout.name)
+    }
+
+    private var liveCard: some View {
+        let progress = ride.workoutProgress
+        let watts = ride.targetWatts
+        let zone = watts.map { PowerZone(fractionOfFTP: Double($0) / Double(max(ride.ftp, 1))) }
+        let hrZone = hub.heartRateBpm.map { HeartRateZone(bpm: $0, max: ride.maxHeartRate) }
+        return M3Card(style: .filled, padding: 20) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 16) {
+                    if let watts, let zone {
+                        M3Stat(title: "Objetivo", value: "\(watts)", unit: "W", size: .displayLarge, color: zone.color,
+                               caption: "Z\(zone.rawValue) \(zone.name) · \(Int((Double(watts) / Double(ride.ftp) * 100).rounded())) % FTP")
+                    } else {
+                        M3Stat(title: "Objetivo", value: progress == nil ? "—" : "Libre", size: .displayLarge,
+                               caption: progress == nil ? nil : "Marcha \(ride.gearText)")
+                    }
+                    M3Stat(title: "Potencia", value: hub.bikeData.powerWatts.map { "\($0)" } ?? "—", unit: "W", size: .displayMedium)
+                    M3Stat(title: "Cadencia", value: hub.bikeData.cadenceRpm.map { "\(Int($0))" } ?? "—", unit: "rpm", size: .displayMedium,
+                           color: progress?.segment.cadence == nil ? M3.onSurface : .orange,
+                           caption: progress?.segment.cadence.map { "Objetivo \($0) rpm" }, captionColor: .orange)
+                    M3Stat(title: "Pulso", value: hub.heartRateBpm.map { "\($0)" } ?? "—", unit: "ppm", size: .displayMedium,
+                           color: hrZone?.color ?? M3.onSurface, caption: hrZone.map { "Z\($0.rawValue) \($0.name)" })
+                }
+                if let p = progress {
+                    HStack(alignment: .top, spacing: 16) {
+                        M3Stat(title: "Queda en el tramo", value: formatClock(p.secondsLeftInSegment), size: .displaySmall, color: M3.primary)
+                        M3Stat(title: "Siguiente", value: p.next?.summary ?? "Fin", size: .titleLarge)
+                        M3Stat(title: "Queda en total", value: formatClock(p.secondsLeftInWorkout), size: .headlineMedium)
+                    }
+                    ProgressView(value: ride.workoutSeconds, total: Double(workout.durationSeconds))
+                        .tint(zone?.color ?? M3.primary)
+                } else if ride.summary == nil {
+                    Text("Pulsa «Empezar» cuando estés listo.").font(M3.font(.bodyLarge)).foregroundStyle(M3.onSurfaceVariant)
+                }
+                HStack(spacing: 12) {
+                    Text("Intensidad").font(M3.font(.labelLarge)).foregroundStyle(M3.onSurfaceVariant)
+                    M3IconButton(systemImage: "minus", size: 40) { ride.easier() }
+                    Text("\(Int((ride.intensity * 100).rounded())) %").font(M3.font(.titleLarge, numeric: true)).monospacedDigit()
+                    M3IconButton(systemImage: "plus", size: 40) { ride.harder() }
+                    Spacer()
+                    Text("Mandos: + / Z suben, − / Y bajan (en tramos libres, marchas).")
+                        .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                }
+            }
+        }
+    }
+
+    private var segmentsCard: some View {
+        M3Card(style: .outlined) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("TRAMOS").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                ForEach(workout.segments) { s in
+                    let current = isLoaded && ride.workoutProgress?.segment.id == s.id
+                    HStack(spacing: 10) {
+                        Text(formatClock(Double(s.startSeconds))).monospacedDigit().foregroundStyle(M3.onSurfaceVariant)
+                            .frame(width: 60, alignment: .leading)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(s.startPower.map { PowerZone(fractionOfFTP: max($0, s.endPower ?? $0)).color } ?? Color.gray)
+                            .frame(width: 6, height: 18)
+                        Text(s.summary)
+                        Spacer()
+                        Text(wattsText(s)).monospacedDigit().foregroundStyle(M3.onSurfaceVariant)
+                    }
+                    .font(M3.font(current ? .titleSmall : .bodyMedium))
+                    .padding(.vertical, 3)
+                    .padding(.horizontal, 6)
+                    .background(current ? M3.secondaryContainer : Color.clear, in: RoundedRectangle(cornerRadius: M3.Shape.small))
+                }
+            }
+        }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 12) {
+            if isLoaded {
+                if hub.trainerConnection != .connected {
+                    Button("Conectar", systemImage: "antenna.radiowaves.left.and.right") { hub.connectEverything() }
+                        .buttonStyle(.m3Tonal)
+                }
+                Button("Terminar", systemImage: "flag.checkered") { ride.finish() }
+                    .buttonStyle(.m3Outlined)
+                    .disabled(ride.workoutSeconds == 0 || ride.summary != nil)
+                Button("A cero", systemImage: "arrow.counterclockwise") { ride.reset() }
+                    .buttonStyle(.m3Text)
+                if ride.isRunning {
+                    M3FAB(title: "Pausa", systemImage: "pause.fill", tone: M3.secondaryContainer, onTone: M3.onSecondaryContainer) { ride.pause() }
+                } else {
+                    M3FAB(title: "Empezar", systemImage: "play.fill") { ride.start() }
+                        .disabled(hub.trainerConnection != .connected || ride.summary != nil)
+                }
+            } else {
+                M3FAB(title: "Cargar este entreno", systemImage: "square.and.arrow.down.on.square") { ride.load(workout) }
+            }
+        }
+        .padding(8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: M3.Shape.extraLarge))
     }
 
     private func wattsText(_ s: WorkoutSegment) -> String {
@@ -538,106 +642,38 @@ struct WorkoutDetailView: View {
         return wa == wb ? "\(wa) W" : "\(wa)→\(wb) W"
     }
 
-    private var liveSection: some View {
-        let progress = ride.workoutProgress
-        return Section {
-            HStack(alignment: .top, spacing: 20) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Objetivo").font(.caption).foregroundStyle(.secondary)
-                    if let watts = ride.targetWatts {
-                        let zone = PowerZone(fractionOfFTP: Double(watts) / Double(ride.ftp))
-                        Text("\(watts) W")
-                            .font(.system(size: 44, weight: .bold, design: .rounded)).monospacedDigit()
-                            .foregroundStyle(zone.color)
-                        Text("Z\(zone.rawValue) · \(Int((Double(watts) / Double(ride.ftp) * 100).rounded())) % FTP")
-                            .font(.caption).foregroundStyle(.secondary)
-                        if let rpm = progress?.segment.cadence {
-                            Label("a \(rpm) rpm", systemImage: "gauge.with.dots.needle.33percent")
-                                .font(.headline).foregroundStyle(.orange)
-                        }
-                    } else {
-                        Text("Libre").font(.system(size: 44, weight: .bold, design: .rounded))
-                        Text("Marcha \(ride.gearText)").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                Metric(title: "Potencia", value: hub.bikeData.powerWatts.map { "\($0)" }, unit: "W")
-                Metric(title: "Cadencia", value: hub.bikeData.cadenceRpm.map { "\(Int($0))" }, unit: "rpm")
-                VStack(alignment: .leading, spacing: 2) {
-                    Metric(title: "Pulso", value: hub.heartRateBpm.map { "\($0)" }, unit: "ppm")
-                    if let bpm = hub.heartRateBpm {
-                        let z = HeartRateZone(bpm: bpm, max: ride.maxHeartRate)
-                        Text("Z\(z.rawValue) \(z.name)").font(.caption).foregroundStyle(z.color)
-                    }
-                }
-            }
-            if let p = progress {
-                HStack(spacing: 24) {
-                    Info(title: "Queda en el tramo", value: formatClock(p.secondsLeftInSegment), big: true)
-                    Info(title: "Siguiente", value: p.next?.summary ?? "fin")
-                    Info(title: "Queda en total", value: formatClock(p.secondsLeftInWorkout))
-                }
-                ProgressView(value: ride.workoutSeconds, total: Double(workout.durationSeconds))
-            } else if ride.summary == nil {
-                Text("Pulsa «Empezar» cuando estés listo.").foregroundStyle(.secondary)
-            }
-        } header: {
-            Text("En vivo")
-        }
-    }
-
-    private var controlsSection: some View {
-        Section {
-            HStack {
-                if ride.isRunning {
-                    Button("Pausa", systemImage: "pause.fill") { ride.pause() }
-                } else {
-                    Button("Empezar", systemImage: "play.fill") { ride.start() }
-                        .disabled(hub.trainerConnection != .connected || ride.summary != nil)
-                }
-                Button("Terminar", systemImage: "flag.checkered") { ride.finish() }
-                    .disabled(ride.workoutSeconds == 0 || ride.summary != nil)
-                Button("A cero", systemImage: "arrow.counterclockwise") { ride.reset() }
-                Spacer()
-                Text("Intensidad \(Int((ride.intensity * 100).rounded())) %").monospacedDigit()
-                Button("", systemImage: "minus.circle") { ride.easier() }
-                Button("", systemImage: "plus.circle") { ride.harder() }
-            }
-            if hub.trainerConnection != .connected {
-                Button("Conectar rodillo, mandos y pulsómetro", systemImage: "antenna.radiowaves.left.and.right") {
-                    hub.connectEverything()
-                }
-            }
-        } footer: {
-            Text("Mandos: + (dcha) o Z suben la intensidad un 2 % (en tramos libres, marcha más dura); − (izq) o Y la bajan. En ERG, mantén la cadencia por encima de ~70 rpm.")
-        }
-    }
-
-    private func summarySection(_ s: RideSummary) -> some View {
-        func w(_ v: Double?) -> String { v.map { "\(Int($0.rounded())) W" } ?? "—" }
-        return Section {
-            HStack(spacing: 24) {
-                Info(title: "Mejor 1'", value: w(s.best1Min))
-                Info(title: "Mejor 5'", value: w(s.best5Min))
-                Info(title: "Mejor 20'", value: w(s.best20Min))
-                Info(title: "TSS (aprox.)", value: "\(Int(ride.session.movingSeconds / 3600 * 100 * pow(Double(ride.session.averagePowerWatts ?? 0) / Double(ride.ftp), 2)))")
-            }
-            if let ftp = s.suggestedFTP {
+    private func summaryCard(_ s: RideSummary) -> some View {
+        func w(_ v: Double?) -> String { v.map { "\(Int($0.rounded()))" } ?? "—" }
+        return M3Card(style: .outlined) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("FTP estimado: **\(ftp) W** (ahora tienes \(ride.ftp) W)")
+                    M3SectionTitle(title: "Resumen", subtitle: ride.lastSaved.map { "Guardado en el historial: \($0.name)" })
                     Spacer()
-                    Button("Usar \(ftp) W") { ride.acceptSuggestedFTP() }
-                        .disabled(ftp == ride.ftp)
+                    if let saved = ride.lastSaved { StravaBadge(activity: saved) }
                 }
-            } else if s.ftpTest != nil {
-                Text("No hay datos suficientes para estimar el FTP (el test de rampa necesita al menos 1 minuto; el de 20', los 20 minutos).")
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 16) {
+                    M3Stat(title: "Mejor 1'", value: w(s.best1Min), unit: "W", size: .headlineSmall)
+                    M3Stat(title: "Mejor 5'", value: w(s.best5Min), unit: "W", size: .headlineSmall)
+                    M3Stat(title: "Mejor 20'", value: w(s.best20Min), unit: "W", size: .headlineSmall)
+                    M3Stat(title: "TSS", value: ride.lastSaved?.tss.map { "\($0)" } ?? "—", size: .headlineSmall)
+                }
+                if let ftp = s.suggestedFTP {
+                    HStack {
+                        Text("FTP estimado: **\(ftp) W** (ahora tienes \(ride.ftp) W)").font(M3.font(.bodyLarge))
+                        Spacer()
+                        Button("Usar \(ftp) W", systemImage: "checkmark") { ride.acceptSuggestedFTP() }
+                            .buttonStyle(.m3Filled)
+                            .disabled(ftp == ride.ftp)
+                    }
+                } else if s.ftpTest != nil {
+                    Text("No hay datos suficientes para estimar el FTP (la rampa necesita al menos 1 minuto; el test de 20', los 20 minutos).")
+                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                }
+                if let v = s.vo2max {
+                    Text("VO2max estimado ≈ \(Int(v.rounded())) ml/kg/min con tu mejor 5' y \(ride.weightKg.formatted()) kg. Solo vale si esos 5' fueron a tope.")
+                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                }
             }
-            if let v = s.vo2max {
-                Text("VO2max estimado: ≈ \(Int(v.rounded())) ml/kg/min con tu mejor 5' y \(ride.weightKg.formatted()) kg. Solo vale si esos 5' fueron a tope.")
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-        } header: {
-            Text("Resumen")
         }
     }
 }

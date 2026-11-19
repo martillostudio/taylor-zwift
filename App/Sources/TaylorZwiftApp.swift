@@ -4,22 +4,30 @@ import SwiftUI
 @main
 struct TaylorZwiftApp: App {
     @State private var hub: BluetoothHub
+    @State private var store: ActivityStore
+    @State private var strava: StravaService
     @State private var ride: RideController
 
     init() {
         let hub = BluetoothHub()
+        let store = ActivityStore()
+        let strava = StravaService()
         _hub = State(initialValue: hub)
-        _ride = State(initialValue: RideController(hub: hub))
+        _store = State(initialValue: store)
+        _strava = State(initialValue: strava)
+        _ride = State(initialValue: RideController(hub: hub, store: store, strava: strava))
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(hub)
+                .environment(store)
+                .environment(strava)
                 .environment(ride)
         }
         #if os(macOS)
-        .defaultSize(width: 760, height: 820)
+        .defaultSize(width: 1200, height: 880)
         #endif
     }
 }
@@ -27,24 +35,51 @@ struct TaylorZwiftApp: App {
 struct ContentView: View {
     @Environment(RideController.self) private var ride
 
+    private let destinations = [
+        M3Destination(id: "rodar", title: "Rodar", systemImage: "figure.outdoor.cycle"),
+        M3Destination(id: "entrenar", title: "Entrenar", systemImage: "figure.indoor.cycle"),
+        M3Destination(id: "historial", title: "Historial", systemImage: "clock.arrow.circlepath"),
+        M3Destination(id: "equipo", title: "Equipo", systemImage: "sensor.tag.radiowaves.forward"),
+        M3Destination(id: "log", title: "Log", systemImage: "list.bullet.rectangle"),
+    ]
+
     var body: some View {
         @Bindable var ride = ride
-        TabView(selection: $ride.selectedTab) {
-            RideView()
-                .tabItem { Label("Rodar", systemImage: "figure.outdoor.cycle") }
-                .tag("rodar")
-            WorkoutsView()
-                .tabItem { Label("Entrenar", systemImage: "figure.indoor.cycle") }
-                .tag("entrenar")
-            TrainerView()
-                .tabItem { Label("Rodillo", systemImage: "bicycle") }
-                .tag("rodillo")
-            ControllersView()
-                .tabItem { Label("Mandos", systemImage: "gamecontroller") }
-                .tag("mandos")
-            LogView()
-                .tabItem { Label("Log", systemImage: "list.bullet.rectangle") }
-                .tag("log")
+        Group {
+            #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                VStack(spacing: 0) {
+                    screen
+                    M3NavigationBar(destinations: destinations, selection: $ride.selectedTab)
+                }
+            } else {
+                rail
+            }
+            #else
+            rail
+            #endif
+        }
+        .background(M3.surface)
+        .tint(M3.primary)
+    }
+
+    private var rail: some View {
+        @Bindable var ride = ride
+        return HStack(spacing: 0) {
+            M3NavigationRail(destinations: destinations, selection: $ride.selectedTab)
+            Divider()
+            screen.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var screen: some View {
+        switch ride.selectedTab {
+        case "entrenar": WorkoutsView()
+        case "historial": HistoryView()
+        case "equipo": DevicesView()
+        case "log": LogView()
+        default: RideView()
         }
     }
 }

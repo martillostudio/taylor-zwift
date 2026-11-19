@@ -177,7 +177,9 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 - [x] Desarrollo por defecto: monoplato 1×12 (el de la Grizl; falta confirmar el cassette exacto). Se guarda el que elijas.
 - [ ] Marcar sesiones del plan como hechas y llevar el histórico.
 - [ ] Analizar el histórico de Garmin Connect (ficheros `.fit`) para estimar FTP/VO2max y proponer el plan.
-- [ ] Guardar cada sesión (`.fit`) y subirla a Strava / intervals.icu.
+- [x] **Historial:** cada entreno de más de 1' se guarda al terminar (o al ponerlo a cero) como JSON (muestras a 1 Hz: potencia, cadencia, velocidad, distancia, pulso, altura virtual) y como `.fit` (codificador propio en `CicloKit/Activity/FITEncoder.swift`, con tests que releen el fichero y comprueban los CRC). Pestaña «Historial»: totales de semana y mes, tarjetas, detalle con gráficas, mejores marcas, tiempo por zonas, exportar `.fit`.
+- [x] **Strava:** OAuth (WebAuthenticationSession, `taylorzwift://localhost`), subida del `.fit` a `/api/v3/uploads` (permiso `activity:write`) con `trainer=1`, seguimiento hasta que Strava la procesa, subida automática opcional. Hace falta crear una «app» en strava.com/settings/api con *Authorization Callback Domain* = `localhost`.
+- [ ] Garmin Connect: su API personal solo permite *descargar* datos, no subir. Decisión (19-nov): los entrenos del rodillo van **solo a Strava**; el `.fit` se puede importar a mano en Garmin Connect si algún día hace falta.
 
 ### Fase 3 — Extras
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
@@ -233,3 +235,5 @@ Notas:
 | 2026-11-19 | Cambio de prioridad: **entrenador antes que simulador**. Pestaña «Entrenar»: FTP/zonas, biblioteca de entrenos de referencia, tests de FTP (rampa y 20'), VO2max estimado, ejecución en ERG, importar `.zwo`. Lógica en `CicloKit/Workouts` con tests. |
 | 2026-11-19 | Plan de invierno de 16 semanas (desde el 23-nov-2026) a partir del histórico de Garmin; entrenos de fuerza con cadencia; zonas de pulso; biblioteca en tarjetas. |
 | 2026-11-19 | Modo **Libre** (pendiente a elección y marchas), «Terminar» con resumen en todos los modos, desarrollo 1×12 por defecto y guardado. |
+| 2026-11-19 | Diseño **Material 3 en SwiftUI** (tokens de color claro/oscuro, escala tipográfica, formas, botones, chips, segmentados, navegación lateral/inferior) en `App/Sources/M3.swift`; `material-components-ios` está archivado y es UIKit, así que no se usa. Rediseño de Rodar, Entrenar, detalle del entreno; pestañas nuevas Historial y Equipo. |
+| 2026-11-19 | Historial con `.fit` propio y subida a Strava; Garmin Connect fuera (su API personal es solo de lectura). |

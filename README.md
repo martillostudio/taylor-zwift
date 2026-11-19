@@ -35,6 +35,15 @@ Pestaña **Rodar → Libre** (o «Rodar libre» en Entrenar): eliges la pendient
 2. Elige un entreno de la biblioteca (Z2, sweet spot, umbral, VO2max 4×4, 30/15…) o importa un `.zwo`.
 3. «Cargar este entreno» → «Empezar». El rodillo va en ERG; los Click suben/bajan la intensidad un 2 %.
 
+## Historial y Strava
+
+Cada entreno de más de 1 minuto se guarda al terminar (pestaña **Historial**), con su `.fit` para exportarlo.
+
+Para subirlos a Strava:
+1. En [strava.com/settings/api](https://www.strava.com/settings/api) crea una aplicación con **Authorization Callback Domain = `localhost`**.
+2. En Historial, pega su *Client ID* y *Client Secret* y pulsa «Conectar con Strava».
+3. Con «Subir al terminar» activado, cada entreno se sube solo (marcado como entreno en rodillo).
+
 ## Taylor Mandos: los Click V2 como mando de MyWhoosh
 
 App pequeña e independiente (misma base de código) que conecta los dos Zwift Click V2
