@@ -61,6 +61,20 @@ final class RideController {
     var weightKg: Double {
         didSet { UserDefaults.standard.set(weightKg, forKey: Self.weightKey) }
     }
+    /// Tu frecuencia cardiaca máxima (para las zonas de pulso).
+    var maxHeartRate: Int {
+        didSet { UserDefaults.standard.set(maxHeartRate, forKey: Self.maxHRKey) }
+    }
+    /// Lunes en que empieza (o empezó) el plan.
+    var planStart: Date {
+        didSet { UserDefaults.standard.set(planStart.timeIntervalSince1970, forKey: Self.planStartKey) }
+    }
+    let plan = TrainingPlan.winter
+
+    /// Semana del plan que toca hoy (`nil` si aún no ha empezado o ya terminó).
+    var currentPlanWeek: PlanWeek? {
+        plan.weekNumber(on: Date(), start: planStart).map { plan.weeks[$0 - 1] }
+    }
     private(set) var workout: Workout?
     /// Segundos transcurridos del entrenamiento (avanzan mientras está en marcha).
     private(set) var workoutSeconds = 0.0
@@ -77,6 +91,8 @@ final class RideController {
     static let statusLogSeconds = 5.0
     private static let ftpKey = "ftp"
     private static let weightKey = "pesoKg"
+    private static let maxHRKey = "fcMax"
+    private static let planStartKey = "inicioPlan"
     private static let importedKey = "entrenosImportados"
 
     @ObservationIgnored private var calibration = TrainerCalibration()
@@ -94,7 +110,11 @@ final class RideController {
         let savedFTP = defaults.integer(forKey: Self.ftpKey)
         ftp = savedFTP > 0 ? savedFTP : 200
         let savedWeight = defaults.double(forKey: Self.weightKey)
-        weightKg = savedWeight > 0 ? savedWeight : 75
+        weightKg = savedWeight > 0 ? savedWeight : 72
+        let savedHR = defaults.integer(forKey: Self.maxHRKey)
+        maxHeartRate = savedHR > 0 ? savedHR : 185
+        let savedStart = defaults.double(forKey: Self.planStartKey)
+        planStart = savedStart > 0 ? Date(timeIntervalSince1970: savedStart) : TrainingPlan.monday(onOrAfter: Date())
         importedWorkouts = Self.loadImported()
         hub.onButtonPress = { [weak self] pressed in self?.handleButtons(pressed) }
         ticker = Task { [weak self] in

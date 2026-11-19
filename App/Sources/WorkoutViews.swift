@@ -35,6 +35,11 @@ func formatClock(_ seconds: Double) -> String {
 
 // MARK: - Pestaña «Entrenar»
 
+func formatDuration(_ seconds: Int) -> String {
+    let h = seconds / 3_600, m = (seconds % 3_600) / 60
+    return h > 0 ? (m > 0 ? "\(h) h \(m)'" : "\(h) h") : "\(m)'"
+}
+
 struct WorkoutsView: View {
     @Environment(RideController.self) private var ride
     @State private var importing = false
@@ -43,62 +48,62 @@ struct WorkoutsView: View {
     private var zwoTypes: [UTType] {
         [UTType(filenameExtension: "zwo"), .xml].compactMap { $0 }
     }
+    private let columns = [GridItem(.adaptive(minimum: 250, maximum: 380), spacing: 16)]
 
     var body: some View {
-        @Bindable var ride = ride
         NavigationStack {
-            List {
-                Section {
-                    Stepper("FTP: \(ride.ftp) W", value: $ride.ftp, in: 50...600, step: 5)
-                    Stepper("Peso: \(ride.weightKg.formatted(.number.precision(.fractionLength(1)))) kg",
-                            value: $ride.weightKg, in: 40...150, step: 0.5)
-                    LabeledContent("W/kg al FTP",
-                                   value: (Double(ride.ftp) / ride.weightKg).formatted(.number.precision(.fractionLength(2))))
-                    ForEach(PowerZone.allCases, id: \.self) { zone in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    ProfileBox()
+                    PlanBox()
+
+                    if ride.mode == .workout, let w = ride.workout {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Entreno cargado").font(.title3.bold())
+                            NavigationLink { WorkoutDetailView(workout: w) } label: {
+                                WorkoutCard(workout: w).frame(maxWidth: 380)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    ForEach(WorkoutCategory.allCases.filter { $0 != .imported }, id: \.self) { category in
+                        let items = Workout.library.filter { $0.category == category }
+                        if !items.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(category.rawValue).font(.title3.bold())
+                                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                                    ForEach(items) { w in
+                                        NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutCard(workout: w) }
+                                            .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            RoundedRectangle(cornerRadius: 3).fill(zone.color).frame(width: 14, height: 14)
-                            Text("Z\(zone.rawValue) · \(zone.name)")
+                            Text(WorkoutCategory.imported.rawValue).font(.title3.bold())
                             Spacer()
-                            Text(zone.wattsText(ftp: ride.ftp)).monospacedDigit().foregroundStyle(.secondary)
+                            Button("Importar .zwo…", systemImage: "square.and.arrow.down") { importing = true }
                         }
-                        .font(.callout)
-                    }
-                } header: {
-                    Text("Tu perfil")
-                } footer: {
-                    Text("Si no sabes tu FTP, empieza por el test de rampa: al terminar te propone el valor.")
-                }
-
-                if ride.mode == .workout, let w = ride.workout {
-                    Section("Entreno cargado") {
-                        NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutRow(workout: w) }
-                    }
-                }
-
-                ForEach(WorkoutCategory.allCases.filter { $0 != .imported }, id: \.self) { category in
-                    let items = Workout.library.filter { $0.category == category }
-                    if !items.isEmpty {
-                        Section(category.rawValue) {
-                            ForEach(items) { w in
-                                NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutRow(workout: w) }
+                        if ride.importedWorkouts.isEmpty {
+                            Text("Ficheros .zwo (el formato de Zwift): los que hagas tú o descargues.")
+                                .foregroundStyle(.secondary)
+                        }
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                            ForEach(ride.importedWorkouts) { w in
+                                NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutCard(workout: w) }
+                                    .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button("Borrar", systemImage: "trash", role: .destructive) { ride.deleteImported(w) }
+                                    }
                             }
                         }
                     }
                 }
-
-                Section {
-                    ForEach(ride.importedWorkouts) { w in
-                        NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutRow(workout: w) }
-                            .contextMenu {
-                                Button("Borrar", systemImage: "trash", role: .destructive) { ride.deleteImported(w) }
-                            }
-                    }
-                    Button("Importar entrenos .zwo…", systemImage: "square.and.arrow.down") { importing = true }
-                } header: {
-                    Text(WorkoutCategory.imported.rawValue)
-                } footer: {
-                    Text("Ficheros .zwo (el formato de Zwift): los que hayas hecho tú o descargado. Clic derecho para borrar.")
-                }
+                .padding(20)
             }
             .navigationTitle("Entrenar")
             .fileImporter(isPresented: $importing, allowedContentTypes: zwoTypes, allowsMultipleSelection: true) { result in
@@ -133,21 +138,257 @@ struct WorkoutsView: View {
     }
 }
 
-/// Fila de la biblioteca: nombre, duración, TSS y perfil en miniatura.
-struct WorkoutRow: View {
+/// FTP, peso, FC máxima y las zonas de potencia y de pulso.
+private struct ProfileBox: View {
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        @Bindable var ride = ride
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 24) {
+                    Stepper("FTP: **\(ride.ftp) W**", value: $ride.ftp, in: 50...600, step: 5)
+                    Stepper("Peso: **\(ride.weightKg.formatted(.number.precision(.fractionLength(1)))) kg**",
+                            value: $ride.weightKg, in: 40...150, step: 0.5)
+                    Stepper("FC máx.: **\(ride.maxHeartRate)**", value: $ride.maxHeartRate, in: 140...220)
+                }
+                Text("\((Double(ride.ftp) / ride.weightKg).formatted(.number.precision(.fractionLength(2)))) W/kg al FTP. Si no sabes tu FTP, haz el test de rampa: al terminar te propone el valor.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack(alignment: .top, spacing: 32) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Potencia").font(.caption.bold()).foregroundStyle(.secondary)
+                        ForEach(PowerZone.allCases, id: \.self) { zone in
+                            ZoneLine(color: zone.color, title: "Z\(zone.rawValue) \(zone.name)", value: zone.wattsText(ftp: ride.ftp))
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Pulso").font(.caption.bold()).foregroundStyle(.secondary)
+                        ForEach(HeartRateZone.allCases, id: \.self) { zone in
+                            let r = zone.bpmRange(max: ride.maxHeartRate)
+                            ZoneLine(color: zone.color, title: "Z\(zone.rawValue) \(zone.name)", value: "\(r.lowerBound)–\(r.upperBound)")
+                        }
+                    }
+                }
+            }
+            .padding(6)
+        } label: {
+            Label("Tu perfil", systemImage: "person.crop.circle")
+        }
+    }
+}
+
+private struct ZoneLine: View {
+    let color: Color
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 12, height: 12)
+            Text(title)
+            Spacer(minLength: 12)
+            Text(value).monospacedDigit().foregroundStyle(.secondary)
+        }
+        .font(.callout)
+        .frame(maxWidth: 300)
+    }
+}
+
+extension HeartRateZone {
+    var color: Color {
+        switch self {
+        case .z1: Color(red: 0.55, green: 0.55, blue: 0.58)
+        case .z2: Color(red: 0.20, green: 0.50, blue: 0.90)
+        case .z3: Color(red: 0.20, green: 0.70, blue: 0.32)
+        case .z4: Color(red: 0.96, green: 0.50, blue: 0.10)
+        case .z5: Color(red: 0.86, green: 0.16, blue: 0.16)
+        }
+    }
+}
+
+/// La semana del plan que toca y acceso al plan entero.
+private struct PlanBox: View {
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        @Bindable var ride = ride
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text(ride.plan.summary).font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    DatePicker("Empieza el lunes", selection: $ride.planStart, displayedComponents: .date)
+                        .fixedSize()
+                }
+                if let week = ride.currentPlanWeek {
+                    PlanWeekView(week: week, isCurrent: true)
+                } else if ride.planStart > Date() {
+                    Text("Empieza el \(ride.planStart.formatted(date: .complete, time: .omitted)). Así será la primera semana:")
+                        .foregroundStyle(.secondary)
+                    PlanWeekView(week: ride.plan.weeks[0], isCurrent: false)
+                } else {
+                    Text("Plan terminado. Pon una fecha nueva para repetirlo (con tu FTP nuevo).")
+                        .foregroundStyle(.secondary)
+                }
+                NavigationLink {
+                    PlanView()
+                } label: {
+                    Label("Ver las 16 semanas", systemImage: "calendar")
+                }
+            }
+            .padding(6)
+        } label: {
+            Label(ride.plan.name, systemImage: "calendar.badge.clock")
+        }
+    }
+}
+
+/// Una semana del plan: bloque, objetivo y sus 3 sesiones en tarjetas.
+struct PlanWeekView: View {
+    let week: PlanWeek
+    var isCurrent = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Semana \(week.number)").font(.headline)
+                Text("· \(week.block) · \(week.focus)").foregroundStyle(.secondary)
+                Spacer()
+                if isCurrent {
+                    Text("ESTA SEMANA").font(.caption2.bold())
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.2), in: Capsule())
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220, maximum: 360), spacing: 12)], alignment: .leading, spacing: 12) {
+                ForEach(week.sessions) { session in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(session.day).font(.caption.bold()).foregroundStyle(.secondary)
+                        if let w = session.workout {
+                            NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutCard(workout: w, compact: true) }
+                                .buttonStyle(.plain)
+                        } else {
+                            OutdoorCard(note: session.note)
+                        }
+                        if session.workout != nil, !session.note.isEmpty {
+                            Text(session.note).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct OutdoorCard: View {
+    let note: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: "sun.max.fill").font(.title2).foregroundStyle(.orange)
+            Text("Salida en exterior").font(.headline)
+            Text(note).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+/// El plan completo, semana a semana.
+struct PlanView: View {
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                Text(ride.plan.summary).foregroundStyle(.secondary)
+                Text("Cómo funciona: 3 semanas de carga y 1 de descarga. La mayor parte del tiempo suave (Z2) y 2 días de calidad por semana: fuerza a cadencia baja, sweet spot/umbral y VO2max. Test de FTP al empezar y en las descargas para ajustar los vatios. Si un día no puedes, no lo recuperes: sigue con el siguiente.")
+                    .font(.callout)
+                ForEach(ride.plan.weeks) { week in
+                    let current = ride.currentPlanWeek?.number == week.number
+                    VStack(alignment: .leading, spacing: 4) {
+                        PlanWeekView(week: week, isCurrent: current)
+                        Text("Rodillo: \(formatDuration(week.plannedSeconds)) · TSS ≈ \(week.plannedTSS)")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(12)
+                    .background(week.isRecovery ? Color.green.opacity(0.06) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
+                }
+            }
+            .padding(20)
+        }
+        .navigationTitle(ride.plan.name)
+    }
+}
+
+/// Tarjeta de un entreno: perfil, nombre, en qué consiste, tiempo por zonas, duración y carga.
+struct WorkoutCard: View {
+    let workout: Workout
+    var compact = false
+
+    var body: some View {
+        let zone = workout.mainZone
+        VStack(alignment: .leading, spacing: 8) {
+            WorkoutChart(workout: workout, height: compact ? 40 : 60, showAxes: false)
+            HStack(alignment: .firstTextBaseline) {
+                Text(workout.name).font(.headline).lineLimit(2)
+                Spacer(minLength: 4)
+                if workout.ftpTest != nil {
+                    Text("TEST").font(.caption2.bold())
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.purple.opacity(0.2), in: Capsule())
+                }
+            }
+            Text(workout.shortDescription)
+                .font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+            ZoneBar(workout: workout)
+            HStack(spacing: 12) {
+                Label(formatDuration(workout.durationSeconds), systemImage: "clock")
+                Label("TSS \(Int(workout.tss.rounded()))", systemImage: "bolt.fill")
+                if workout.hasCadenceTargets {
+                    Label("rpm", systemImage: "gauge.with.dots.needle.33percent")
+                }
+                Spacer(minLength: 0)
+                Text("Z\(zone.rawValue) \(zone.name)")
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .foregroundStyle(zone == .z4 ? Color.black : Color.white)
+                    .background(zone.color, in: Capsule())
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(alignment: .top) {
+            UnevenRoundedRectangle(topLeadingRadius: 14, topTrailingRadius: 14)
+                .fill(zone.color)
+                .frame(height: 4)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+/// Barra con el reparto del tiempo por zonas.
+private struct ZoneBar: View {
     let workout: Workout
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(workout.name).font(.headline)
-                Spacer()
-                Text("\(workout.durationSeconds / 60)' · TSS \(Int(workout.tss.rounded()))")
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+        let byZone = workout.secondsByZone
+        let total = max(byZone.values.reduce(0, +), 1)
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                ForEach(PowerZone.allCases, id: \.self) { z in
+                    if let s = byZone[z], s > 0 {
+                        z.color.frame(width: geo.size.width * Double(s) / Double(total))
+                    }
+                }
             }
-            WorkoutChart(workout: workout, height: 36, showAxes: false)
         }
-        .padding(.vertical, 2)
+        .frame(height: 6)
+        .clipShape(Capsule())
     }
 }
 
@@ -288,6 +529,10 @@ struct WorkoutDetailView: View {
                             .foregroundStyle(zone.color)
                         Text("Z\(zone.rawValue) · \(Int((Double(watts) / Double(ride.ftp) * 100).rounded())) % FTP")
                             .font(.caption).foregroundStyle(.secondary)
+                        if let rpm = progress?.segment.cadence {
+                            Label("a \(rpm) rpm", systemImage: "gauge.with.dots.needle.33percent")
+                                .font(.headline).foregroundStyle(.orange)
+                        }
                     } else {
                         Text("Libre").font(.system(size: 44, weight: .bold, design: .rounded))
                         Text("Marcha \(ride.gearText)").font(.caption).foregroundStyle(.secondary)
@@ -295,7 +540,13 @@ struct WorkoutDetailView: View {
                 }
                 Metric(title: "Potencia", value: hub.bikeData.powerWatts.map { "\($0)" }, unit: "W")
                 Metric(title: "Cadencia", value: hub.bikeData.cadenceRpm.map { "\(Int($0))" }, unit: "rpm")
-                Metric(title: "Pulso", value: hub.heartRateBpm.map { "\($0)" }, unit: "ppm")
+                VStack(alignment: .leading, spacing: 2) {
+                    Metric(title: "Pulso", value: hub.heartRateBpm.map { "\($0)" }, unit: "ppm")
+                    if let bpm = hub.heartRateBpm {
+                        let z = HeartRateZone(bpm: bpm, max: ride.maxHeartRate)
+                        Text("Z\(z.rawValue) \(z.name)").font(.caption).foregroundStyle(z.color)
+                    }
+                }
             }
             if let p = progress {
                 HStack(spacing: 24) {

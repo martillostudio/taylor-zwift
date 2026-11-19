@@ -52,6 +52,8 @@ public enum WorkoutStep: Equatable, Sendable {
     case intervals(repeats: Int, onSeconds: Int, onPower: Double, offSeconds: Int, offPower: Double)
     /// Sin objetivo de potencia: el rodillo va en llano y tú decides (tests, sprints…).
     case freeRide(seconds: Int)
+    /// Intervalos de fuerza: la parte «on» a cadencia baja (`rpm`), como subir con un desarrollo duro.
+    case lowCadence(repeats: Int, onSeconds: Int, onPower: Double, rpm: Int, offSeconds: Int, offPower: Double)
 }
 
 /// Un tramo del entrenamiento ya desplegado en el tiempo.
@@ -62,6 +64,8 @@ public struct WorkoutSegment: Identifiable, Equatable, Sendable {
     /// Fracción de FTP al principio y al final (iguales salvo en rampas). `nil` = libre.
     public var startPower: Double?
     public var endPower: Double?
+    /// Cadencia objetivo (rpm), si el tramo la tiene.
+    public var cadence: Int? = nil
 
     public var endSeconds: Int { startSeconds + durationSeconds }
     public var isFree: Bool { startPower == nil }
@@ -78,7 +82,10 @@ public struct WorkoutSegment: Identifiable, Equatable, Sendable {
     public var summary: String {
         let d = durationSeconds >= 60 && durationSeconds % 60 == 0 ? "\(durationSeconds / 60)'" : Self.formatSeconds(durationSeconds)
         guard let a = startPower, let b = endPower else { return "\(d) libre" }
-        return a == b ? "\(d) al \(Int((a * 100).rounded())) %" : "\(d) de \(Int((a * 100).rounded())) % a \(Int((b * 100).rounded())) %"
+        let rpm = cadence.map { " a \($0) rpm" } ?? ""
+        return a == b
+            ? "\(d) al \(Int((a * 100).rounded())) %\(rpm)"
+            : "\(d) de \(Int((a * 100).rounded())) % a \(Int((b * 100).rounded())) %\(rpm)"
     }
 
     static func formatSeconds(_ s: Int) -> String {
@@ -110,6 +117,7 @@ public enum WorkoutCategory: String, CaseIterable, Sendable {
     case threshold = "Umbral"
     case vo2max = "VO2max"
     case anaerobic = "Anaeróbico"
+    case strength = "Fuerza (cadencia baja)"
     case imported = "Importados"
 }
 
@@ -120,6 +128,8 @@ public struct Workout: Identifiable, Equatable, Sendable {
     public var category: WorkoutCategory
     /// Para qué sirve y cómo hacerlo.
     public var summary: String
+    /// Lema corto para la tarjeta («2×20' al 90 %»). Si no hay, la primera frase de `summary`.
+    public var tagline: String?
     public var steps: [WorkoutStep]
     public var ftpTest: FTPTest?
     public let segments: [WorkoutSegment]
@@ -127,7 +137,8 @@ public struct Workout: Identifiable, Equatable, Sendable {
     public let intensityFactor: Double
 
     public init(id: String, name: String, category: WorkoutCategory, summary: String,
-                ftpTest: FTPTest? = nil, steps: [WorkoutStep]) {
+                tagline: String? = nil, ftpTest: FTPTest? = nil, steps: [WorkoutStep]) {
+        self.tagline = tagline
         self.id = id
         self.name = name
         self.category = category
@@ -148,6 +159,26 @@ public struct Workout: Identifiable, Equatable, Sendable {
     }
 
     public var durationSeconds: Int { segments.last?.endSeconds ?? 0 }
+
+    /// Lo que se enseña en la tarjeta: el lema o, si no hay, la primera frase.
+    public var shortDescription: String {
+        if let tagline { return tagline }
+        let first = summary.split(separator: ".", maxSplits: 1).first.map(String.init) ?? summary
+        return first.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Tiempo por zona de potencia (segundos), para las barras de las tarjetas.
+    public var secondsByZone: [PowerZone: Int] {
+        var result: [PowerZone: Int] = [:]
+        for s in segments {
+            guard let a = s.startPower, let b = s.endPower else { continue }
+            result[PowerZone(fractionOfFTP: (a + b) / 2), default: 0] += s.durationSeconds
+        }
+        return result
+    }
+
+    /// Algún tramo tiene cadencia objetivo (entrenos de fuerza).
+    public var hasCadenceTargets: Bool { segments.contains { $0.cadence != nil } }
 
     public func segmentIndex(at t: Double) -> Int? {
         guard t >= 0, t < Double(durationSeconds) else { return nil }
@@ -196,9 +227,10 @@ public struct Workout: Identifiable, Equatable, Sendable {
     static func expand(_ steps: [WorkoutStep]) -> [WorkoutSegment] {
         var result: [WorkoutSegment] = []
         var t = 0
-        func add(_ seconds: Int, _ a: Double?, _ b: Double?) {
+        func add(_ seconds: Int, _ a: Double?, _ b: Double?, rpm: Int? = nil) {
             guard seconds > 0 else { return }
-            result.append(WorkoutSegment(id: result.count, startSeconds: t, durationSeconds: seconds, startPower: a, endPower: b))
+            result.append(WorkoutSegment(id: result.count, startSeconds: t, durationSeconds: seconds,
+                                         startPower: a, endPower: b, cadence: rpm))
             t += seconds
         }
         for step in steps {
@@ -209,6 +241,11 @@ public struct Workout: Identifiable, Equatable, Sendable {
             case .intervals(let n, let onS, let onP, let offS, let offP):
                 for _ in 0..<max(n, 0) {
                     add(onS, onP, onP)
+                    add(offS, offP, offP)
+                }
+            case .lowCadence(let n, let onS, let onP, let rpm, let offS, let offP):
+                for _ in 0..<max(n, 0) {
+                    add(onS, onP, onP, rpm: rpm)
                     add(offS, offP, offP)
                 }
             }

@@ -169,7 +169,11 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 - [x] Importar `.zwo` (formato de Zwift) para usar entrenos de otras fuentes.
 - [x] Intensidad ±2 % con los Click durante un entreno.
 - [ ] Probarlo en el rodillo.
-- [ ] Planes de varias semanas (con lo anterior como bloques) y calendario.
+- [x] Plan **«Invierno en el rodillo» (16 semanas)** (`CicloKit/Workouts/TrainingPlan.swift`): 3 sesiones/semana, 3+1 semanas de carga/descarga, polarizado (mucho Z2 + 2 días de calidad: fuerza a cadencia baja, sweet spot/umbral, VO2max), test de FTP en las semanas 1, 8 y 16; las últimas semanas, salida larga en exterior. Hecho a partir de las salidas de Garmin (mayo–nov 2026: ~2 salidas/semana, 4,8 h, 700 m por salida, pulso medio en Z3).
+- [x] Entrenos de fuerza con **cadencia objetivo** (5×5' a 55 rpm, 4×8' a 60 rpm, Z2 con 6×3' a 50 rpm) y Z2 de 2 h.
+- [x] Zonas de pulso por % de la FC máxima (las de Garmin) además de las de potencia.
+- [x] Biblioteca en **tarjetas**: perfil por zonas, lema, reparto del tiempo por zonas, duración, TSS, zona principal, «TEST» y «rpm».
+- [ ] Marcar sesiones del plan como hechas y llevar el histórico.
 - [ ] Analizar el histórico de Garmin Connect (ficheros `.fit`) para estimar FTP/VO2max y proponer el plan.
 - [ ] Guardar cada sesión (`.fit`) y subirla a Strava / intervals.icu.
 
@@ -225,3 +229,4 @@ Notas:
 | 2026-11-19 | Fase 2, primera versión: pestaña «Rodar» con rutas en SIM, 24 marchas virtuales (escalando pendiente·k, Crr·k y CdA·k³ en el comando SIM), ERG ±10 W y reconexión automática que recupera el último modo. Lógica en `CicloKit/Ride` con tests. |
 | 2026-11-19 | Marchas con desarrollos reales (carretera 2×12 en 24 marchas repartidas, GRX y XPLR 1×12) y calibración del rodillo (0,356 km/h por rpm). Pulsómetro 0x180D. Vista 2D con colores de pendiente de Garmin, adelanto de 2 km y panel de subida tipo ClimbPro. |
 | 2026-11-19 | Cambio de prioridad: **entrenador antes que simulador**. Pestaña «Entrenar»: FTP/zonas, biblioteca de entrenos de referencia, tests de FTP (rampa y 20'), VO2max estimado, ejecución en ERG, importar `.zwo`. Lógica en `CicloKit/Workouts` con tests. |
+| 2026-11-19 | Plan de invierno de 16 semanas (desde el 23-nov-2026) a partir del histórico de Garmin; entrenos de fuerza con cadencia; zonas de pulso; biblioteca en tarjetas. |

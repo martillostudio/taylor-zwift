@@ -19,6 +19,7 @@
 		7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F12F33A425BD8EE3BA6369 /* LogView.swift */; };
 		9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AE67EA9B3F5BDCB7270A503 /* RideView.swift */; };
 		ADC16D87744078AA0851B2EA /* CicloNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = 63F04261BFB7770CF70BCBA9 /* CicloNetwork */; };
+		B51444BF768B9C535FC065E2 /* WorkoutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8843EDCD9E67795BE65FB2CC /* WorkoutViews.swift */; };
 		B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */; };
 		BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E10DC2A8D445E089A9F7EB6 /* RideController.swift */; };
 		DEA7734381A5BE871013E9D5 /* GradeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABB43D303D77746CDB2C94E /* GradeColors.swift */; };
@@ -36,6 +37,7 @@
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
 		863663EEE45FBB2051721FB9 /* BridgeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModel.swift; sourceTree = "<group>"; };
+		8843EDCD9E67795BE65FB2CC /* WorkoutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutViews.swift; sourceTree = "<group>"; };
 		8E10DC2A8D445E089A9F7EB6 /* RideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideController.swift; sourceTree = "<group>"; };
 		9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9AE67EA9B3F5BDCB7270A503 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
 				2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */,
 				C242BF3F6159617EB38F4BBF /* TrainerView.swift */,
+				8843EDCD9E67795BE65FB2CC /* WorkoutViews.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -245,6 +248,7 @@
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
 				B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */,
 				2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */,
+				B51444BF768B9C535FC065E2 /* WorkoutViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
