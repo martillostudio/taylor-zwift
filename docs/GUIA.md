@@ -27,23 +27,27 @@ Prioridad 1: **poder entrenar y usar los mandos**. Todo lo demás (mapas, avatar
 | Exportar actividades | `garmin/fit-swift-sdk` (Fase 3) | SDK oficial de FIT. |
 | Licencia | **GPL-3.0** (`LICENSE`) | Quien reutilice el código debe publicar el suyo; encaja con los proyectos de referencia. |
 
-### Estructura de carpetas prevista
+### Estructura de carpetas
 
 ```
 taylor-zwift/
 ├── README.md
+├── Makefile                 ← atajos: make test / build / run / logs
 ├── docs/                    ← esta guía y notas técnicas
-├── App/                     ← proyecto de Xcode (SwiftUI)
-│   └── TaylorZwift.xcodeproj
-└── CicloKit/                ← paquete Swift con la lógica
+├── App/
+│   ├── project.yml          ← descripción del proyecto (XcodeGen)
+│   ├── TaylorZwift.xcodeproj  ← generado desde project.yml (no editar a mano)
+│   ├── TaylorZwift.entitlements
+│   └── Sources/             ← SwiftUI: pantallas Rodillo, Mandos, Log
+└── CicloKit/                ← paquete Swift
     ├── Package.swift
     ├── Sources/
-    │   ├── FTMS/            ← parseo y comandos del rodillo (bytes ↔ structs)
-    │   ├── ZwiftClick/      ← parseo de botones del Click V2
-    │   ├── Physics/         ← potencia → velocidad, marchas virtuales
-    │   ├── Workouts/        ← entrenos (.zwo) — Fase 3
-    │   └── Bluetooth/       ← capa CoreBluetooth (solo Apple)
-    └── Tests/
+    │   ├── CicloKit/        ← lógica pura, con tests
+    │   │   ├── FTMS/        ← bytes ↔ structs del rodillo
+    │   │   ├── ZwiftClick/  ← botones del Click V2
+    │   │   └── (Physics/, Workouts/ en fases siguientes)
+    │   └── CicloBluetooth/  ← capa CoreBluetooth (solo se prueba con hardware)
+    └── Tests/CicloKitTests/
 ```
 
 Regla de oro: **el código que traduce bytes y hace cálculos no toca CoreBluetooth**. Así Claude puede escribirlo y probarlo con tests automáticos, y tú solo pruebas en el rodillo la capa fina de conexión.
@@ -93,12 +97,12 @@ Salida: este documento + decisiones pendientes resueltas (ver §7 y registro).
 Dos pantallas mínimas dentro de la app, sin diseño:
 
 - **Prueba A — Rodillo**
-  - [ ] Escanea y lista dispositivos FTMS.
+  - [ ] Escanea y lista dispositivos FTMS. *(código listo, falta probar)*
   - [ ] Conecta al Kickr y muestra potencia, cadencia y velocidad en vivo.
   - [ ] Pide control (`0x00`) y cambia la pendiente (`0x11`) con un slider: notas la resistencia.
   - [ ] Pone 150 W en ERG (`0x05`).
 - **Prueba B — Mandos**
-  - [ ] Escanea y encuentra el Click V2 derecho (y el izquierdo si se deja).
+  - [ ] Escanea y encuentra el Click V2 derecho (y el izquierdo si se deja). *(código listo, falta probar)*
   - [ ] Hace el handshake `RideOn`.
   - [ ] Muestra en pantalla qué botón pulsas.
 
@@ -123,10 +127,24 @@ Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPa
 
 ## 8. Cómo trabajamos
 
-1. Claude escribe código y documentación en el repo.
-2. Tú haces `git pull`, abres el proyecto en Xcode y pulsas ▶︎ con destino «My Mac».
-3. Pruebas con el rodillo/mandos y pegas a Claude lo que ves (pantalla de logs o error de Xcode).
-4. Claude corrige y vuelta al paso 2.
+Todo desde la terminal con Claude Code; VS Code (extensión Swift) para leer y editar. Xcode solo hace falta instalado.
+
+| Comando | Qué hace |
+|---|---|
+| `make test` | Tests de `CicloKit` (sin hardware). |
+| `make run` | Regenera el proyecto, compila la app de Mac y la abre. |
+| `make build-ios` | Comprueba que compila para iPhone/iPad. |
+| `make logs` | Muestra en vivo los logs de Bluetooth de la app. |
+
+1. Claude escribe el código, pasa los tests, compila y sube los cambios.
+2. Abres la app (`make run` o Claude la abre) y pruebas con el rodillo/mandos.
+3. Claude lee los logs directamente (`log show`), o tú pulsas «Copiar todo» en la pestaña Log y lo pegas.
+4. Claude corrige y vuelta al paso 1.
+
+Notas:
+- El `Makefile` usa el Xcode de `/Applications` aunque `xcode-select` apunte a las Command Line Tools.
+- `TaylorZwift.xcodeproj` se genera con **XcodeGen** desde `App/project.yml`; está en el repo para que se pueda abrir en Xcode sin instalar nada más.
+- En el Mac la app se firma localmente (sin cuenta). Para iPhone/iPad: añade tu cuenta en Xcode → Settings → Accounts y pon tu Team ID en `DEVELOPMENT_TEAM` de `App/project.yml`.
 
 ## Registro de decisiones
 
@@ -138,3 +156,5 @@ Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPa
 | 2026-11-19 | Licencia GPL-3.0. |
 | 2026-11-19 | Nombre unificado `taylor-zwift` (carpeta local renombrada). |
 | 2026-11-19 | Cuenta de Apple gratuita por ahora. Fase 0 cerrada. |
+| 2026-11-19 | Trabajo desde terminal: XcodeGen (`project.yml`) + `Makefile`; VS Code como editor. |
+| 2026-11-19 | `CicloKit` dividido en `CicloKit` (lógica pura) y `CicloBluetooth` (CoreBluetooth). |

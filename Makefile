@@ -1,0 +1,33 @@
+# Atajos para trabajar desde la terminal (Claude Code / VS Code) sin abrir Xcode.
+# Usa el Xcode de /Applications aunque xcode-select apunte a las Command Line Tools.
+export DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
+
+XCODEGEN ?= $(shell command -v xcodegen || echo $(HOME)/.local/bin/xcodegen)
+PROJECT  := App/TaylorZwift.xcodeproj
+DERIVED  := build/DerivedData
+APP      := $(DERIVED)/Build/Products/Debug/TaylorZwift.app
+
+.PHONY: test project build build-ios run logs clean
+
+test:            ## Tests de CicloKit (sin hardware)
+	cd CicloKit && swift test
+
+project:         ## Regenera el .xcodeproj desde App/project.yml
+	cd App && $(XCODEGEN) generate
+
+build: project   ## Compila la app de Mac
+	xcodebuild -project $(PROJECT) -scheme TaylorZwift -destination 'platform=macOS,arch=arm64' \
+		-derivedDataPath $(DERIVED) -quiet build
+
+build-ios: project ## Comprueba que compila para iPhone/iPad (sin firmar)
+	xcodebuild -project $(PROJECT) -scheme TaylorZwift -destination 'generic/platform=iOS' \
+		-derivedDataPath $(DERIVED) -quiet CODE_SIGNING_ALLOWED=NO build
+
+run: build       ## Compila y abre la app de Mac
+	open $(APP)
+
+logs:            ## Muestra en vivo los logs de Bluetooth de la app
+	/usr/bin/log stream --style compact --predicate 'subsystem == "studio.martillo.taylorzwift"'
+
+clean:
+	rm -rf build
