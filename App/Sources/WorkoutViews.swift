@@ -55,6 +55,7 @@ struct WorkoutsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     ProfileBox()
+                    FreeRideCard()
                     PlanBox()
 
                     if ride.mode == .workout, let w = ride.workout {
@@ -135,6 +136,27 @@ struct WorkoutsView: View {
             }
             if !errors.isEmpty { importError = errors.joined(separator: "\n") }
         }
+    }
+}
+
+/// Acceso al entreno libre: sin plan ni estructura, a tu aire.
+private struct FreeRideCard: View {
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "bicycle.circle.fill").font(.system(size: 40)).foregroundStyle(Color.accentColor)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Entreno libre").font(.title3.bold())
+                Text("Sin plan ni intervalos: eliges la pendiente y la marcha y ruedas a tu aire. Cuenta distancia, tiempo, potencia y pulso.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Rodar libre", systemImage: "play.fill") { ride.startFreeRide() }
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(14)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 

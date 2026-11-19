@@ -25,18 +25,26 @@ struct TaylorZwiftApp: App {
 }
 
 struct ContentView: View {
+    @Environment(RideController.self) private var ride
+
     var body: some View {
-        TabView {
+        @Bindable var ride = ride
+        TabView(selection: $ride.selectedTab) {
             RideView()
                 .tabItem { Label("Rodar", systemImage: "figure.outdoor.cycle") }
+                .tag("rodar")
             WorkoutsView()
                 .tabItem { Label("Entrenar", systemImage: "figure.indoor.cycle") }
+                .tag("entrenar")
             TrainerView()
                 .tabItem { Label("Rodillo", systemImage: "bicycle") }
+                .tag("rodillo")
             ControllersView()
                 .tabItem { Label("Mandos", systemImage: "gamecontroller") }
+                .tag("mandos")
             LogView()
                 .tabItem { Label("Log", systemImage: "list.bullet.rectangle") }
+                .tag("log")
         }
     }
 }

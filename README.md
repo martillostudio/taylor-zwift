@@ -25,6 +25,10 @@ Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8
 3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG); **− (izq) o Y** = más blanda (−10 W).
 4. Desarrollo: carretera 2×12 (24 marchas), GRX 1×12 o SRAM XPLR 1×12. El pulsómetro se conecta solo si lo llevas puesto.
 
+## Entreno libre
+
+Pestaña **Rodar → Libre** (o «Rodar libre» en Entrenar): eliges la pendiente con el deslizador, los atajos o la cruceta ↑/↓ del mando izquierdo, y cambias de marcha con + / − como siempre. «Terminar» te da el resumen.
+
 ## Entrenos (pestaña «Entrenar»)
 
 1. Pon tu **FTP** y tu peso (o haz el **test de rampa**: al acabar te propone el FTP).

@@ -24,9 +24,31 @@ struct RideView: View {
                     Picker("Ruta", selection: $ride.route) {
                         ForEach(Route.builtIn) { Text($0.name).tag($0) }
                     }
+                }
+                if ride.mode == .free {
+                    HStack {
+                        Text("Pendiente")
+                        Slider(value: Binding(get: { ride.freeGrade }, set: { ride.setFreeGrade($0) }),
+                               in: -10...20, step: RideController.freeGradeStep)
+                        Text(ride.freeGradeText).monospacedDigit().frame(width: 64, alignment: .trailing)
+                        Button("", systemImage: "minus.circle") { ride.setFreeGrade(ride.freeGrade - RideController.freeGradeStep) }
+                        Button("", systemImage: "plus.circle") { ride.setFreeGrade(ride.freeGrade + RideController.freeGradeStep) }
+                    }
+                    HStack {
+                        Text("Atajos")
+                        ForEach([0.0, 3, 6, 8, 10], id: \.self) { g in
+                            Button("\(Int(g)) %") { ride.setFreeGrade(g) }
+                        }
+                    }
+                }
+                if ride.usesGears {
                     Picker("Desarrollo", selection: $ride.drivetrain) {
                         ForEach(Drivetrain.all) { Text($0.name).tag($0) }
                     }
+                }
+            } footer: {
+                if ride.mode == .free {
+                    Text("Rueda a tu aire: tú eliges la pendiente (o con la cruceta ↑/↓ del mando izquierdo) y la marcha. Al terminar, «Terminar» te da el resumen.")
                 }
             }
 
@@ -41,6 +63,23 @@ struct RideView: View {
             }
 
             controlsSection
+
+            if ride.mode != .workout, let s = ride.summary {
+                Section("Resumen") {
+                    HStack(spacing: 24) {
+                        Metric(title: "Distancia", value: (ride.session.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1))), unit: "km")
+                        Metric(title: "Tiempo", value: Duration.seconds(ride.session.movingSeconds).formatted(.time(pattern: .hourMinuteSecond)), unit: "")
+                        Metric(title: "Media", value: ride.session.averagePowerWatts.map { "\($0)" }, unit: "W")
+                        Metric(title: "Pulso medio", value: ride.session.averageHeartRateBpm.map { "\($0)" }, unit: "ppm")
+                    }
+                    Text("Mejor 1': \(watts(s.best1Min)) · mejor 5': \(watts(s.best5Min)) · mejor 20': \(watts(s.best20Min))")
+                        .foregroundStyle(.secondary)
+                    if let v = s.vo2max {
+                        Text("VO2max estimado ≈ \(Int(v.rounded())) ml/kg/min (solo vale si hiciste 5' a tope).")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
     }
@@ -73,8 +112,8 @@ struct RideView: View {
     private var dashboardSection: some View {
         Section {
             HStack(alignment: .top, spacing: 16) {
-                if ride.mode == .route {
-                    GradeTile(grade: ride.currentGrade)
+                if ride.usesGears {
+                    GradeTile(grade: ride.mode == .free ? ride.freeGrade : ride.currentGrade)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Marcha").font(.caption).foregroundStyle(.secondary)
                         Text("\(ride.gears.number)")
@@ -216,6 +255,10 @@ struct RideView: View {
                     Button("Empezar", systemImage: "play.fill") { ride.start() }
                         .disabled(hub.trainerConnection != .connected)
                 }
+                if ride.mode != .workout {
+                    Button("Terminar", systemImage: "flag.checkered") { ride.finish() }
+                        .disabled(ride.session.movingSeconds == 0)
+                }
                 Button("A cero", systemImage: "arrow.counterclockwise") { ride.reset() }
                 Spacer()
                 Button(ride.usesGears ? "Marcha −" : ride.mode == .erg ? "−\(RideController.ergStep) W" : "Intensidad −",
@@ -226,10 +269,14 @@ struct RideView: View {
         } footer: {
             Text(ride.mode == .workout
                  ? "Entreno estructurado: elígelo y síguelo en la pestaña «Entrenar»."
-                 : ride.mode == .route
+                 : ride.usesGears
                  ? "Mandos: + (dcha) o Z, marcha más dura; − (izq) o Y, más blanda. En una subida, baja de marcha para mantener la cadencia."
                  : "Mandos: + (dcha) o Z, +\(RideController.ergStep) W; − (izq) o Y, −\(RideController.ergStep) W. En ERG, mantén la cadencia por encima de ~70 rpm.")
         }
+    }
+
+    private func watts(_ v: Double?) -> String {
+        v.map { "\(Int($0.rounded())) W" } ?? "—"
     }
 
     private func km(_ meters: Double) -> String {
