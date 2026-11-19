@@ -6,7 +6,7 @@ App de entrenamiento indoor (estilo MyWhoosh/Zwift) para macOS, iPadOS e iOS, es
 - Mandos: Zwift Click V2 para marchas virtuales.
 - Código abierto.
 
-**Estado:** Fase 1 — pruebas con rodillo y mandos (código listo, falta probar con el hardware).
+**Estado:** Fase 2 — pestaña «Rodar» para entrenar: rutas en modo SIM con 24 marchas virtuales, ERG y reconexión automática (falta probarla en el rodillo).
 
 ## Uso rápido
 
@@ -17,6 +17,12 @@ make logs   # logs de Bluetooth en vivo
 ```
 
 Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8. Ver [docs/GUIA.md](docs/GUIA.md).
+
+## Entrenar (pestaña «Rodar»)
+
+1. `make run`, pestaña **Rodar** → «Conectar rodillo y mandos».
+2. Elige **Ruta (SIM)** y una ruta, o **ERG**, y pulsa **Empezar**.
+3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG); **− (izq) o Y** = más blanda (−10 W).
 
 ## Taylor Mandos: los Click V2 como mando de MyWhoosh
 

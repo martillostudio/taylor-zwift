@@ -76,6 +76,8 @@ public final class BluetoothHub: NSObject {
     public private(set) var lastMachineStatus = "—"
     /// Último modo que le hemos mandado al rodillo («SIM 0,0 %», «ERG 150 W»…).
     public private(set) var trainerMode = "—"
+    /// Último objetivo mandado: se vuelve a mandar si el rodillo se desconecta y vuelve.
+    public private(set) var trainerTarget: TrainerTarget?
 
     public private(set) var clicks: [ClickState] = []
     /// Botones pulsados ahora en cualquiera de los mandos (sin duplicados).
@@ -95,6 +97,12 @@ public final class BluetoothHub: NSObject {
     /// Segundos sin noticias de un mando (los Click mandan la batería cada ~5 s) antes de reconectarlo.
     @ObservationIgnored public var silenceBeforeReconnect: Double = 20
     @ObservationIgnored private var lastClickMessage: [UUID: Double] = [:]
+    /// Conectar solo el primer rodillo que aparezca (ver `connectEverything()`).
+    @ObservationIgnored private var autoConnectTrainer = false
+    /// El usuario quiere el rodillo conectado: si se cae, lo reconectamos.
+    @ObservationIgnored private var trainerWanted = false
+    /// Mandos que el usuario ha desconectado a mano: esos no se reconectan solos.
+    @ObservationIgnored private var userDisconnected: Set<UUID> = []
     @ObservationIgnored private var watchdog: Timer?
 
     // MARK: CoreBluetooth
@@ -151,6 +159,7 @@ public final class BluetoothHub: NSObject {
         case .trainer:
             if let old = trainer, old.identifier != p.identifier { central.cancelPeripheralConnection(old) }
             trainer = p
+            trainerWanted = true
             trainerName = device.name
             trainerConnection = .connecting
             hasControl = false
@@ -160,6 +169,7 @@ public final class BluetoothHub: NSObject {
             if !clicks.contains(where: { $0.id == p.identifier }) {
                 clicks.append(ClickState(id: p.identifier, name: device.name))
             }
+            userDisconnected.remove(p.identifier)
             updateClick(p.identifier) { $0.connection = .connecting }
         case .other:
             addLog("«\(device.name)» no es ni rodillo ni mando: conecto solo para listar sus servicios")
@@ -170,10 +180,13 @@ public final class BluetoothHub: NSObject {
 
     public func disconnect(_ id: UUID) {
         guard let p = peripherals[id] else { return }
+        userDisconnected.insert(id)
         central.cancelPeripheralConnection(p)
     }
 
     public func disconnectTrainer() {
+        trainerWanted = false
+        autoConnectTrainer = false
         if let trainer { central.cancelPeripheralConnection(trainer) }
     }
 
@@ -183,22 +196,46 @@ public final class BluetoothHub: NSObject {
 
     /// Modo SIM: cambia la pendiente.
     public func setGrade(_ percent: Double) {
-        trainerMode = "SIM \(percent.formatted(.number.precision(.fractionLength(1)))) %"
-        sendWithControl(.setSimulation(SimulationParameters(gradePercent: percent)))
+        apply(.simulation(SimulationParameters(gradePercent: percent)))
     }
 
     /// Modo ERG: fija la potencia.
     public func setTargetPower(_ watts: Int) {
-        trainerMode = "ERG \(watts) W"
-        sendWithControl(.setTargetPower(watts: watts))
+        apply(.targetPower(watts: watts))
+    }
+
+    /// Manda un objetivo al rodillo (pidiendo antes el control si hace falta) y lo recuerda
+    /// para volver a mandarlo si el rodillo se reconecta.
+    public func apply(_ target: TrainerTarget) {
+        trainerTarget = target
+        trainerMode = target.description
+        sendWithControl(target.command)
+    }
+
+    /// Conecta solo el rodillo y los mandos que encuentre, y los reconecta si se caen.
+    public func connectEverything() {
+        autoConnectTrainer = true
+        if !autoConnectClicks {
+            startAutoConnectClicks(log: "Conexión automática: rodillo y mandos (y reconexión si se caen)")
+        } else if central.state == .poweredOn, !isScanning {
+            startScan()
+        }
+        // Si ya habíamos visto un rodillo, no hace falta esperar al escaneo.
+        if trainerConnection == .disconnected, let t = devices.first(where: { $0.kind == .trainer }) {
+            connect(t)
+        }
     }
 
     /// Modo puente: escanea, conecta todos los Click que encuentre y los mantiene conectados.
     /// No toca el rodillo (lo controla la otra app, p. ej. MyWhoosh).
     public func startBridgeMode() {
         guard !autoConnectClicks else { return }
+        startAutoConnectClicks(log: "Modo puente: conecto los mandos automáticamente y los reconecto si se caen")
+    }
+
+    private func startAutoConnectClicks(log text: String) {
         autoConnectClicks = true
-        addLog("Modo puente: conecto los mandos automáticamente y los reconecto si se caen")
+        addLog(text)
         if central.state == .poweredOn {
             startScan()
             adoptSystemConnectedClicks()
@@ -359,8 +396,11 @@ public final class BluetoothHub: NSObject {
             }
         }
 
-        if autoConnectClicks, kind == .click,
+        if autoConnectClicks, kind == .click, !userDisconnected.contains(p.identifier),
            (clicks.first(where: { $0.id == p.identifier })?.connection ?? .disconnected) == .disconnected {
+            connect(device)
+        }
+        if autoConnectTrainer, kind == .trainer, trainer == nil, trainerConnection == .disconnected {
             connect(device)
         }
     }
@@ -382,7 +422,16 @@ public final class BluetoothHub: NSObject {
             trainerConnection = .disconnected
             hasControl = false
             controlPoint = nil
-            trainerMode = "—"
+            commandAfterControl = nil
+            if trainerWanted {
+                // CoreBluetooth deja la conexión pendiente y conecta en cuanto el rodillo vuelve.
+                trainerConnection = .connecting
+                addLog("↻ Reconectando «\(label(p))»…")
+                central.connect(p, options: nil)
+            } else {
+                trainerMode = "—"
+                trainerTarget = nil
+            }
         }
         clickSyncRX[p.identifier] = nil
         updateClick(p.identifier) {
@@ -393,9 +442,9 @@ public final class BluetoothHub: NSObject {
         buttonAggregator.remove(source: p.identifier)
         buttonsPressed = buttonAggregator.pressed
 
-        // Modo puente: volvemos a pedir la conexión. CoreBluetooth la deja pendiente
-        // y conecta en cuanto el mando vuelve a estar a tiro (o se despierta).
-        if autoConnectClicks, clicks.contains(where: { $0.id == p.identifier }) {
+        // Volvemos a pedir la conexión (salvo que el usuario lo haya desconectado a mano).
+        // CoreBluetooth la deja pendiente y conecta en cuanto el mando vuelve a estar a tiro.
+        if clicks.contains(where: { $0.id == p.identifier }), !userDisconnected.contains(p.identifier) {
             updateClick(p.identifier) { $0.connection = .connecting }
             addLog("↻ Reconectando «\(label(p))»…")
             central.connect(p, options: nil)
@@ -443,10 +492,16 @@ public final class BluetoothHub: NSObject {
         }
         addLog("Suscrito a \(c.uuid.uuidString)")
         // El rodillo recuerda el último modo (p. ej. un ERG de otra sesión o de otra app)
-        // mientras siga encendido. Al conectar lo dejamos en llano para empezar limpios.
+        // mientras siga encendido. Al conectar lo dejamos en llano para empezar limpios;
+        // si es una reconexión, recuperamos lo que estábamos haciendo.
         if c.uuid == Self.controlPointUUID, p.identifier == trainer?.identifier {
-            addLog("Rodillo listo: lo pongo en llano (SIM 0 %) para borrar el modo anterior")
-            setGrade(0)
+            if let target = trainerTarget {
+                addLog("Rodillo listo: recupero el modo anterior (\(target.description))")
+                apply(target)
+            } else {
+                addLog("Rodillo listo: lo pongo en llano (SIM 0 %) para borrar el modo anterior")
+                apply(.flat)
+            }
         }
         // Cuando ya escuchamos las respuestas del mando, le mandamos el saludo.
         if c.uuid == Self.clickSyncTXUUID, let rx = clickSyncRX[p.identifier] {

@@ -132,11 +132,19 @@ Dos pantallas mínimas dentro de la app, sin diseño:
 Criterio para pasar a Fase 2: A funciona y **los dos mandos son usables durante 30 min seguidos** en el Mac. Si algo falla, se corrige el plan aquí antes de seguir.
 
 ### Fase 2 — MVP para entrenar
-- Pantalla de rodaje: potencia, cadencia, velocidad, distancia, tiempo, pendiente, marcha.
-- Modo **SIM**: ruta simple (perfil de pendientes) → física → pendiente al rodillo.
-- **Marchas virtuales** con los mandos (cambian la resistencia efectiva).
-- Modo **ERG** con potencia fija.
-- Reconexión automática.
+Pestaña **«Rodar»** de la app TaylorZwift (19-nov: primera versión escrita, falta probarla en el rodillo).
+
+- [x] Pantalla de rodaje: potencia, cadencia, velocidad, distancia, tiempo, media, trabajo, pendiente, marcha y perfil de la ruta.
+- [x] Modo **SIM** con rutas sencillas incluidas (llano, ondulado, puerto 8 km al 6 %): la pendiente sale de la distancia recorrida, suavizada en 50 m y mandada como mucho 1 vez/s.
+- [x] **Marchas virtuales** (24, de 0,5× a 1,7×): ver abajo.
+- [x] Modo **ERG** con los mismos botones (±10 W).
+- [x] **Reconexión automática** del rodillo y los mandos; al volver, el rodillo recupera el último modo. Botón «Conectar rodillo y mandos».
+- [ ] Probarlo en el rodillo: ¿se notan las marchas en llano y en subida? ¿Respeta el Kickr el Crr y el CdA del comando SIM?
+
+**Cómo funcionan las marchas virtuales.** El rodillo tiene un desarrollo real fijo: la velocidad de su volante solo depende de la cadencia. Para una marcha *k* veces más dura, la velocidad «de carretera» es *k* veces la del volante y hay que pedir *k* veces la fuerza de pendiente y rodadura y *k³* la del aire:
+`F' = k·m·g·(pendiente + Crr) + k³·½ρCdA·v²`. Eso se consigue mandando en el comando SIM `pendiente·k`, `Crr·k` y `CdA·k³`; el rodillo hace el resto con su física, sin bucles de control. El tope de 1,7× sale del máximo de CdA de FTMS (2,55 kg/m con 0,51 de base). Código: `CicloKit/Ride/VirtualGears.swift`.
+
+**Botones** (los mismos que «Taylor Mandos»): + (dcha) o Z, marcha más dura / +10 W; − (izq) o Y, más blanda / −10 W.
 
 ### Fase 3 — Extras
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
@@ -187,3 +195,4 @@ Notas:
 | 2026-11-19 | **Prueba A superada** (datos, control, SIM y ERG). Prueba B: los dos mandos y todos los botones funcionan; falta la prueba de 30 min del izquierdo. |
 | 2026-11-19 | Opcode `0x19` del Click = batería (campo 2, %). |
 | 2026-11-19 | App aparte **Taylor Mandos** (target `TaylorMandos`): reenvía los Click V2 a MyWhoosh como mando **OpenBikeControl** por red (Bonjour `_openbikecontrol._tcp` + TCP, paquete `CicloNetwork`) y, como plan B en el Mac, como teclas K/I. Sin sandbox en macOS (simular teclas lo exige). Reconexión automática de los mandos y reconexión si un mando pasa 20 s sin mandar nada. |
+| 2026-11-19 | Fase 2, primera versión: pestaña «Rodar» con rutas en SIM, 24 marchas virtuales (escalando pendiente·k, Crr·k y CdA·k³ en el comando SIM), ERG ±10 W y reconexión automática que recupera el último modo. Lógica en `CicloKit/Ride` con tests. |
