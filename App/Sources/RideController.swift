@@ -116,8 +116,6 @@ final class RideController {
     @ObservationIgnored private var cadenceSum = 0.0
     @ObservationIgnored private var cadenceCount = 0
     private(set) var averageCadence: Int?
-    /// Pendiente suavizada (la de ERG baila con cada pedalada).
-    @ObservationIgnored private var smoothedGrade: Double?
 
     static let ergStep = 10
     static let ergRange = 50...1000
@@ -211,8 +209,17 @@ final class RideController {
         return Int((Double(powerHistory.samples.count) / 3600 * f * f * 100).rounded())
     }
 
-    /// ¿Se está mostrando una pendiente calculada (ERG) en vez de la de la ruta?
-    var gradeIsEquivalent: Bool { !usesGears && (mode == .erg || mode == .workout) }
+    /// Pulso máximo recomendado en los entrenos de base (Z1–Z2): el 70 % de tu FC máxima.
+    /// Si lo pasas, estás en la «zona gris» y conviene bajar la intensidad.
+    var heartRateCap: Int? {
+        guard mode == .workout, let w = workout, w.ftpTest == nil, w.mainZone <= .z2 else { return nil }
+        return Int((Double(maxHeartRate) * HeartRateZone.z2.highFraction).rounded())
+    }
+
+    var heartRateAboveCap: Bool {
+        guard let cap = heartRateCap, let bpm = hub.heartRateBpm, isRunning else { return false }
+        return bpm > cap
+    }
 
     /// Dónde vas dentro del entrenamiento estructurado.
     var workoutProgress: WorkoutProgress? {
@@ -293,7 +300,6 @@ final class RideController {
         cadenceSum = 0
         cadenceCount = 0
         averageCadence = nil
-        smoothedGrade = nil
         let what = switch mode {
         case .free: "libre"
         case .route: route.name
@@ -527,15 +533,15 @@ final class RideController {
             if usesGears {
                 speedKmh = gears.virtualSpeed(fromTrainerKmh: kmh)
             } else {
-                // En ERG el rodillo manda los vatios: la velocidad sale de tu cadencia y la marcha
-                // en la que te quedaste, como en la calle.
-                let rpm = data.cadenceRpm ?? 0
-                speedKmh = rpm * gears.gear.developmentMeters * 60 / 1000
+                // En ERG el rodillo manda los vatios: la velocidad es la que llevarías en llano
+                // con esa potencia (como Zwift o TrainerRoad). Sin pedalear, parado.
+                let watts = Double(data.powerWatts ?? 0)
+                speedKmh = (data.cadenceRpm ?? 0) > 0 && watts > 0 ? physics.speed(powerWatts: watts, gradePercent: 0) : 0
             }
         } else {
             speedKmh = nil
         }
-        updateGrade(data)
+        updateGrade()
 
         guard isRunning else { return }
         if trainerConnected {
@@ -584,24 +590,15 @@ final class RideController {
     }
 
     /// Pendiente que se enseña: la de la ruta, la libre, o la equivalente en ERG.
-    private func updateGrade(_ data: IndoorBikeData) {
+    private func updateGrade() {
         switch mode {
         case .route:
             currentGrade = route.grade(atDistance: session.distanceMeters)
         case .free:
             currentGrade = freeGrade
         case .erg, .workout:
-            if usesGears {
-                currentGrade = freeGrade
-                smoothedGrade = nil
-            } else if let watts = data.powerWatts, let kmh = speedKmh,
-                      let g = physics.grade(powerWatts: Double(watts), speedKmh: kmh) {
-                let s = smoothedGrade.map { $0 + 0.15 * (g - $0) } ?? g
-                smoothedGrade = s
-                currentGrade = (s * 10).rounded() / 10
-            } else {
-                currentGrade = 0
-            }
+            // Tramo libre: la pendiente de la cruceta. ERG: llano.
+            currentGrade = usesGears ? freeGrade : 0
         }
     }
 

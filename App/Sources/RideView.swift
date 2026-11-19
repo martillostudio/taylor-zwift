@@ -14,7 +14,7 @@ struct RideView: View {
     var body: some View {
         @Bindable var ride = ride
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Space.l) {
                 header
                 M3SegmentedButtons(options: [
                     (RideController.Mode.free, "Libre", "bicycle"),
@@ -23,7 +23,15 @@ struct RideView: View {
                     (.workout, "Entreno", "list.bullet.rectangle"),
                 ], selection: $ride.mode)
 
-                liveCard
+                if let summary = ride.summary, ride.mode != .workout { summaryCard(summary) }
+
+                M3Card(style: .filled, padding: Space.xl) {
+                    VStack(alignment: .leading, spacing: Space.l) {
+                        LiveHero()
+                        Divider().overlay(M3.outlineVariant)
+                        LiveStrip()
+                    }
+                }
 
                 switch ride.mode {
                 case .free: freeCard
@@ -33,14 +41,14 @@ struct RideView: View {
                 }
 
                 if ride.usesGears { gearCard }
-                LiveMetricsCard()
-                if let summary = ride.summary, ride.mode != .workout { summaryCard(summary) }
             }
-            .padding(24)
-            .padding(.bottom, 80)
+            .padding(Space.xl)
+            .padding(.bottom, 96) // sitio para la barra de acciones flotante
+            .frame(maxWidth: Space.contentWidth)
+            .frame(maxWidth: .infinity)
         }
         .background(M3.surface)
-        .overlay(alignment: .bottomTrailing) { actionBar.padding(24) }
+        .overlay(alignment: .bottom) { actionBar.padding(Space.xl) }
     }
 
     // MARK: Cabecera y conexión
@@ -69,41 +77,6 @@ struct RideView: View {
         case .connected: .green
         case .connecting: .orange
         case .disconnected: M3.outline
-        }
-    }
-
-    // MARK: Datos en vivo
-
-    private var liveCard: some View {
-        let power = hub.bikeData.powerWatts
-        let zone = power.map { PowerZone(fractionOfFTP: Double($0) / Double(max(ride.ftp, 1))) }
-        let hrZone = hub.heartRateBpm.map { HeartRateZone(bpm: $0, max: ride.maxHeartRate) }
-        return M3Card(style: .filled, padding: 20) {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top, spacing: 16) {
-                    M3Stat(title: "Potencia", value: power.map { "\($0)" } ?? "—", unit: "W", size: .displayLarge,
-                           color: zone?.color ?? M3.onSurface,
-                           caption: zone.map { "Z\($0.rawValue) · \($0.name)" })
-                    if let target = ride.targetWatts {
-                        M3Stat(title: "Objetivo", value: "\(target)", unit: "W", size: .displayMedium, color: M3.primary,
-                               caption: "\(Int((Double(target) / Double(ride.ftp) * 100).rounded())) % FTP")
-                    }
-                    M3Stat(title: "Cadencia", value: hub.bikeData.cadenceRpm.map { "\(Int($0))" } ?? "—", unit: "rpm", size: .displayMedium)
-                    M3Stat(title: "Pulso", value: hub.heartRateBpm.map { "\($0)" } ?? "—", unit: "ppm", size: .displayMedium,
-                           color: hrZone?.color ?? M3.onSurface,
-                           caption: hrZone.map { "Z\($0.rawValue) · \($0.name)" })
-                }
-                Divider().overlay(M3.outlineVariant)
-                HStack(spacing: 16) {
-                    M3Stat(title: "Velocidad", value: ride.speedKmh.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—",
-                           unit: "km/h", size: .headlineMedium)
-                    M3Stat(title: "Distancia", value: (ride.session.distanceMeters / 1000).formatted(.number.precision(.fractionLength(2))),
-                           unit: "km", size: .headlineMedium)
-                    M3Stat(title: "Tiempo", value: formatClock(ride.session.movingSeconds), size: .headlineMedium)
-                    M3Stat(title: "Media", value: ride.session.averagePowerWatts.map { "\($0)" } ?? "—", unit: "W", size: .headlineMedium)
-                    M3Stat(title: "Trabajo", value: "\(ride.session.workKilojoules)", unit: "kJ", size: .headlineMedium)
-                }
-            }
         }
     }
 
@@ -298,8 +271,9 @@ struct RideView: View {
                     .disabled(hub.trainerConnection != .connected)
             }
         }
-        .padding(8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: M3.Shape.extraLarge))
+        .padding(Space.s)
+        .background(.regularMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
     }
 
     private func summaryCard(_ s: RideSummary) -> some View {
