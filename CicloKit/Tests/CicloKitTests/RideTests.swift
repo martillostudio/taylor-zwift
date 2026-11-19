@@ -12,20 +12,24 @@ struct VirtualGearsTests {
     @Test func extremosYLimites() {
         var g = VirtualGears(index: 0)
         #expect(abs(g.ratio - 0.5) < 1e-9)
-        #expect(g.shiftDown() == false)
+        let couldGoDown = g.shiftDown()
+        #expect(!couldGoDown)
         #expect(g.number == 1)
         g = VirtualGears(index: 23)
         #expect(abs(g.ratio - 1.7) < 1e-9)
-        #expect(g.shiftUp() == false)
+        let couldGoUp = g.shiftUp()
+        #expect(!couldGoUp)
         #expect(g.number == 24)
     }
 
     @Test func subirYBajar() {
         var g = VirtualGears()
         let start = g.index
-        #expect(g.shiftUp())
+        let up = g.shiftUp()
+        #expect(up)
         #expect(g.index == start + 1)
-        #expect(g.shiftDown())
+        let down = g.shiftDown()
+        #expect(down)
         #expect(g.index == start)
     }
 
