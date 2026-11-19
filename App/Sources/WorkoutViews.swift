@@ -423,6 +423,38 @@ struct WorkoutChart: View {
     var elapsed: Double?
     var height: CGFloat = 140
     var showAxes = true
+    /// Lo que llevas hecho (vatios reales), dibujado encima del perfil.
+    var trace: [RideController.TracePoint] = []
+    var ftp: Int = 0
+    /// Trozo a enseñar, en minutos (`nil` = el entreno entero).
+    var window: ClosedRange<Double>?
+
+    private struct TraceBucket: Identifiable {
+        let id: Int
+        let minute: Double
+        let percent: Double
+    }
+
+    /// Medias de 10 s de la potencia real, en % del FTP.
+    private var traceBuckets: [TraceBucket] {
+        guard ftp > 0, !trace.isEmpty else { return [] }
+        var result: [TraceBucket] = []
+        var i = 0
+        while i < trace.count {
+            let chunk = trace[i..<min(i + 10, trace.count)]
+            let avg = Double(chunk.map(\.power).reduce(0, +)) / Double(chunk.count)
+            let t = chunk.map(\.t).reduce(0, +) / Double(chunk.count)
+            result.append(TraceBucket(id: result.count, minute: t / 60, percent: avg / Double(ftp) * 100))
+            i += 10
+        }
+        return result
+    }
+
+    /// % FTP que toca en el segundo `t` (`nil` en tramos libres).
+    private func targetPercent(at t: Double) -> Double? {
+        guard let s = workout.segments.last(where: { Double($0.startSeconds) <= t }) else { return nil }
+        return s.power(at: t).map { $0 * 100 }
+    }
 
     private struct Bar: Identifiable {
         let id: Int
@@ -460,7 +492,13 @@ struct WorkoutChart: View {
                     xStart: .value("min", b.start), xEnd: .value("min", b.end),
                     yStart: .value("%", 0), yEnd: .value("%", b.power)
                 )
-                .foregroundStyle(b.color)
+                .foregroundStyle(b.color.opacity(elapsed.map { b.end * 60 <= $0 ? 0.35 : 1 } ?? 1))
+            }
+            ForEach(traceBuckets) { p in
+                LineMark(x: .value("min", p.minute), y: .value("%", p.percent), series: .value("serie", "real"))
+                    .foregroundStyle(M3.onSurface)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    .interpolationMethod(.monotone)
             }
             if showAxes {
                 RuleMark(y: .value("%", 100))
@@ -469,15 +507,28 @@ struct WorkoutChart: View {
             }
             if let elapsed {
                 RuleMark(x: .value("min", elapsed / 60))
-                    .foregroundStyle(Color.primary)
+                    .foregroundStyle(M3.primary)
                     .lineStyle(StrokeStyle(lineWidth: 2))
+                PointMark(x: .value("min", elapsed / 60), y: .value("%", targetPercent(at: elapsed) ?? 50))
+                    .symbol(.circle)
+                    .symbolSize(showAxes ? 160 : 70)
+                    .foregroundStyle(M3.primary)
+                    .annotation(position: .top, spacing: 4) {
+                        if showAxes {
+                            Text("Estás aquí")
+                                .font(M3.font(.labelMedium)).foregroundStyle(M3.onPrimary)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(M3.primary, in: Capsule())
+                        }
+                    }
             }
         }
-        .chartXScale(domain: 0...max(Double(workout.durationSeconds) / 60, 1))
+        .chartXScale(domain: window ?? 0...max(Double(workout.durationSeconds) / 60, 1))
         .chartXAxis(showAxes ? .automatic : .hidden)
         .chartYAxis(showAxes ? .automatic : .hidden)
         .chartXAxisLabel(showAxes ? "min" : "")
         .chartYAxisLabel(showAxes ? "% FTP" : "")
+        .chartPlotStyle { $0.clipped() }
         .frame(height: height)
     }
 }
@@ -496,14 +547,16 @@ struct WorkoutDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 if isLoaded {
-                    liveCard
                     if let summary = ride.summary { summaryCard(summary) }
-                }
-                M3Card(style: .filled) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("PERFIL").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
-                        WorkoutChart(workout: workout, elapsed: isLoaded ? ride.workoutSeconds : nil, height: 160)
-                        ZoneBar(workout: workout)
+                    liveCard
+                    LiveMetricsCard()
+                } else {
+                    M3Card(style: .filled) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("PERFIL").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                            WorkoutChart(workout: workout, height: 160)
+                            ZoneBar(workout: workout)
+                        }
                     }
                 }
                 segmentsCard
@@ -553,13 +606,16 @@ struct WorkoutDetailView: View {
                         M3Stat(title: "Objetivo", value: progress == nil ? "—" : "Libre", size: .displayLarge,
                                caption: progress == nil ? nil : "Marcha \(ride.gearText)")
                     }
-                    M3Stat(title: "Potencia", value: hub.bikeData.powerWatts.map { "\($0)" } ?? "—", unit: "W", size: .displayMedium)
+                    M3Stat(title: "Potencia 3 s", value: ride.power3s.map { "\($0)" } ?? "—", unit: "W", size: .displayMedium,
+                           color: ride.power3s.map { PowerZone(fractionOfFTP: Double($0) / Double(max(ride.ftp, 1))).color } ?? M3.onSurface,
+                           caption: watts.flatMap { w in ride.power3s.map { p in deltaText(p - w) } })
                     M3Stat(title: "Cadencia", value: hub.bikeData.cadenceRpm.map { "\(Int($0))" } ?? "—", unit: "rpm", size: .displayMedium,
                            color: progress?.segment.cadence == nil ? M3.onSurface : .orange,
                            caption: progress?.segment.cadence.map { "Objetivo \($0) rpm" }, captionColor: .orange)
                     M3Stat(title: "Pulso", value: hub.heartRateBpm.map { "\($0)" } ?? "—", unit: "ppm", size: .displayMedium,
                            color: hrZone?.color ?? M3.onSurface, caption: hrZone.map { "Z\($0.rawValue) \($0.name)" })
                 }
+                profile
                 if let p = progress {
                     HStack(alignment: .top, spacing: 16) {
                         M3Stat(title: "Queda en el tramo", value: formatClock(p.secondsLeftInSegment), size: .displaySmall, color: M3.primary)
@@ -581,6 +637,35 @@ struct WorkoutDetailView: View {
                         .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
                 }
             }
+        }
+    }
+
+    private func deltaText(_ d: Int) -> String {
+        abs(d) <= 3 ? "En objetivo" : (d > 0 ? "+\(d) W de más" : "\(d) W")
+    }
+
+    /// Perfil entero con «Estás aquí» y, debajo, un zoom de lo que viene (los próximos 15').
+    private var profile: some View {
+        let minutes = ride.workoutSeconds / 60
+        let total = Double(workout.durationSeconds) / 60
+        let span = min(20, total)
+        let lower = min(max(minutes - 5, 0), max(total - span, 0))
+        return VStack(alignment: .leading, spacing: 8) {
+            WorkoutChart(workout: workout, elapsed: ride.workoutSeconds, height: 70, showAxes: false,
+                         trace: ride.trace, ftp: ride.ftp)
+            if total > span {
+                Text("PRÓXIMOS MINUTOS").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                WorkoutChart(workout: workout, elapsed: ride.workoutSeconds, height: 170,
+                             trace: ride.trace, ftp: ride.ftp, window: lower...(lower + span))
+            } else {
+                WorkoutChart(workout: workout, elapsed: ride.workoutSeconds, height: 170,
+                             trace: ride.trace, ftp: ride.ftp)
+            }
+            HStack(spacing: 16) {
+                Label("Plan", systemImage: "square.fill").foregroundStyle(M3.onSurfaceVariant)
+                Label("Lo que llevas", systemImage: "line.diagonal").foregroundStyle(M3.onSurface)
+            }
+            .font(M3.font(.labelMedium))
         }
     }
 

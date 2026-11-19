@@ -33,6 +33,7 @@ struct RideView: View {
                 }
 
                 if ride.usesGears { gearCard }
+                LiveMetricsCard()
                 if let summary = ride.summary, ride.mode != .workout { summaryCard(summary) }
             }
             .padding(24)

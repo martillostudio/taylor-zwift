@@ -101,6 +101,24 @@ final class RideController {
     private(set) var summary: RideSummary?
     private(set) var importedWorkouts: [Workout] = []
 
+    /// Un punto por segundo del entreno, para pintar lo que llevas sobre el perfil.
+    struct TracePoint: Identifiable, Equatable {
+        var id: Int { Int(t) }
+        let t: Double
+        let power: Int
+        let heartRate: Int?
+    }
+    private(set) var trace: [TracePoint] = []
+    /// Desnivel positivo virtual (ruta, libre o pendiente equivalente en ERG).
+    private(set) var elevationGain = 0.0
+    /// Segundos en cada zona de pulso.
+    private(set) var heartRateZoneSeconds: [HeartRateZone: Double] = [:]
+    @ObservationIgnored private var cadenceSum = 0.0
+    @ObservationIgnored private var cadenceCount = 0
+    private(set) var averageCadence: Int?
+    /// Pendiente suavizada (la de ERG baila con cada pedalada).
+    @ObservationIgnored private var smoothedGrade: Double?
+
     static let ergStep = 10
     static let ergRange = 50...1000
     static let intensityStep = 0.02
@@ -166,6 +184,35 @@ final class RideController {
     }
 
     var gearText: String { "\(gears.number)/\(gears.count) (\(gears.gear.label))" }
+
+    /// Tú (con tu peso) más la bici.
+    var physics: RiderPhysics { RiderPhysics(riderKg: weightKg) }
+
+    /// Potencia media de los últimos 3 s (lo que se suele mirar: el dato instantáneo baila).
+    var power3s: Int? {
+        guard isRunning, powerHistory.samples.count >= 3 else { return hub.bikeData.powerWatts }
+        return Int((Double(powerHistory.samples.suffix(3).reduce(0, +)) / 3).rounded())
+    }
+
+    /// Potencia normalizada de lo que llevas (desde 30 s).
+    var normalizedPower: Int? {
+        let s = powerHistory.samples
+        guard s.count >= 30 else { return nil }
+        return Int(Workout.normalized(s.map(Double.init)).rounded())
+    }
+
+    var liveIntensityFactor: Double? {
+        normalizedPower.map { Double($0) / Double(max(ftp, 1)) }
+    }
+
+    /// TSS acumulado: horas × IF² × 100.
+    var liveTSS: Int? {
+        guard let f = liveIntensityFactor else { return nil }
+        return Int((Double(powerHistory.samples.count) / 3600 * f * f * 100).rounded())
+    }
+
+    /// ¿Se está mostrando una pendiente calculada (ERG) en vez de la de la ruta?
+    var gradeIsEquivalent: Bool { !usesGears && (mode == .erg || mode == .workout) }
 
     /// Dónde vas dentro del entrenamiento estructurado.
     var workoutProgress: WorkoutProgress? {
@@ -240,6 +287,13 @@ final class RideController {
         powerHistory = PowerHistory()
         summary = nil
         lastSegmentID = nil
+        trace = []
+        elevationGain = 0
+        heartRateZoneSeconds = [:]
+        cadenceSum = 0
+        cadenceCount = 0
+        averageCadence = nil
+        smoothedGrade = nil
         let what = switch mode {
         case .free: "libre"
         case .route: route.name
@@ -291,7 +345,7 @@ final class RideController {
         let g = min(max((grade / Self.freeGradeStep).rounded() * Self.freeGradeStep, -10), 20)
         guard g != freeGrade else { return }
         freeGrade = g
-        if mode == .free { currentGrade = g }
+        if mode == .free || (mode == .workout && usesGears) { currentGrade = g }
         hub.appendLog("⛰ Pendiente libre: \(freeGradeText)")
         applyTarget(force: true)
     }
@@ -353,11 +407,12 @@ final class RideController {
     private func recordSample(_ data: IndoorBikeData) {
         guard let start = recording?.start else { return }
         let distance = session.distanceMeters
+        let before = virtualElevation
         switch mode {
         case .route: virtualElevation = route.elevation(atDistance: distance)
-        case .free: virtualElevation += freeGrade / 100 * (distance - lastDistance)
-        case .erg, .workout: break
+        case .free, .erg, .workout: virtualElevation += currentGrade / 100 * (distance - lastDistance)
         }
+        elevationGain += max(virtualElevation - before, 0)
         lastDistance = distance
         recording?.samples.append(ActivitySample(
             t: Date().timeIntervalSince(start),
@@ -366,7 +421,7 @@ final class RideController {
             speedKmh: speedKmh,
             distance: distance,
             heartRate: hub.heartRateBpm,
-            elevation: mode == .route || mode == .free ? virtualElevation : nil
+            elevation: virtualElevation
         ))
     }
 
@@ -439,8 +494,8 @@ final class RideController {
             switch action {
             case .shiftUp: harder()
             case .shiftDown: easier()
-            case .up where mode == .free: setFreeGrade(freeGrade + Self.freeGradeStep)
-            case .down where mode == .free: setFreeGrade(freeGrade - Self.freeGradeStep)
+            case .up where mode == .free || (mode == .workout && usesGears): setFreeGrade(freeGrade + Self.freeGradeStep)
+            case .down where mode == .free || (mode == .workout && usesGears): setFreeGrade(freeGrade - Self.freeGradeStep)
             default: break
             }
         }
@@ -462,10 +517,18 @@ final class RideController {
         }
 
         if trainerConnected, let kmh = data.speedKmh {
-            speedKmh = usesGears ? gears.virtualSpeed(fromTrainerKmh: kmh) : kmh
+            if usesGears {
+                speedKmh = gears.virtualSpeed(fromTrainerKmh: kmh)
+            } else {
+                // En ERG el rodillo manda los vatios: la velocidad sale de tu cadencia y la marcha
+                // en la que te quedaste, como en la calle.
+                let rpm = data.cadenceRpm ?? 0
+                speedKmh = rpm * gears.gear.developmentMeters * 60 / 1000
+            }
         } else {
             speedKmh = nil
         }
+        updateGrade(data)
 
         guard isRunning else { return }
         if trainerConnected {
@@ -480,6 +543,7 @@ final class RideController {
             while powerSampleDebt >= 1 {
                 powerHistory.append(data.powerWatts ?? 0)
                 recordSample(data)
+                accumulateStats(data)
                 powerSampleDebt -= 1
             }
         } else {
@@ -487,13 +551,10 @@ final class RideController {
         }
 
         switch mode {
-        case .free:
-            currentGrade = freeGrade
-        case .route:
-            currentGrade = route.grade(atDistance: session.distanceMeters)
-            announceClimb()
-        case .erg:
+        case .free, .erg:
             break
+        case .route:
+            announceClimb()
         case .workout:
             workoutSeconds += dt
             if let w = workout, workoutSeconds >= Double(w.durationSeconds) {
@@ -513,6 +574,43 @@ final class RideController {
             logStatus()
         }
         applyTarget(force: false, now: now)
+    }
+
+    /// Pendiente que se enseña: la de la ruta, la libre, o la equivalente en ERG.
+    private func updateGrade(_ data: IndoorBikeData) {
+        switch mode {
+        case .route:
+            currentGrade = route.grade(atDistance: session.distanceMeters)
+        case .free:
+            currentGrade = freeGrade
+        case .erg, .workout:
+            if usesGears {
+                currentGrade = freeGrade
+                smoothedGrade = nil
+            } else if let watts = data.powerWatts, let kmh = speedKmh,
+                      let g = physics.grade(powerWatts: Double(watts), speedKmh: kmh) {
+                let s = smoothedGrade.map { $0 + 0.15 * (g - $0) } ?? g
+                smoothedGrade = s
+                currentGrade = (s * 10).rounded() / 10
+            } else {
+                currentGrade = 0
+            }
+        }
+    }
+
+    /// Lo que se acumula una vez por segundo: traza del perfil, zonas de pulso, cadencia media.
+    private func accumulateStats(_ data: IndoorBikeData) {
+        if mode == .workout {
+            trace.append(TracePoint(t: workoutSeconds, power: data.powerWatts ?? 0, heartRate: hub.heartRateBpm))
+        }
+        if let bpm = hub.heartRateBpm, bpm > 0 {
+            heartRateZoneSeconds[HeartRateZone(bpm: bpm, max: maxHeartRate), default: 0] += 1
+        }
+        if let rpm = data.cadenceRpm, rpm > 0 {
+            cadenceSum += rpm
+            cadenceCount += 1
+            averageCadence = Int((cadenceSum / Double(cadenceCount)).rounded())
+        }
     }
 
     private func logStatus() {
@@ -563,7 +661,7 @@ final class RideController {
             if let watts = targetWatts {
                 .targetPower(watts: watts)
             } else {
-                .simulation(gears.simulation(gradePercent: 0)) // tramo libre: llano con marchas
+                .simulation(gears.simulation(gradePercent: freeGrade)) // tramo libre: marchas y la pendiente de la cruceta
             }
         }
     }
