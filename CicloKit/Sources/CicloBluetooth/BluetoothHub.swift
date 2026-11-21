@@ -230,11 +230,11 @@ public final class BluetoothHub: NSObject {
     }
 
     /// Una pulsación de mentira, como si viniera de los Click.
-    public func demoPress(_ button: ZwiftButton) {
+    public func demoPress(_ button: ZwiftButton, label: String? = nil) {
         guard isDemo else { return }
         lastButtonNames = button.names
         buttonPressCount += 1
-        addLog("🔘 \(button.names.joined(separator: " + ")) — mando de prueba")
+        addLog("🔘 \(label ?? button.names.joined(separator: " + ")) — mando de prueba")
         onButtonPress?(button)
     }
 

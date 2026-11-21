@@ -54,7 +54,7 @@ struct DemoPanel: View {
     }
 
     private func press(_ title: String, _ button: ZwiftButton, help: String) -> some View {
-        Button(title) { hub.demoPress(button) }
+        Button(title) { hub.demoPress(button, label: title) }
             .buttonStyle(.bordered)
             .font(Theme.font(.titleSmall).monospacedDigit())
             .help(help)

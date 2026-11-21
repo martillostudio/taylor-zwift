@@ -257,7 +257,7 @@ final class RideController {
         if now < finishArmedUntil {
             finishArmedUntil = 0
             finish()
-            show("🏁 Terminado y guardado", seconds: 3)
+            show(hub.isDemo ? "🏁 Terminado (modo prueba: no se guarda)" : "🏁 Terminado y guardado", seconds: 3)
         } else {
             finishArmedUntil = now + Self.finishConfirmSeconds
             show("Pulsa B otra vez para terminar", seconds: Self.finishConfirmSeconds)
