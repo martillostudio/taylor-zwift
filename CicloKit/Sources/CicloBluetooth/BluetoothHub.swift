@@ -105,6 +105,12 @@ public final class BluetoothHub: NSObject {
     public var demoEffort = 0.65 {
         didSet { demoRider.effort = demoEffort }
     }
+    /// Velocidad del tiempo en modo prueba (×1, ×10, ×30): para recorrer un entreno entero en minutos.
+    public var timeScale = 1.0 {
+        willSet { bankClock() }
+    }
+    @ObservationIgnored private var clockOffset = 0.0
+    @ObservationIgnored private var clockAnchor = ProcessInfo.processInfo.systemUptime
     @ObservationIgnored private var demoRider = DemoRider(ftp: 200)
     @ObservationIgnored private var demoTimer: Timer?
     @ObservationIgnored private var demoLastStep: Double?
@@ -172,6 +178,19 @@ public final class BluetoothHub: NSObject {
 
     // MARK: Modo prueba
 
+    /// Reloj de la sesión (segundos, siempre creciente). Es el del sistema, salvo en modo prueba
+    /// acelerado, donde corre `timeScale` veces más rápido. Lo usa todo lo que integra en el tiempo.
+    public func now() -> Double {
+        bankClock()
+        return clockAnchor + clockOffset
+    }
+
+    private func bankClock() {
+        let real = ProcessInfo.processInfo.systemUptime
+        clockOffset += (real - clockAnchor) * (timeScale - 1)
+        clockAnchor = real
+    }
+
     /// Conecta un rodillo, un pulsómetro y dos mandos de mentira (sin Bluetooth).
     /// Solo si no hay un rodillo de verdad conectado.
     public func startDemo(ftp: Int, maxHeartRate: Int) {
@@ -200,7 +219,7 @@ public final class BluetoothHub: NSObject {
             c.batteryPercent = 80
             return c
         }
-        demoTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        demoTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.demoStep() }
         }
         addLog("🧪 Modo prueba: rodillo, pulsómetro y mandos de mentira (FTP \(ftp) W). No se guarda ni se sube nada.")
@@ -208,6 +227,7 @@ public final class BluetoothHub: NSObject {
 
     public func stopDemo() {
         guard isDemo else { return }
+        timeScale = 1
         demoTimer?.invalidate()
         demoTimer = nil
         isDemo = false
@@ -239,8 +259,8 @@ public final class BluetoothHub: NSObject {
     }
 
     private func demoStep() {
-        let now = ProcessInfo.processInfo.systemUptime
-        let dt = demoLastStep.map { min(now - $0, 2) } ?? 0.5
+        let now = now()
+        let dt = demoLastStep.map { min(now - $0, 2) } ?? 0.05
         demoLastStep = now
         bikeData = demoRider.step(target: trainerTarget, dt: dt)
         heartRateBpm = demoRider.heartRateBpm

@@ -305,6 +305,8 @@ final class RideController {
     @ObservationIgnored private var lastSentTime = 0.0
     @ObservationIgnored private var lastStatusLog = 0.0
     @ObservationIgnored private var lastTick: Double?
+    /// Desde cuándo (reloj de la sesión) llevas parado en un test de rampa.
+    @ObservationIgnored private var rampStoppedSince: Double?
     @ObservationIgnored private var powerSampleDebt = 0.0
     @ObservationIgnored private var lastClimbAnnounced: Double?
     @ObservationIgnored private var lastSegmentID: Int?
@@ -346,10 +348,24 @@ final class RideController {
         hub.onClickAwake = { [weak self] _, awake in
             if awake { self?.show("🎮 Mando listo: ya puedes usar los botones") }
         }
+        // Para desarrollar: `open TaylorZwift.app --args -modoPrueba 30 -entreno test-rampa` arranca
+        // el modo prueba con el tiempo ×30 y, si se indica, empieza ese entreno solo.
+        let demoScale = UserDefaults.standard.double(forKey: "modoPrueba")
+        if demoScale > 0 {
+            startDemo()
+            hub.timeScale = demoScale
+            if let id = UserDefaults.standard.string(forKey: "entreno"),
+               let w = (Workout.library + importedWorkouts).first(where: { $0.id == id }) {
+                load(w)
+                start()
+            }
+        }
         ticker = Task { [weak self] in
             while !Task.isCancelled {
                 self?.tick()
-                try? await Task.sleep(for: .milliseconds(500))
+                // Cada tick son ~0,5 s del reloj de la sesión, también con el tiempo acelerado.
+                let scale = self?.hub.timeScale ?? 1
+                try? await Task.sleep(for: .milliseconds(Int(500 / max(scale, 1))))
             }
         }
     }
@@ -446,6 +462,7 @@ final class RideController {
         guard !isRunning else { return }
         isRunning = true
         lastTick = nil
+        rampStoppedSince = nil
         if recording == nil {
             recording = Activity(start: Date(), name: activityName, kind: mode.rawValue,
                                  workoutID: mode == .workout ? workout?.id : nil, ftp: ftp)
@@ -786,8 +803,8 @@ final class RideController {
     }
 
     private func tick() {
-        let now = ProcessInfo.processInfo.systemUptime
-        let dt = lastTick.map { min(now - $0, 2) } ?? 0
+        let now = hub.now() // en modo prueba acelerado, más deprisa
+        let dt = lastTick.map { min(max(now - $0, 0), 2) } ?? 0
         lastTick = now
         let data = hub.bikeData
         let trainerConnected = hub.trainerConnection == .connected
@@ -846,6 +863,12 @@ final class RideController {
                 finish()
                 return
             }
+            if rampHasEnded(data, now: now) {
+                hub.appendLog("🏁 Test de rampa: has dejado de pedalear; lo termino")
+                finish()
+                show("🏁 Test terminado", seconds: 4)
+                return
+            }
             if let p = workoutProgress, p.segment.id != lastSegmentID {
                 lastSegmentID = p.segment.id
                 hub.appendLog("⏱ Tramo \(p.segment.id + 1)/\(workout?.segments.count ?? 0): \(p.segment.summary)")
@@ -858,6 +881,19 @@ final class RideController {
             logStatus()
         }
         applyTarget(force: false, now: now)
+    }
+
+    /// El test de rampa acaba cuando no puedes más: a partir de 10', 10 s sin pedalear lo terminan
+    /// (sin tener que pulsar nada).
+    private func rampHasEnded(_ data: IndoorBikeData, now: Double) -> Bool {
+        guard workout?.ftpTest == .ramp, workoutSeconds >= 600,
+              (data.powerWatts ?? 0) == 0, (data.cadenceRpm ?? 0) == 0 else {
+            rampStoppedSince = nil
+            return false
+        }
+        let since = rampStoppedSince ?? now
+        rampStoppedSince = since
+        return now - since >= 10
     }
 
     /// Pendiente que se enseña: la de la ruta, la libre, o la equivalente en ERG.
@@ -936,7 +972,8 @@ final class RideController {
 
     /// Manda el objetivo al rodillo si ha cambiado. Los cambios de la ruta se mandan como
     /// mucho una vez por segundo; los de botones, modo y tramo (`force`), al momento.
-    private func applyTarget(force: Bool, now: Double = ProcessInfo.processInfo.systemUptime) {
+    private func applyTarget(force: Bool, now: Double? = nil) {
+        let now = now ?? hub.now()
         guard isRunning, hub.trainerConnection == .connected else { return }
         let target = desiredTarget
         // Comparamos con lo último que tiene el hub (también lo que mandes a mano en «Rodillo»

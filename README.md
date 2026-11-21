@@ -28,7 +28,7 @@ Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8
 3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG, +2 % en un entreno); **− (izq) o Y** = más blanda. **A** empieza / pausa; **B** dos veces seguidas termina y guarda.
 4. Desarrollo: carretera 2×12 (24 marchas), GRX 1×12 o SRAM XPLR 1×12.
 
-**Sin el rodillo cerca:** «Probar sin rodillo» (en Rodar o en Equipo › Rodillo) conecta un rodillo, un pulsómetro y unos mandos de mentira. Eliges cuánto empuja el ciclista en ruta y pulsas los botones de los Click en pantalla. No se guarda ni se sube nada, y el FTP no cambia.
+**Sin el rodillo cerca:** «Probar sin rodillo» (en Rodar o en Equipo › Rodillo) conecta un rodillo, un pulsómetro y unos mandos de mentira. Eliges cuánto empuja el ciclista en ruta, aceleras el tiempo (×10 o ×30, para hacer un entreno entero en minutos) y pulsas los botones de los Click en pantalla. No se guarda ni se sube nada, y el FTP no cambia.
 
 ## Entrenar
 

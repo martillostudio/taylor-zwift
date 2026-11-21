@@ -40,17 +40,22 @@ import Testing
         #expect(r.heartRate > 110 && r.heartRate < 140)
     }
 
-    @Test func rampTestEndsAroundThirtyPercentAboveFTP() {
+    /// Como el test de rampa de la biblioteca (+6 % del FTP por minuto): para en el ~130 % y no vuelve,
+    /// y el 75 % de su mejor minuto da un FTP parecido al suyo.
+    @Test func rampTestEstimatesSimilarFTP() {
         var r = DemoRider(ftp: 185)
-        var watts = 100.0
-        var failedAt: Double?
-        for _ in 0..<(30 * 60 * 2) {
-            r.step(target: .targetPower(watts: Int(watts)), dt: 0.5)
-            if r.exhaustedSeconds > 0 { failedAt = watts; break }
-            watts += 20.0 / 120 // +20 W por minuto
+        var history = PowerHistory()
+        var stoppedFor = 0
+        for second in 0..<(40 * 60) {
+            let target = Int(185 * (0.4 + 0.06 * Double(second / 60)))
+            r.step(target: .targetPower(watts: target), dt: 0.5)
+            r.step(target: .targetPower(watts: target), dt: 0.5)
+            history.append(Int(r.powerWatts.rounded()))
+            stoppedFor = r.powerWatts == 0 ? stoppedFor + 1 : 0
         }
-        let f = try! #require(failedAt)
-        #expect(f > 185 * 1.15 && f < 185 * 1.5)
+        #expect(stoppedFor > 60) // se ha rendido
+        let estimate = try! #require(FTPTest.ramp.estimate(from: history))
+        #expect(abs(Double(estimate) - 185) < 185 * 0.05)
     }
 
     @Test func recoversAfterExhaustion() {

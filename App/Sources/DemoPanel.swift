@@ -23,8 +23,9 @@ struct DemoPanel: View {
                         .disabled(ride.isRunning)
                 }
                 ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Space.l) { effort; buttons }
-                    VStack(alignment: .leading, spacing: Space.m) { effort; buttons }
+                    HStack(spacing: Space.l) { effort; speed; buttons }
+                    VStack(alignment: .leading, spacing: Space.m) { HStack(spacing: Space.l) { effort; speed }; buttons }
+                    VStack(alignment: .leading, spacing: Space.m) { effort; speed; buttons }
                 }
             }
         }
@@ -40,6 +41,19 @@ struct DemoPanel: View {
                 .font(Theme.font(.bodyMedium)).monospacedDigit()
                 .frame(width: 76, alignment: .leading)
         }
+    }
+
+    /// El tiempo acelerado: un entreno de 60' en 6' (×10) o en 2' (×30).
+    private var speed: some View {
+        @Bindable var hub = hub
+        return Picker("Tiempo", selection: $hub.timeScale) {
+            Text("×1").tag(1.0)
+            Text("×10").tag(10.0)
+            Text("×30").tag(30.0)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+        .help("Acelera el tiempo para recorrer un entreno entero en pocos minutos")
     }
 
     private var buttons: some View {

@@ -6,8 +6,9 @@ import Foundation
 /// - **SIM**: el ciclista empuja un esfuerzo fijo (`effort` × FTP, un poco más en las subidas) y la
 ///   cadencia sale de la física del rodillo con los parámetros recibidos (pendiente·k, Crr·k, CdA·k³):
 ///   una marcha más dura baja la cadencia, como en la realidad.
-/// - **Se cansa**: lleva la cuenta de W′ (Skiba). Si se vacía, deja de pedalear 20 s (así el test de
-///   rampa acaba solo, más o menos en el 135 % del FTP, y estima un FTP parecido al tuyo).
+/// - **Se cansa**: lleva la cuenta de W′ (Skiba). Si se vacía, deja de pedalear al menos 20 s y no vuelve
+///   mientras el objetivo siga por encima del FTP (como en un test de rampa: ahí se acaba, más o menos
+///   en el 130–135 % del FTP, y estima un FTP parecido al tuyo).
 /// - **Pulso**: sigue a la potencia con retraso (≈ 30 s al subir, 45 s al bajar) y deriva un poco con el tiempo.
 public struct DemoRider: Sendable {
     /// FTP del ciclista simulado (el de tu perfil).
@@ -21,7 +22,7 @@ public struct DemoRider: Sendable {
     /// Masa que supone el rodillo para la pendiente (ciclista + bici).
     public var systemMassKg = 80.0
     /// Reserva anaeróbica (J).
-    public var wPrime = 7_000.0
+    public var wPrime = 13_000.0
 
     public private(set) var powerWatts = 0.0
     public private(set) var cadenceRpm = 0.0
@@ -49,6 +50,10 @@ public struct DemoRider: Sendable {
 
         if exhaustedSeconds > 0 {
             exhaustedSeconds = max(exhaustedSeconds - dt, 0)
+            // Con el objetivo aún por encima del FTP no se vuelve a subir a la bici.
+            if exhaustedSeconds == 0, case .targetPower(let w) = target, Double(w) > ftp * 1.05 {
+                exhaustedSeconds = 0.5
+            }
             powerWatts = 0
             cadenceRpm = 0
         } else {
