@@ -73,6 +73,7 @@ final class RideController {
         didSet {
             UserDefaults.standard.set(ftp, forKey: Self.ftpKey)
             applyTarget(force: true)
+            scheduleFTPSync()
         }
     }
     /// Tu peso en kg (para W/kg y el VO2max estimado).
@@ -114,6 +115,37 @@ final class RideController {
         let from = min(max(planStart, now.addingTimeInterval(-112 * 86_400)), now.addingTimeInterval(-42 * 86_400))
         await intervals.sync(since: from, force: force)
     }
+
+    /// Cuando cambias el FTP (a mano o tras un test), se copia a intervals.icu a los 3 s
+    /// (así el «Stepper» no manda una petición por cada clic).
+    @ObservationIgnored private var ftpSyncTask: Task<Void, Never>?
+    private func scheduleFTPSync() {
+        guard intervals.isConnected else { return }
+        ftpSyncTask?.cancel()
+        ftpSyncTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, !Task.isCancelled else { return }
+            await intervals.pushFTP(ftp)
+        }
+    }
+
+    /// Manda las 16 semanas del plan al calendario de intervals.icu.
+    func pushPlanToIntervals() async {
+        do {
+            let n = try await intervals.pushPlan(plan.calendarEvents(start: planStart), planID: plan.id)
+            hub.appendLog("🔵 Plan en intervals.icu: \(n) sesiones")
+            UserDefaults.standard.set(planStart.timeIntervalSince1970, forKey: "planEnIntervals")
+            planPushedStart = planStart
+        } catch {
+            hub.appendLog("⚠️ intervals.icu (plan): \(error.localizedDescription)")
+        }
+    }
+
+    /// Fecha de inicio con la que se mandó el plan a intervals.icu por última vez.
+    private(set) var planPushedStart: Date? = {
+        let t = UserDefaults.standard.double(forKey: "planEnIntervals")
+        return t > 0 ? Date(timeIntervalSince1970: t) : nil
+    }()
 
     func toggleManualMark(_ session: PlanSession, week: PlanWeek) {
         let key = session.key(week: week.number)

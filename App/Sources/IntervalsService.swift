@@ -170,6 +170,104 @@ final class IntervalsService {
         }
     }
 
+    // MARK: Plan y FTP
+
+    /// Pone el plan en tu calendario de intervals.icu (y de ahí, si lo tienes activado, en
+    /// Garmin Connect y el reloj). Antes borra lo que mandamos la última vez, así que se puede
+    /// repetir al cambiar la fecha de inicio sin duplicar nada. Devuelve cuántas sesiones puso.
+    @discardableResult
+    func pushPlan(_ events: [PlannedEvent], planID: String) async throws -> Int {
+        guard let apiKey, let first = events.map(\.date).min(), let last = events.map(\.date).max()
+        else { throw Failure.notConnected }
+        isBusy = true
+        defer { isBusy = false }
+        status = "Mandando el plan a intervals.icu…"
+        do {
+            // 1. Borrar las sesiones del plan que ya estaban (de este envío o de uno anterior).
+            let day = Date.ISO8601FormatStyle(timeZone: .current).year().month().day()
+            var components = URLComponents(url: Self.base.appendingPathComponent("athlete/0/events"),
+                                           resolvingAgainstBaseURL: false)!
+            components.queryItems = [
+                URLQueryItem(name: "oldest", value: min(first, Date()).addingTimeInterval(-200 * 86_400).formatted(day)),
+                URLQueryItem(name: "newest", value: max(last, Date()).addingTimeInterval(200 * 86_400).formatted(day)),
+                URLQueryItem(name: "category", value: "WORKOUT"),
+            ]
+            let (listData, listResponse) = try await URLSession.shared.data(for: request(components.url!, key: apiKey))
+            try Self.check(listData, listResponse)
+            let existing = ((try? JSONSerialization.jsonObject(with: listData)) as? [[String: Any]] ?? [])
+                .filter { ($0["external_id"] as? String)?.hasPrefix("taylorzwift-\(planID)-") == true }
+                .compactMap { $0["id"] }
+            if !existing.isEmpty {
+                var delete = request(Self.base.appendingPathComponent("athlete/0/events/bulk-delete"), key: apiKey)
+                delete.httpMethod = "PUT"
+                delete.httpBody = try JSONSerialization.data(withJSONObject: existing.map { ["id": $0] })
+                let (data, response) = try await URLSession.shared.data(for: delete)
+                try Self.check(data, response)
+            }
+
+            // 2. Crear las sesiones nuevas.
+            let stamp = Date.ISO8601FormatStyle(timeZone: .current).year().month().day()
+            let body: [[String: Any]] = events.map { e in
+                var o: [String: Any] = [
+                    "category": "WORKOUT",
+                    "start_date_local": e.date.formatted(stamp) + "T00:00:00",
+                    "type": e.workout == nil ? "Ride" : "VirtualRide",
+                    "indoor": e.workout != nil,
+                    "name": e.name,
+                    "description": e.description,
+                    "external_id": e.externalID,
+                    "moving_time": e.seconds,
+                ]
+                if let load = e.load { o["icu_training_load"] = load }
+                if let w = e.workout {
+                    o["file_contents"] = String(decoding: ZwoEncoder.encode(w, description: e.description), as: UTF8.self)
+                    o["filename"] = "\(w.id).zwo"
+                }
+                return o
+            }
+            var create = request(Self.base.appendingPathComponent("athlete/0/events/bulk"), key: apiKey)
+            create.httpMethod = "POST"
+            create.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let (data, response) = try await URLSession.shared.data(for: create)
+            try Self.check(data, response)
+            let n = ((try? JSONSerialization.jsonObject(with: data)) as? [Any])?.count ?? events.count
+            status = "Plan en intervals.icu: \(n) sesiones ✅"
+            return n
+        } catch {
+            status = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Pone tu FTP de ciclismo en intervals.icu (para que calcule bien la carga y las zonas).
+    func pushFTP(_ ftp: Int) async {
+        guard let apiKey else { return }
+        do {
+            let (data, response) = try await URLSession.shared.data(
+                for: request(Self.base.appendingPathComponent("athlete/0/sport-settings"), key: apiKey))
+            try Self.check(data, response)
+            let settings = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] ?? []
+            guard let ride = settings.first(where: { ($0["types"] as? [String])?.contains("Ride") == true }),
+                  let id = ride["id"] else { return }
+            if (ride["ftp"] as? Int) == ftp { return }
+            var put = request(Self.base.appendingPathComponent("athlete/0/sport-settings/\(id)"), key: apiKey)
+            put.httpMethod = "PUT"
+            put.httpBody = try JSONSerialization.data(withJSONObject: ["ftp": ftp])
+            let (d2, r2) = try await URLSession.shared.data(for: put)
+            try Self.check(d2, r2)
+            status = "FTP de intervals.icu: \(ftp) W ✅"
+        } catch {
+            status = "No pude cambiar el FTP en intervals.icu: \(error.localizedDescription)"
+        }
+    }
+
+    private func request(_ url: URL, key: String) -> URLRequest {
+        var r = URLRequest(url: url)
+        r.setValue(Self.authorization(key), forHTTPHeaderField: "Authorization")
+        r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return r
+    }
+
     /// La respuesta es `{ "id": "i…", … }` o una lista de ellas, según la versión de la API.
     static func activityID(in data: Data) -> String? {
         let json = try? JSONSerialization.jsonObject(with: data)

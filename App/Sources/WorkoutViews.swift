@@ -290,10 +290,26 @@ private struct PlanBox: View {
 private struct OutdoorSyncLine: View {
     @Environment(RideController.self) private var ride
     @Environment(IntervalsService.self) private var intervals
+    @State private var confirming = false
+
+    private var pushTitle: String {
+        guard let pushed = ride.planPushedStart else { return "Mandar a intervals.icu" }
+        return pushed == ride.planStart ? "Volver a mandar a intervals.icu" : "Actualizar fechas en intervals.icu"
+    }
 
     var body: some View {
         if intervals.isConnected {
             HStack(spacing: Space.s) {
+                Button(pushTitle, systemImage: "calendar.badge.plus") { confirming = true }
+                    .buttonStyle(.m3Tonal)
+                    .disabled(intervals.isBusy)
+                    .confirmationDialog("¿Mandar el plan a intervals.icu?", isPresented: $confirming) {
+                        Button("Mandar \(ride.plan.weeks.reduce(0) { $0 + $1.sessions.count }) sesiones") {
+                            Task { await ride.pushPlanToIntervals() }
+                        }
+                    } message: {
+                        Text("Se ponen en tu calendario desde el \(ride.planStart.formatted(date: .long, time: .omitted)). Si lo mandaste antes, se sustituye (no se duplica). Con la sincronización de Garmin activada, intervals.icu las pasa también a Garmin Connect y al reloj.")
+                    }
                 Text(syncText).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
                 Button(intervals.isBusy ? "Sincronizando…" : "Actualizar", systemImage: "arrow.clockwise") {
                     Task { await ride.syncIntervals(force: true) }

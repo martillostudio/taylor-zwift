@@ -135,3 +135,45 @@ struct ZwoTests {
         }
     }
 }
+
+@Suite("Escribir .zwo y calendario del plan")
+struct ZwoEncoderTests {
+    @Test func roundTripLibrary() throws {
+        for w in Workout.library {
+            let back = try ZwoParser.parse(ZwoEncoder.encode(w), id: w.id)
+            #expect(back.name == w.name)
+            #expect(back.durationSeconds == w.durationSeconds, "\(w.id)")
+            #expect(abs(back.tss - w.tss) < 0.5, "\(w.id)")
+        }
+    }
+
+    @Test func cadenceAndEscaping() {
+        let w = Workout(id: "x", name: "Fuerza <5×5'> & más", category: .strength, summary: "a \"b\"",
+                        steps: [.lowCadence(repeats: 5, onSeconds: 300, onPower: 0.85, rpm: 55, offSeconds: 180, offPower: 0.5),
+                                .freeRide(seconds: 60)])
+        let xml = String(decoding: ZwoEncoder.encode(w), as: UTF8.self)
+        #expect(xml.contains(#"Cadence="55""#))
+        #expect(xml.contains("Fuerza &lt;5×5'&gt; &amp; más"))
+        #expect(xml.contains(#"OnPower="0.850""#))
+        #expect(xml.contains("<FreeRide"))
+        let other = String(decoding: ZwoEncoder.encode(w, description: "Semana 1"), as: UTF8.self)
+        #expect(other.contains("<description>Semana 1</description>"))
+    }
+
+    @Test func planEvents() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Madrid")!
+        let monday = cal.date(from: DateComponents(year: 2026, month: 11, day: 23))!
+        let plan = TrainingPlan.winter
+        let events = plan.calendarEvents(start: monday, calendar: cal)
+        #expect(events.count == plan.weeks.reduce(0) { $0 + $1.sessions.count })
+        #expect(Set(events.map(\.externalID)).count == events.count)
+        let first = events[0] // martes 24: test de rampa
+        #expect(cal.component(.day, from: first.date) == 24)
+        #expect(first.workout?.id == "test-rampa")
+        #expect(first.seconds == 1_500)
+        let outdoor = events.first { $0.workout == nil }
+        #expect(outdoor?.name == "Salida en exterior")
+        #expect(outdoor?.load == nil)
+    }
+}
