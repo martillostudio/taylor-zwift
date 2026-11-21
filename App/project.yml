@@ -33,6 +33,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Taylor Zwift
         INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: Taylor Zwift usa Bluetooth para conectarse al rodillo y a los mandos.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Taylor Zwift usa tu ubicación aproximada para que el cielo del simulador vaya con la hora del sol donde estás.
+        INFOPLIST_KEY_NSLocationUsageDescription: Taylor Zwift usa tu ubicación aproximada para que el cielo del simulador vaya con la hora del sol donde estás.
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.healthcare-fitness
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES

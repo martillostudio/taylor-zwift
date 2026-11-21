@@ -4,21 +4,23 @@ import SwiftUI
 
 /// Simulador 2D: tú de perfil sobre el relieve real de la ruta, con el paisaje desplazándose a tu
 /// velocidad. Ocupa toda la ventana (con «Pantalla completa», toda la pantalla); los datos clave
-/// van encima. Esc o «Salir» para volver.
+/// van en un panel arriba. Esc o «Salir» para volver.
 struct RideScene: View {
     @Environment(RideController.self) private var ride
     @Environment(BluetoothHub.self) private var hub
     @State private var motion = SceneMotion()
-    @State private var palette = ScenePalette.now()
+    @State private var location = SceneLocation()
+    @State private var palette = ScenePalette.day
 
     var body: some View {
+        let table = motion.table(for: ride.route)
         ZStack {
             TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
                 Canvas { context, size in
                     let now = timeline.date.timeIntervalSinceReferenceDate
                     let d = motion.distance(at: now, recorded: ride.session.distanceMeters,
                                             speedKmh: ride.isRunning ? ride.speedKmh ?? 0 : 0)
-                    SceneRenderer(route: ride.route, table: motion.table(for: ride.route), distance: d, time: now,
+                    SceneRenderer(route: ride.route, table: table, distance: d, time: now,
                                   cadence: ride.isRunning ? hub.bikeData.cadenceRpm ?? 0 : 0,
                                   palette: palette)
                         .draw(in: &context, size: size)
@@ -26,15 +28,33 @@ struct RideScene: View {
             }
             .ignoresSafeArea()
             VStack {
-                SceneHUD()
+                SceneHUD(table: table)
                 Spacer()
                 SceneControls()
             }
             .padding(Space.xl)
         }
         .background(Color.black)
-        // Datos y botones en claro u oscuro según la escena (de noche, oscuros).
+        // Panel y botones en claro u oscuro según el cielo.
         .environment(\.colorScheme, palette.isNight ? .dark : .light)
+        // El cielo sigue al sol de verdad: se recalcula cada minuto con tu ubicación.
+        .task {
+            location.request()
+            while !Task.isCancelled {
+                updatePalette()
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
+        .onChange(of: location.coordinate?.latitude) { updatePalette() }
+    }
+
+    private func updatePalette() {
+        // Tu ubicación; si no la hay, la de la ruta (tus rutas son de por aquí); si tampoco, Barcelona.
+        let routeStart = ride.route.track?.points.first
+        let lat = location.coordinate?.latitude ?? routeStart?.latitude ?? 41.39
+        let lon = location.coordinate?.longitude ?? routeStart?.longitude ?? 2.17
+        let date = ScenePalette.forcedDate ?? Date()
+        palette = ScenePalette(sun: Sun.position(at: date, latitude: lat, longitude: lon))
     }
 }
 
@@ -68,53 +88,106 @@ final class SceneMotion {
     }
 }
 
-// MARK: - Dibujo
+// MARK: - Cielo según el sol
 
-/// Colores de la escena según la hora: amanecer, día, atardecer o noche.
-struct ScenePalette {
-    var skyTop: Color
-    var skyBottom: Color
-    /// Sol o luna.
-    var light: Color
-    /// Altura del sol (0 = horizonte, 1 = arriba del todo).
-    var lightHeight: CGFloat
-    /// Capas de sierras, de la más lejana a la más cercana.
-    var ridges: [Color]
+/// Un color en RGB que se puede mezclar (para pasar suave de la noche al día).
+struct RGB: Equatable {
+    var r, g, b: Double
+    init(_ r: Double, _ g: Double, _ b: Double) { self.r = r; self.g = g; self.b = b }
+    func mix(_ o: RGB, _ t: Double) -> RGB { RGB(r + (o.r - r) * t, g + (o.g - g) * t, b + (o.b - b) * t) }
+    var color: Color { Color(red: r, green: g, blue: b) }
+}
+
+/// Colores de la escena según la altura del sol: noche, hora azul, amanecer o atardecer, hora
+/// dorada y día, mezclados de forma continua.
+struct ScenePalette: Equatable {
+    var skyTop: RGB
+    var skyBottom: RGB
+    /// Sol (o luna, de noche).
+    var light: RGB
+    /// Sierras, de la más lejana a la más cercana.
+    var ridges: [RGB]
     /// Terreno, árboles y ciclista (la silueta más oscura).
-    var ground: Color
-    var isNight: Bool
+    var ground: RGB
+    /// Dónde va el sol (0…1 del ancho y del alto); por debajo del horizonte queda tapado.
+    var lightX: Double = 0.75
+    var lightY: Double = 0.2
+    var isMoon = false
+    /// Opacidad de las estrellas.
+    var stars: Double = 0
+    /// Panel en modo oscuro.
+    var isNight = false
 
-    /// Para probar otras horas: `--args -horaSimulador 20`.
-    static func now(_ date: Date = Date()) -> ScenePalette {
-        let forced = UserDefaults.standard.object(forKey: "horaSimulador") as? Int
-        let hour = forced ?? Calendar.current.component(.hour, from: date)
-        switch hour {
-        case 6..<9: return .dawn
-        case 9..<18: return .day
-        case 18..<21: return .dusk
-        default: return .night
+    /// Para probar otra hora: `--args -horaSimulador 20` (hora local de hoy).
+    static var forcedDate: Date? {
+        guard let h = UserDefaults.standard.object(forKey: "horaSimulador") as? Int else { return nil }
+        return Calendar.current.date(bySettingHour: h, minute: 0, second: 0, of: Date())
+    }
+
+    init(skyTop: RGB, skyBottom: RGB, light: RGB, ridges: [RGB], ground: RGB) {
+        self.skyTop = skyTop; self.skyBottom = skyBottom; self.light = light; self.ridges = ridges; self.ground = ground
+    }
+
+    func mix(_ o: ScenePalette, _ t: Double) -> ScenePalette {
+        ScenePalette(skyTop: skyTop.mix(o.skyTop, t), skyBottom: skyBottom.mix(o.skyBottom, t), light: light.mix(o.light, t),
+                     ridges: zip(ridges, o.ridges).map { $0.mix($1, t) }, ground: ground.mix(o.ground, t))
+    }
+
+    init(sun: Sun.Position) {
+        let e = sun.elevation
+        // Fotogramas clave por altura del sol (grados); amanecer y atardecer tienen su tono.
+        let twilight = sun.isMorning ? Self.dawn : Self.dusk
+        let keys: [(Double, ScenePalette)] = [(-12, .night), (-5, .blueHour), (0, twilight), (7, .golden), (20, .day)]
+        var p = keys[0].1
+        if e >= keys[keys.count - 1].0 {
+            p = keys[keys.count - 1].1
+        } else if e > keys[0].0 {
+            let i = keys.lastIndex { $0.0 <= e } ?? 0
+            let (e0, p0) = keys[i], (e1, p1) = keys[i + 1]
+            p = p0.mix(p1, (e - e0) / (e1 - e0))
+        }
+        self = p
+        stars = min(max((-e - 3) / 8, 0), 1)
+        isNight = e < -4
+        if e > -2 {
+            // El sol cruza de izquierda (mañana) a derecha (tarde) y baja hasta el horizonte.
+            lightX = min(max(0.5 + sun.hourAngle * 1.3, 0.08), 0.92)
+            lightY = 0.56 - min(max(e, -4), 60) / 60 * 0.46
+        } else {
+            isMoon = true
+            lightX = 0.78
+            lightY = 0.14
+            light = RGB(0.92, 0.94, 1.0)
         }
     }
 
-    private static func rgb(_ r: Double, _ g: Double, _ b: Double) -> Color { Color(red: r, green: g, blue: b) }
-
     static let day = ScenePalette(
-        skyTop: rgb(0.36, 0.60, 0.86), skyBottom: rgb(0.80, 0.88, 0.93), light: rgb(1.0, 0.97, 0.88), lightHeight: 0.8,
-        ridges: [rgb(0.62, 0.72, 0.80), rgb(0.45, 0.57, 0.66), rgb(0.30, 0.42, 0.48), rgb(0.19, 0.29, 0.32)],
-        ground: rgb(0.10, 0.17, 0.18), isNight: false)
+        skyTop: RGB(0.36, 0.60, 0.86), skyBottom: RGB(0.80, 0.88, 0.93), light: RGB(1.0, 0.97, 0.88),
+        ridges: [RGB(0.62, 0.72, 0.80), RGB(0.45, 0.57, 0.66), RGB(0.30, 0.42, 0.48), RGB(0.19, 0.29, 0.32)],
+        ground: RGB(0.10, 0.17, 0.18))
+    static let golden = ScenePalette(
+        skyTop: RGB(0.33, 0.52, 0.80), skyBottom: RGB(0.99, 0.84, 0.64), light: RGB(1.0, 0.92, 0.70),
+        ridges: [RGB(0.78, 0.72, 0.68), RGB(0.58, 0.55, 0.57), RGB(0.38, 0.38, 0.44), RGB(0.22, 0.23, 0.29)],
+        ground: RGB(0.12, 0.12, 0.16))
     static let dawn = ScenePalette(
-        skyTop: rgb(0.40, 0.48, 0.72), skyBottom: rgb(0.99, 0.80, 0.62), light: rgb(1.0, 0.90, 0.70), lightHeight: 0.25,
-        ridges: [rgb(0.80, 0.66, 0.68), rgb(0.60, 0.50, 0.58), rgb(0.40, 0.34, 0.45), rgb(0.25, 0.21, 0.32)],
-        ground: rgb(0.13, 0.11, 0.18), isNight: false)
+        skyTop: RGB(0.40, 0.48, 0.72), skyBottom: RGB(0.99, 0.78, 0.62), light: RGB(1.0, 0.88, 0.68),
+        ridges: [RGB(0.80, 0.66, 0.68), RGB(0.60, 0.50, 0.58), RGB(0.40, 0.34, 0.45), RGB(0.25, 0.21, 0.32)],
+        ground: RGB(0.13, 0.11, 0.18))
     static let dusk = ScenePalette(
-        skyTop: rgb(0.24, 0.22, 0.45), skyBottom: rgb(0.98, 0.58, 0.38), light: rgb(1.0, 0.78, 0.52), lightHeight: 0.18,
-        ridges: [rgb(0.80, 0.48, 0.45), rgb(0.58, 0.34, 0.40), rgb(0.38, 0.22, 0.32), rgb(0.22, 0.13, 0.22)],
-        ground: rgb(0.11, 0.07, 0.12), isNight: false)
+        skyTop: RGB(0.24, 0.22, 0.45), skyBottom: RGB(0.98, 0.58, 0.38), light: RGB(1.0, 0.76, 0.50),
+        ridges: [RGB(0.80, 0.48, 0.45), RGB(0.58, 0.34, 0.40), RGB(0.38, 0.22, 0.32), RGB(0.22, 0.13, 0.22)],
+        ground: RGB(0.11, 0.07, 0.12))
+    static let blueHour = ScenePalette(
+        skyTop: RGB(0.10, 0.13, 0.30), skyBottom: RGB(0.40, 0.40, 0.60), light: RGB(0.92, 0.94, 1.0),
+        ridges: [RGB(0.32, 0.33, 0.52), RGB(0.23, 0.24, 0.42), RGB(0.15, 0.17, 0.31), RGB(0.09, 0.10, 0.21)],
+        ground: RGB(0.05, 0.05, 0.11))
     static let night = ScenePalette(
-        skyTop: rgb(0.03, 0.05, 0.12), skyBottom: rgb(0.13, 0.18, 0.30), light: rgb(0.92, 0.94, 1.0), lightHeight: 0.7,
-        ridges: [rgb(0.17, 0.22, 0.33), rgb(0.12, 0.16, 0.26), rgb(0.08, 0.11, 0.19), rgb(0.05, 0.07, 0.13)],
-        ground: rgb(0.02, 0.03, 0.06), isNight: true)
+        skyTop: RGB(0.03, 0.05, 0.12), skyBottom: RGB(0.12, 0.16, 0.28), light: RGB(0.92, 0.94, 1.0),
+        ridges: [RGB(0.17, 0.22, 0.33), RGB(0.12, 0.16, 0.26), RGB(0.08, 0.11, 0.19), RGB(0.05, 0.07, 0.13)],
+        ground: RGB(0.02, 0.03, 0.06))
 }
+
+// MARK: - Dibujo
 
 private struct SceneRenderer {
     let route: Route
@@ -128,7 +201,7 @@ private struct SceneRenderer {
     static let metersWide = 650.0
     static let riderX = 0.3
     /// Exageración vertical: la pendiente se ve, pero sin que una subida se salga de la pantalla.
-    static let verticalExaggeration = 4.0
+    static let verticalExaggeration = 2.5
 
     private var length: Double { table.lengthMeters }
 
@@ -137,8 +210,8 @@ private struct SceneRenderer {
         let riderX = size.width * Self.riderX
         let yPerM = pxPerM * Self.verticalExaggeration
         // La cámara mira un poco por delante, para ver venir las subidas.
-        let camElevation = (elevation(distance) * 2 + elevation(distance + 200)) / 3
-        let baseY = size.height * 0.64
+        let camElevation = (elevation(distance) * 3 + elevation(distance + 150)) / 4
+        let baseY = size.height * 0.68
 
         func world(_ x: CGFloat) -> Double { distance + Double(x - riderX) / pxPerM }
         func groundY(_ d: Double) -> CGFloat { baseY - CGFloat(elevation(d) - camElevation) * yPerM }
@@ -150,7 +223,7 @@ private struct SceneRenderer {
         ]
         for (i, l) in layers.enumerated() {
             drawRidge(&c, size, parallax: l.parallax, top: l.top, height: l.height, seed: l.seed,
-                      color: palette.ridges[i])
+                      color: palette.ridges[i].color)
         }
 
         // Terreno (la silueta más oscura).
@@ -166,7 +239,7 @@ private struct SceneRenderer {
         ground.closeSubpath()
 
         drawTrees(&c, size, pxPerM: pxPerM, riderX: riderX, groundY: groundY)
-        c.fill(ground, with: .color(palette.ground))
+        c.fill(ground, with: .color(palette.ground.color))
 
         // Línea fina con el color de la pendiente sobre el borde del terreno.
         x = 0
@@ -197,9 +270,9 @@ private struct SceneRenderer {
 
     private func drawSky(_ c: inout GraphicsContext, _ size: CGSize) {
         let rect = CGRect(origin: .zero, size: size)
-        c.fill(Path(rect), with: .linearGradient(Gradient(colors: [palette.skyTop, palette.skyBottom]),
+        c.fill(Path(rect), with: .linearGradient(Gradient(colors: [palette.skyTop.color, palette.skyBottom.color]),
                                                  startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height * 0.62)))
-        if palette.isNight {
+        if palette.stars > 0 {
             // Estrellas fijas (siempre en el mismo sitio), con un parpadeo leve.
             for i in 0..<90 {
                 let h1 = fract(sin(Double(i) * 12.9898) * 43_758.5453)
@@ -207,17 +280,22 @@ private struct SceneRenderer {
                 let r = CGFloat(0.6 + h1 * 1.2)
                 let twinkle = 0.55 + 0.45 * sin(time * (0.8 + h2) + Double(i))
                 c.fill(Path(ellipseIn: CGRect(x: CGFloat(h1) * size.width, y: CGFloat(h2) * size.height * 0.45, width: r, height: r)),
-                       with: .color(.white.opacity(0.35 + 0.5 * twinkle * h1)))
+                       with: .color(.white.opacity((0.35 + 0.5 * twinkle * h1) * palette.stars)))
             }
         }
         // Sol o luna, con un halo suave.
         let r = size.height * 0.045
-        let center = CGPoint(x: size.width * 0.74, y: size.height * (0.56 - 0.42 * palette.lightHeight))
+        let center = CGPoint(x: size.width * palette.lightX, y: size.height * palette.lightY)
         c.fill(Path(ellipseIn: CGRect(x: center.x - r * 7, y: center.y - r * 7, width: r * 14, height: r * 14)),
-               with: .radialGradient(Gradient(colors: [palette.light.opacity(0.35), palette.light.opacity(0)]),
+               with: .radialGradient(Gradient(colors: [palette.light.color.opacity(0.35), palette.light.color.opacity(0)]),
                                      center: center, startRadius: r, endRadius: r * 7))
         c.fill(Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)),
-               with: .color(palette.light))
+               with: .color(palette.light.color))
+        if palette.isMoon {
+            // Luna creciente: un círculo del color del cielo tapa parte del disco.
+            c.fill(Path(ellipseIn: CGRect(x: center.x - r * 0.55, y: center.y - r * 1.1, width: r * 2, height: r * 2)),
+                   with: .color(palette.skyTop.mix(palette.skyBottom, palette.lightY / 0.62).color))
+        }
     }
 
     /// Una sierra: ruido suave (suma de senos, siempre el mismo en el mismo sitio) con paralaje,
@@ -240,7 +318,7 @@ private struct SceneRenderer {
         c.fill(p, with: .color(color))
         let hazeTop = size.height * (top + height * 0.4)
         c.fill(p, with: .linearGradient(
-            Gradient(colors: [palette.skyBottom.opacity(0), palette.skyBottom.opacity(palette.isNight ? 0.12 : 0.35)]),
+            Gradient(colors: [palette.skyBottom.color.opacity(0), palette.skyBottom.color.opacity(0.35 - 0.23 * palette.stars)]),
             startPoint: CGPoint(x: 0, y: hazeTop), endPoint: CGPoint(x: 0, y: hazeTop + size.height * 0.18)))
     }
 
@@ -256,8 +334,9 @@ private struct SceneRenderer {
             // Bosquecillos: hay árboles donde una onda lenta lo permite.
             let grove = sin(d / 90 + 1.3) + 0.6 * sin(d / 37)
             if grove > 0.2, r > 0.25 {
-                let x = riderX + CGFloat(d - distance + (r - 0.5) * 6) * pxPerM
-                let y = groundY(d) + 4
+                let td = d + (r - 0.5) * 6
+                let x = riderX + CGFloat(td - distance) * pxPerM
+                let y = groundY(td) + 3
                 let h = CGFloat(10 + r * 14) * pxPerM
                 if r > 0.6 {
                     // Abeto: tres pisos.
@@ -278,7 +357,7 @@ private struct SceneRenderer {
             }
             d += every
         }
-        c.fill(trees, with: .color(palette.ground))
+        c.fill(trees, with: .color(palette.ground.color))
     }
 
     /// Cartel discreto en cada km y bandera en la meta (en silueta).
@@ -292,9 +371,9 @@ private struct SceneRenderer {
             let y = groundY(d)
             var post = Path()
             post.addRect(CGRect(x: x - 1, y: y - 30, width: 2, height: 30))
-            c.fill(post, with: .color(palette.ground))
+            c.fill(post, with: .color(palette.ground.color))
             let label = c.resolve(Text("km \(Int(d / 1000))").font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.ground))
+                .foregroundStyle(palette.ground.color))
             let box = CGRect(x: x - 22, y: y - 50, width: 44, height: 20)
             c.fill(Path(roundedRect: box, cornerRadius: 10), with: .color(.white.opacity(0.85)))
             c.draw(label, at: CGPoint(x: box.midX, y: box.midY))
@@ -306,14 +385,14 @@ private struct SceneRenderer {
                 let y = groundY(length)
                 var pole = Path()
                 pole.addRect(CGRect(x: x - 1.5, y: y - 64, width: 3, height: 64))
-                c.fill(pole, with: .color(palette.ground))
+                c.fill(pole, with: .color(palette.ground.color))
                 for row in 0..<3 {
                     for col in 0..<5 where (row + col).isMultiple(of: 2) {
                         c.fill(Path(CGRect(x: x + 1.5 + CGFloat(col) * 6, y: y - 64 + CGFloat(row) * 6, width: 6, height: 6)),
                                with: .color(.white))
                     }
                 }
-                c.stroke(Path(CGRect(x: x + 1.5, y: y - 64, width: 30, height: 18)), with: .color(palette.ground), lineWidth: 1)
+                c.stroke(Path(CGRect(x: x + 1.5, y: y - 64, width: 30, height: 18)), with: .color(palette.ground.color), lineWidth: 1)
             }
         }
     }
@@ -325,7 +404,7 @@ private struct SceneRenderer {
         g.translateBy(x: p.x, y: p.y)
         g.rotate(by: .radians(angle))
         g.scaleBy(x: scale, y: scale)
-        let ink = palette.ground
+        let ink = palette.ground.color
         let wheelR: CGFloat = 16
         let rear = CGPoint(x: -24, y: -wheelR), front = CGPoint(x: 25, y: -wheelR)
 
@@ -404,62 +483,181 @@ private struct SceneRenderer {
 
 private func fract(_ x: Double) -> Double { x - x.rounded(.down) }
 
-// MARK: - Datos y controles
+// MARK: - Panel de datos y controles
 
-/// Lo que se mira rodando: vatios, pulso, cadencia, velocidad, pendiente, marcha y la subida.
+/// Todo lo que se mira rodando, en un solo panel: potencia (con su zona), pulso, cadencia,
+/// velocidad, pendiente y marcha; debajo, la ruta, la subida y el perfil entero con dónde vas.
 private struct SceneHUD: View {
+    let table: RouteElevationTable
     @Environment(RideController.self) private var ride
     @Environment(BluetoothHub.self) private var hub
 
     var body: some View {
-        let grade = ride.currentGrade
-        let band = GradeBand(gradePercent: grade)
         VStack(alignment: .leading, spacing: Space.m) {
-            HStack(alignment: .top, spacing: Space.m) {
-                tile("POTENCIA", ride.power3s.map { "\($0)" } ?? "—", "W",
-                     color: ride.power3s.map { PowerZone(fractionOfFTP: Double($0) / Double(max(ride.ftp, 1))).color })
-                tile("PULSO", hub.heartRateBpm.map { "\($0)" } ?? "—", "ppm")
-                tile("CADENCIA", hub.bikeData.cadenceRpm.map { "\(Int($0.rounded()))" } ?? "—", "rpm")
-                tile("VELOCIDAD", ride.speedKmh.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—", "km/h")
-                Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(grade.formatted(.number.precision(.fractionLength(1)))) %")
-                        .font(.system(size: 44, weight: .bold, design: .rounded)).monospacedDigit()
-                        .foregroundStyle(band.textColor)
-                        .padding(.horizontal, Space.m)
-                        .background(band.color, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
-                    Text("marcha \(ride.gearText)").font(Theme.font(.bodyMedium)).foregroundStyle(.white)
-                        .shadow(radius: 2)
-                }
+            HStack(alignment: .top, spacing: 0) {
+                powerCell
+                divider
+                SceneMetric("PULSO", hub.heartRateBpm.map { "\($0)" } ?? "—", "ppm",
+                       caption: hub.heartRateBpm.map { let z = HeartRateZone(bpm: $0, max: ride.maxHeartRate); return "Z\(z.rawValue) · \(z.name)" })
+                divider
+                SceneMetric("CADENCIA", hub.bikeData.cadenceRpm.map { "\(Int($0.rounded()))" } ?? "—", "rpm")
+                divider
+                SceneMetric("VELOCIDAD", ride.speedKmh.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—", "km/h")
+                divider
+                gradeCell
+                divider
+                GearGauge()
             }
+            Divider()
             HStack(spacing: Space.m) {
-                let km = ride.session.distanceMeters / 1000
-                Text("\(ride.route.name) · km \(km.formatted(.number.precision(.fractionLength(1))))"
-                     + (ride.route.isLoop ? "" : " de \((ride.route.lengthMeters / 1000).formatted(.number.precision(.fractionLength(1))))"))
-                if let s = ride.climbStatus {
-                    Text(s.isOnClimb
-                         ? "⛰ Quedan \((s.remainingMeters / 1000).formatted(.number.precision(.fractionLength(1)))) km · +\(Int(s.remainingAscentMeters)) m"
-                         : "⛰ Subida en \((s.distanceToStart / 1000).formatted(.number.precision(.fractionLength(1)))) km: \((s.climb.lengthMeters / 1000).formatted(.number.precision(.fractionLength(1)))) km al \(s.climb.averageGradePercent.formatted(.number.precision(.fractionLength(1)))) %")
+                Text(ride.route.name).font(Theme.font(.bodyMedium).weight(.semibold)).lineLimit(1)
+                Text(kmText).font(Theme.font(.bodyMedium)).monospacedDigit().foregroundStyle(.secondary)
+                Spacer(minLength: Space.m)
+                if let climb = climbText {
+                    Label(climb, systemImage: "mountain.2.fill")
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
-            .font(Theme.font(.bodyLarge).weight(.semibold))
-            .padding(.horizontal, Space.m).padding(.vertical, Space.s)
-            .background(.ultraThinMaterial, in: Capsule())
+            MiniProfile(table: table, position: ride.route.positionInLap(ride.session.distanceMeters))
+                .frame(height: 34)
         }
+        .padding(Space.l)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.extraLarge))
+        .frame(maxWidth: 1100)
     }
 
-    private func tile(_ title: String, _ value: String, _ unit: String, color: Color? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+    private var divider: some View {
+        Rectangle().fill(.separator).frame(width: 1, height: 52).padding(.horizontal, Space.m)
+    }
+
+    private var powerCell: some View {
+        let watts = ride.power3s
+        let zone = watts.map { PowerZone(fractionOfFTP: Double($0) / Double(max(ride.ftp, 1))) }
+        return SceneMetric("POTENCIA", watts.map { "\($0)" } ?? "—", "W",
+                      caption: zone.map { "Z\($0.rawValue) · \($0.name)" }, captionColor: zone?.color)
+    }
+
+    private var gradeCell: some View {
+        let grade = ride.currentGrade
+        let band = GradeBand(gradePercent: grade)
+        return VStack(alignment: .leading, spacing: 4) {
+            Text("PENDIENTE").font(Theme.font(.labelSmall)).foregroundStyle(.secondary)
+            Text("\(grade.formatted(.number.precision(.fractionLength(1)))) %")
+                .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
+                .foregroundStyle(band.textColor)
+                .padding(.horizontal, Space.s).padding(.vertical, 2)
+                .background(band.color, in: RoundedRectangle(cornerRadius: Theme.Radius.small))
+        }
+        .fixedSize()
+    }
+
+    private var kmText: String {
+        let km = (ride.session.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1)))
+        let total = (ride.route.lengthMeters / 1000).formatted(.number.precision(.fractionLength(1)))
+        return ride.route.isLoop ? "km \(km) · vuelta de \(total) km" : "km \(km) de \(total)"
+    }
+
+    private var climbText: String? {
+        guard let s = ride.climbStatus else { return nil }
+        func km(_ m: Double) -> String { (m / 1000).formatted(.number.precision(.fractionLength(1))) }
+        let avg = s.climb.averageGradePercent.formatted(.number.precision(.fractionLength(1)))
+        return s.isOnClimb
+            ? "Subida: quedan \(km(s.remainingMeters)) km y \(Int(s.remainingAscentMeters)) m"
+            : "Subida en \(km(s.distanceToStart)) km: \(km(s.climb.lengthMeters)) km al \(avg) %"
+    }
+}
+
+/// Un dato: etiqueta, número grande con su unidad y una línea de contexto opcional.
+private struct SceneMetric: View {
+    let title: String
+    let value: String
+    let unit: String
+    var caption: String?
+    var captionColor: Color?
+
+    init(_ title: String, _ value: String, _ unit: String, caption: String? = nil, captionColor: Color? = nil) {
+        self.title = title; self.value = value; self.unit = unit; self.caption = caption; self.captionColor = captionColor
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title).font(Theme.font(.labelSmall)).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value).font(.system(size: 40, weight: .semibold, design: .rounded)).monospacedDigit()
-                    .foregroundStyle(color ?? Color.primary)
+                Text(value).font(.system(size: 38, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .contentTransition(.numericText())
                 Text(unit).font(Theme.font(.bodyMedium)).foregroundStyle(.secondary)
             }
+            if let caption {
+                HStack(spacing: 4) {
+                    if let captionColor { Circle().fill(captionColor).frame(width: 8, height: 8) }
+                    Text(caption).font(Theme.font(.labelSmall)).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
         }
-        .padding(.horizontal, Space.m).padding(.vertical, Space.s)
-        .frame(minWidth: 130, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.large))
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// La marcha: «8 de 12», una escalera con todas las marchas (la tuya resaltada) y la combinación.
+private struct GearGauge: View {
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        let n = ride.gears.number, count = ride.gears.count
+        VStack(alignment: .leading, spacing: 4) {
+            Text("MARCHA").font(Theme.font(.labelSmall)).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(n)").font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
+                    .contentTransition(.numericText())
+                Text("de \(count)").font(Theme.font(.bodyMedium)).foregroundStyle(.secondary)
+                Text(ride.gears.gear.label).font(Theme.font(.bodyMedium)).foregroundStyle(.secondary)
+            }
+            HStack(alignment: .bottom, spacing: count > 12 ? 1.5 : 2.5) {
+                ForEach(1...count, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(i == n ? Theme.accent : Color.primary.opacity(i < n ? 0.45 : 0.15))
+                        .frame(width: count > 12 ? 4 : 6, height: 5 + CGFloat(i) / CGFloat(count) * 13)
+                }
+            }
+            .animation(.easeOut(duration: 0.15), value: n)
+        }
+        .fixedSize()
+        .help("Marcha \(n) de \(count) (\(ride.gears.gear.label)) · − más blanda, + más dura")
+    }
+}
+
+/// El perfil de toda la ruta (o de la vuelta) con lo hecho y un punto donde vas.
+private struct MiniProfile: View {
+    let table: RouteElevationTable
+    let position: Double
+
+    var body: some View {
+        Canvas { c, size in
+            let n = 240
+            let length = max(table.lengthMeters, 1)
+            let heights = (0...n).map { table.elevation(atDistance: Double($0) / Double(n) * length) }
+            let lo = heights.min() ?? 0, hi = max(heights.max() ?? 1, lo + 20)
+            func point(_ i: Int) -> CGPoint {
+                CGPoint(x: CGFloat(i) / CGFloat(n) * size.width,
+                        y: size.height - CGFloat((heights[i] - lo) / (hi - lo)) * (size.height - 4) - 2)
+            }
+            var area = Path()
+            area.move(to: CGPoint(x: 0, y: size.height))
+            for i in 0...n { area.addLine(to: point(i)) }
+            area.addLine(to: CGPoint(x: size.width, y: size.height))
+            area.closeSubpath()
+            c.fill(area, with: .color(.primary.opacity(0.14)))
+            // Lo hecho, en el color de acento.
+            let done = CGFloat(min(max(position / length, 0), 1)) * size.width
+            var clipped = c
+            clipped.clip(to: Path(CGRect(x: 0, y: 0, width: done, height: size.height)))
+            clipped.fill(area, with: .color(Theme.accent.opacity(0.45)))
+            let i = min(Int((position / length * Double(n)).rounded()), n)
+            let p = point(max(i, 0))
+            c.fill(Path(ellipseIn: CGRect(x: p.x - 5, y: p.y - 5, width: 10, height: 10)), with: .color(Theme.accent))
+            c.stroke(Path(ellipseIn: CGRect(x: p.x - 5, y: p.y - 5, width: 10, height: 10)), with: .color(.white), lineWidth: 2)
+        }
+        .accessibilityLabel("Perfil de la ruta")
     }
 }
 

@@ -22,6 +22,7 @@
 		54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */; };
 		5BB8932B175C34562307D088 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 73886A525BAFEF0B64906260 /* CicloBluetooth */; };
 		5DA8CAC0930596C31F7F8DD3 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB996F07CD563F64B272A32 /* HistoryView.swift */; };
+		60017AB4614A6FE0F3973DB9 /* SceneLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55572BB6639FE3C30213D09F /* SceneLocation.swift */; };
 		67AE0C9ADFBAC9E6472329B0 /* IntervalsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */; };
 		79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDA2488F1654582F648AE11 /* ControllersView.swift */; };
 		7A79021544CDD0DC2162DBBE /* BridgeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863663EEE45FBB2051721FB9 /* BridgeModel.swift */; };
@@ -52,6 +53,7 @@
 		4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveMetricsView.swift; sourceTree = "<group>"; };
 		499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsService.swift; sourceTree = "<group>"; };
 		4AF3EF73BB829F6F5855356F /* CicloKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CicloKit; path = ../CicloKit; sourceTree = SOURCE_ROOT; };
+		55572BB6639FE3C30213D09F /* SceneLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneLocation.swift; sourceTree = "<group>"; };
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
 		863663EEE45FBB2051721FB9 /* BridgeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModel.swift; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 				F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */,
 				DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */,
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
+				55572BB6639FE3C30213D09F /* SceneLocation.swift */,
 				FFC2B36F439B128659783D3B /* StravaService.swift */,
 				2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */,
 				A7C86DA6C149571AE01FF604 /* Theme.swift */,
@@ -296,6 +299,7 @@
 				9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */,
 				14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */,
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
+				60017AB4614A6FE0F3973DB9 /* SceneLocation.swift in Sources */,
 				C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */,
 				B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */,
 				1D4AA0CF3E560F20C0D32728 /* Theme.swift in Sources */,
@@ -321,6 +325,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Taylor Zwift";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Taylor Zwift usa Bluetooth para conectarse al rodillo y a los mandos.";
+				INFOPLIST_KEY_NSLocationUsageDescription = "Taylor Zwift usa tu ubicación aproximada para que el cielo del simulador vaya con la hora del sol donde estás.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Taylor Zwift usa tu ubicación aproximada para que el cielo del simulador vaya con la hora del sol donde estás.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -388,6 +394,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Taylor Zwift";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Taylor Zwift usa Bluetooth para conectarse al rodillo y a los mandos.";
+				INFOPLIST_KEY_NSLocationUsageDescription = "Taylor Zwift usa tu ubicación aproximada para que el cielo del simulador vaya con la hora del sol donde estás.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Taylor Zwift usa tu ubicación aproximada para que el cielo del simulador vaya con la hora del sol donde estás.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
