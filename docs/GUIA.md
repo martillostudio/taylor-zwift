@@ -173,7 +173,7 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 - [x] Entrenos de fuerza con **cadencia objetivo** (5×5' a 55 rpm, 4×8' a 60 rpm, Z2 con 6×3' a 50 rpm) y Z2 de 2 h.
 - [x] Zonas de pulso por % de la FC máxima (las de Garmin) además de las de potencia.
 - [x] Biblioteca en **tarjetas**: perfil por zonas, lema, reparto del tiempo por zonas, duración, TSS, zona principal, «TEST» y «rpm».
-- [x] **Entreno libre** (modo «Libre» en «Rodar» y tarjeta en «Entrenar»): pendiente elegida por ti (deslizador, atajos 0/3/6/8/10 % o la cruceta ↑/↓ del mando izquierdo, en pasos de 0,5 %) y marchas virtuales; «Terminar» da el resumen (distancia, tiempo, medias, mejores 1'/5'/20', VO2max estimado).
+- [x] ~~**Entreno libre**~~ (quitado el 21-nov; ver registro) (modo «Libre» en «Rodar» y tarjeta en «Entrenar»): pendiente elegida por ti (deslizador, atajos 0/3/6/8/10 % o la cruceta ↑/↓ del mando izquierdo, en pasos de 0,5 %) y marchas virtuales; «Terminar» da el resumen (distancia, tiempo, medias, mejores 1'/5'/20', VO2max estimado).
 - [x] Desarrollo por defecto: monoplato 1×12 (el de la Grizl; falta confirmar el cassette exacto). Se guarda el que elijas.
 - [x] **Seguimiento del plan** (21-nov): cada entreno guardado cuenta para su sesión si es el mismo entreno y de esa semana (da igual el día) y dura al menos el 80 %; si no, «a medias». Estados: hecha, a medias, hoy, no hecha (no se recupera), próxima. Tarjeta «Hoy toca» con botón para ir al entreno; contador por semana; marcar a mano con clic derecho (salidas en exterior o entrenos hechos fuera).
 - [x] **Botones del mando derecho** (21-nov): **A** empieza / pausa; **B** dos veces en 3 s termina y guarda (la primera pulsación avisa). Aviso flotante arriba.

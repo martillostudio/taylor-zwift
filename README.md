@@ -6,7 +6,7 @@ App de entrenamiento indoor (estilo MyWhoosh/Zwift) para macOS, iPadOS e iOS, es
 - Mandos: Zwift Click V2 para marchas virtuales.
 - Código abierto.
 
-**Estado:** Fase 2 — pestaña «Rodar» para entrenar: rutas en modo SIM con 24 marchas virtuales, ERG y reconexión automática (falta probarla en el rodillo).
+**Estado:** entrenador en uso con el plan de invierno de 16 semanas (desde el 23-nov-2026): entrenos en ERG, rutas en SIM con marchas virtuales, historial y sincronización con intervals.icu. Falta probar en el rodillo lo último (ver la guía, §6).
 
 ## Uso rápido
 
@@ -18,32 +18,32 @@ make logs   # logs de Bluetooth en vivo
 
 Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8. Ver [docs/GUIA.md](docs/GUIA.md).
 
-## Entrenar (pestaña «Rodar»)
+## Rodar
 
-1. `make run`, pestaña **Rodar** → «Conectar rodillo y mandos».
-2. Elige **Ruta (SIM)** y una ruta, o **ERG**, y pulsa **Empezar**.
-3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG); **− (izq) o Y** = más blanda (−10 W).
-4. Desarrollo: carretera 2×12 (24 marchas), GRX 1×12 o SRAM XPLR 1×12. El pulsómetro se conecta solo si lo llevas puesto.
+1. `make run`, pestaña **Rodar** → «Conectar rodillo y mandos». El pulsómetro se conecta solo si lo llevas puesto.
+2. Elige un modo y pulsa **Empezar**:
+   - **Entreno**: el entreno cargado desde «Entrenar», en ERG.
+   - **Ruta**: una de tus rutas (tarjetas con mapa, km, desnivel y año) en SIM con la pendiente real. «⋯ → Importar GPX…» para añadir más (Garmin, Strava, Komoot, Wikiloc).
+   - **ERG**: vatios fijos.
+3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG, +2 % en un entreno); **− (izq) o Y** = más blanda. **A** empieza / pausa; **B** dos veces seguidas termina y guarda.
+4. Desarrollo: carretera 2×12 (24 marchas), GRX 1×12 o SRAM XPLR 1×12.
 
-## Entreno libre
+## Entrenar
 
-Pestaña **Rodar → Libre** (o «Rodar libre» en Entrenar): eliges la pendiente con el deslizador, los atajos o la cruceta ↑/↓ del mando izquierdo, y cambias de marcha con + / − como siempre. «Terminar» te da el resumen.
+- **Tu perfil:** FTP, peso y zonas. El FTP se actualiza solo: con un test hecho a tope (pulso ≥ 92 % de la FC máx.) o cuando el eFTP de intervals.icu sube 5 W o más.
+- **Plan «Invierno en el rodillo»** (16 semanas, 3 sesiones/semana): «Hoy toca» con botón para ir al entreno; las sesiones se marcan solas al hacerlas (también las salidas en exterior, vía intervals.icu). Clic derecho para marcar a mano o **cambiar de día** dentro de la semana.
+- **Tu progreso y Tu forma:** qué conviene hoy, fases del plan, carga semanal hecha vs prevista, eFTP y mejores marcas, y forma/cansancio/frescura con su previsión.
+- **Biblioteca:** Z2, sweet spot, umbral, VO2max 4×4, 30/15, fuerza a baja cadencia, tests de rampa y 20'… o importa un `.zwo`. «Cargar este entreno» → «Empezar».
 
-## Entrenos (pestaña «Entrenar»)
-
-1. Pon tu **FTP** y tu peso (o haz el **test de rampa**: al acabar te propone el FTP).
-2. Elige un entreno de la biblioteca (Z2, sweet spot, umbral, VO2max 4×4, 30/15…) o importa un `.zwo`.
-3. «Cargar este entreno» → «Empezar». El rodillo va en ERG; los Click suben/bajan la intensidad un 2 %.
-
-## Historial, Garmin Connect y Strava
-
-**Garmin Connect:** en el resumen o en el historial, «Subir a Garmin Connect» abre su página de importar y te deja el `.fit` seleccionado en el Finder: arrástralo a la página (mejor con Chrome o Edge).
-
-**Strava (opcional, necesita suscripción para usar su API):**
+## Historial, intervals.icu, Garmin Connect y Strava
 
 Cada entreno de más de 1 minuto se guarda al terminar (pestaña **Historial**), con su `.fit` para exportarlo.
 
-Para subirlos a Strava:
+**intervals.icu (recomendado, gratis):** en Historial, pega tu clave de API (intervals.icu → Settings → Developer Settings). Cada entreno se sube solo al terminar, el plan aparece en su calendario (y en Garmin Connect y el reloj si tienes la sincronización activada) y se vuelve a mandar solo cuando lo cambias.
+
+**Garmin Connect:** al terminar (se puede desactivar) o con «Subir a Garmin Connect» en el resumen o el historial, se abre su página de importar y te deja el `.fit` seleccionado en el Finder: arrástralo a la página (mejor con Chrome o Edge).
+
+**Strava (opcional, necesita suscripción para usar su API):**
 1. En [strava.com/settings/api](https://www.strava.com/settings/api) crea una aplicación con **Authorization Callback Domain = `localhost`**.
 2. En Historial, pega su *Client ID* y *Client Secret* y pulsa «Conectar con Strava».
 3. Con «Subir al terminar» activado, cada entreno se sube solo (marcado como entreno en rodillo).
