@@ -31,6 +31,8 @@ struct GradeProfileChart: View {
     var doneUpTo: Double?
     /// Línea vertical con tu posición.
     var marker: Double?
+    /// Etiqueta sobre tu posición («Estás aquí»), con un punto en el perfil.
+    var markerLabel: String?
     var height: CGFloat = 140
 
     var body: some View {
@@ -61,6 +63,18 @@ struct GradeProfileChart: View {
                 RuleMark(x: .value("km", (marker - xOffset) / 1000))
                     .foregroundStyle(Color.primary)
                     .lineStyle(StrokeStyle(lineWidth: 2))
+                if let markerLabel, let y = elevation(at: marker) {
+                    PointMark(x: .value("km", (marker - xOffset) / 1000), y: .value("m", y))
+                        .symbolSize(90)
+                        .foregroundStyle(Color.primary)
+                        .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit, y: .fit)) {
+                            Text(markerLabel)
+                                .font(M3.font(.labelMedium))
+                                .foregroundStyle(M3.onPrimary)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(M3.primary, in: Capsule())
+                        }
+                }
             }
         }
         .chartYScale(domain: bottom...top)
@@ -68,6 +82,14 @@ struct GradeProfileChart: View {
         .chartXAxisLabel("km")
         .chartYAxisLabel("m")
         .frame(height: height)
+    }
+
+    /// Altura del perfil en `d` (interpolada dentro de su tramo).
+    private func elevation(at d: Double) -> Double? {
+        guard let c = chunks.first(where: { $0.startMeters <= d && d <= $0.endMeters }) ?? chunks.last else { return nil }
+        let span = max(c.endMeters - c.startMeters, 1)
+        let f = min(max((d - c.startMeters) / span, 0), 1)
+        return c.startElevation + (c.endElevation - c.startElevation) * f
     }
 }
 

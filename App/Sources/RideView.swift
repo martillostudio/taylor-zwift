@@ -33,6 +33,11 @@ struct RideView: View {
                         LiveHero()
                         Divider().overlay(M3.outlineVariant)
                         LiveStrip()
+                        // En ruta la marcha va aquí, con los datos: todo en una pantalla.
+                        if gearsInHero {
+                            Divider().overlay(M3.outlineVariant)
+                            GearControl(compact: true)
+                        }
                     }
                 }
 
@@ -43,7 +48,7 @@ struct RideView: View {
                 case .workout: workoutCard
                 }
 
-                if ride.usesGears { gearCard }
+                if ride.usesGears, !gearsInHero { gearCard }
             }
             .padding(Space.xl)
             .padding(.bottom, 96) // sitio para la barra de acciones flotante
@@ -75,6 +80,8 @@ struct RideView: View {
             importError = error.localizedDescription
         }
     }
+
+    private var gearsInHero: Bool { ride.mode == .route && ride.usesGears }
 
     // MARK: Cabecera y conexión
 
@@ -147,32 +154,18 @@ struct RideView: View {
         }
     }
 
+    /// Perfil con «estás aquí» (2/3) y mapa siguiéndote (1/3); debajo, la subida y la lista de subidas.
     @ViewBuilder
     private var selectedRouteCards: some View {
-        M3Card(style: .filled) {
-            VStack(alignment: .leading, spacing: 12) {
-                M3SectionTitle(title: ride.route.name,
-                               subtitle: "\(km(ride.route.lengthMeters)) km · +\(Int(ride.route.climbMeters)) m\(ride.route.isLoop ? " por vuelta" : "")")
-                HStack(alignment: .center, spacing: 16) {
-                    GradeTile(grade: ride.currentGrade)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("PRÓXIMOS 2 KM").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
-                        let d = ride.session.distanceMeters
-                        GradeProfileChart(chunks: ride.route.chunks(from: d, to: d + previewMeters, size: 25),
-                                          xOffset: d, height: 90)
-                    }
-                }
-                if ride.route.isFinished(atDistance: ride.session.distanceMeters) {
-                    Label("¡Ruta terminada! Sigues en llano.", systemImage: "flag.checkered")
-                        .font(M3.font(.titleMedium)).foregroundStyle(M3.tertiary)
-                }
+        SplitRow(fraction: 2.0 / 3.0, spacing: Space.l) {
+            routeProfileCard
+            if let track = ride.route.track {
+                RouteMapCard(route: ride.route, track: track, distance: ride.session.distanceMeters,
+                             mapHeight: nil, followsOnAppear: ride.isRunning || ride.session.movingSeconds > 0)
             }
         }
         if let status = ride.climbStatus { climbCard(status) }
-        if let track = ride.route.track {
-            RouteMapCard(route: ride.route, track: track, distance: ride.session.distanceMeters)
-        }
-        routeProfileCard
+        if !ride.route.climbs.isEmpty { climbListCard }
     }
 
     private func climbCard(_ status: ClimbStatus) -> some View {
@@ -211,21 +204,62 @@ struct RideView: View {
 
     private var routeProfileCard: some View {
         let route = ride.route
-        let position = route.positionInLap(ride.session.distanceMeters)
+        let d = ride.session.distanceMeters
+        let position = route.positionInLap(d)
+        let left = max(route.lengthMeters - position, 0)
+        let climbLeft = route.chunks(from: position, to: route.lengthMeters, size: 25)
+            .reduce(0) { $0 + max($1.endElevation - $1.startElevation, 0) }
         return M3Card(style: .filled) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("PERFIL DE LA RUTA").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+            VStack(alignment: .leading, spacing: Space.m) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(route.name).font(M3.font(.titleMedium)).lineLimit(1)
+                        Text("km \(km(position)) de \(km(route.lengthMeters)) · quedan \(km(left)) km y +\(Int(climbLeft.rounded())) m")
+                            .font(M3.font(.bodyMedium, numeric: true)).foregroundStyle(M3.onSurfaceVariant)
+                    }
+                    Spacer()
+                    Text("\(Int(route.elevation(atDistance: d).rounded())) m")
+                        .font(M3.font(.titleMedium, numeric: true)).foregroundStyle(M3.onSurfaceVariant)
+                        .help("Altura donde estás")
+                }
                 GradeProfileChart(chunks: route.chunks(from: 0, to: route.lengthMeters, size: max(route.lengthMeters / 150, 25)),
-                                  doneUpTo: position, marker: position, height: 140)
-                GradeLegend()
-                ForEach(route.climbs) { c in
+                                  doneUpTo: position, marker: position, markerLabel: "Estás aquí", height: 150)
+                HStack(alignment: .center, spacing: Space.l) {
+                    GradeTile(grade: ride.currentGrade)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("PRÓXIMOS 2 KM").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        GradeProfileChart(chunks: route.chunks(from: d, to: d + previewMeters, size: 25),
+                                          xOffset: d, height: 70)
+                    }
+                }
+                if route.isFinished(atDistance: d) {
+                    Label("¡Ruta terminada! Sigues en llano.", systemImage: "flag.checkered")
+                        .font(M3.font(.titleMedium)).foregroundStyle(M3.tertiary)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private var climbListCard: some View {
+        M3Card(style: .filled) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("SUBIDAS DE LA RUTA").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    Spacer()
+                    GradeLegend()
+                }
+                ForEach(ride.route.climbs) { c in
+                    let done = c.endMeters <= ride.route.positionInLap(ride.session.distanceMeters)
                     HStack {
-                        Image(systemName: "mountain.2.fill").foregroundStyle(c.category.band.color)
+                        Image(systemName: done ? "checkmark.circle.fill" : "mountain.2.fill")
+                            .foregroundStyle(done ? M3.outline : c.category.band.color)
                         Text("km \(km(c.startMeters))–\(km(c.endMeters))").font(M3.font(.bodyMedium))
                         Spacer()
                         Text("\(km(c.lengthMeters)) km al \(c.averageGradePercent.formatted(.number.precision(.fractionLength(1)))) % · \(c.category.label)")
                             .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
                     }
+                    .opacity(done ? 0.6 : 1)
                 }
             }
         }
@@ -261,29 +295,7 @@ struct RideView: View {
     // MARK: Marchas
 
     private var gearCard: some View {
-        @Bindable var ride = ride
-        return M3Card(style: .filled) {
-            HStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("MARCHA").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("\(ride.gears.number)").font(M3.font(.displayMedium, numeric: true).weight(.semibold))
-                        Text("/ \(ride.gears.count)").font(M3.font(.titleMedium)).foregroundStyle(M3.onSurfaceVariant)
-                    }
-                    Text("\(ride.gears.gear.label) · \(ride.gears.gear.developmentMeters.formatted(.number.precision(.fractionLength(1)))) m por pedalada")
-                        .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
-                }
-                GearStrip(count: ride.gears.count, current: ride.gears.index)
-                Spacer()
-                M3IconButton(systemImage: "minus", size: 56) { ride.easier() }
-                M3IconButton(systemImage: "plus", size: 56) { ride.harder() }
-                Picker("Desarrollo", selection: $ride.drivetrain) {
-                    ForEach(Drivetrain.all) { Text($0.name).tag($0) }
-                }
-                .labelsHidden()
-                .fixedSize()
-            }
-        }
+        M3Card(style: .filled) { GearControl() }
     }
 
     // MARK: Acciones y resumen
@@ -380,5 +392,92 @@ struct StravaBadge: View {
             .buttonStyle(.m3Tonal)
             .disabled(strava.isUploading)
         }
+    }
+}
+
+/// La marcha: número, combinación, rayitas y botones − / + (y el desarrollo de la bici).
+/// En compacto va en una línea dentro de la tarjeta de datos (modo ruta).
+struct GearControl: View {
+    var compact = false
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        @Bindable var ride = ride
+        HStack(spacing: compact ? Space.l : 20) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("MARCHA").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("\(ride.gears.number)")
+                        .font(M3.font(compact ? .headlineMedium : .displayMedium, numeric: true).weight(.semibold))
+                    Text("/ \(ride.gears.count)").font(M3.font(.titleMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    if compact {
+                        Text("\(ride.gears.gear.label) · \(meters) m").font(M3.font(.titleSmall))
+                            .foregroundStyle(M3.onSurfaceVariant)
+                    }
+                }
+                if !compact {
+                    Text("\(ride.gears.gear.label) · \(meters) m por pedalada")
+                        .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                }
+            }
+            .fixedSize()
+            GearStrip(count: ride.gears.count, current: ride.gears.index)
+                .layoutPriority(-1)
+            Spacer(minLength: 0)
+            M3IconButton(systemImage: "minus", size: compact ? 48 : 56) { ride.easier() }
+                .help("Marcha más blanda")
+            M3IconButton(systemImage: "plus", size: compact ? 48 : 56) { ride.harder() }
+                .help("Marcha más dura")
+            Picker("Desarrollo", selection: $ride.drivetrain) {
+                ForEach(Drivetrain.all) { Text($0.name).tag($0) }
+            }
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    private var meters: String {
+        ride.gears.gear.developmentMeters.formatted(.number.precision(.fractionLength(1)))
+    }
+}
+
+/// Dos bloques en fila: el primero ocupa `fraction` del ancho y el segundo el resto, los dos
+/// con la misma altura. En pantallas estrechas (iPhone) van uno debajo del otro.
+struct SplitRow: Layout {
+    var fraction: CGFloat
+    var spacing: CGFloat
+    var minWidthSideBySide: CGFloat = 640
+
+    private func widths(_ total: CGFloat) -> (CGFloat, CGFloat) {
+        let first = ((total - spacing) * fraction).rounded()
+        return (first, total - spacing - first)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let total = proposal.width ?? 900
+        guard subviews.count == 2, total >= minWidthSideBySide else {
+            let hs = subviews.map { $0.sizeThatFits(ProposedViewSize(width: total, height: nil)).height }
+            return CGSize(width: total, height: hs.reduce(0, +) + spacing * CGFloat(max(hs.count - 1, 0)))
+        }
+        let (w1, w2) = widths(total)
+        let h = max(subviews[0].sizeThatFits(ProposedViewSize(width: w1, height: nil)).height,
+                    subviews[1].sizeThatFits(ProposedViewSize(width: w2, height: nil)).height)
+        return CGSize(width: total, height: h)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2, bounds.width >= minWidthSideBySide else {
+            var y = bounds.minY
+            for v in subviews {
+                let h = v.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil)).height
+                v.place(at: CGPoint(x: bounds.minX, y: y), proposal: ProposedViewSize(width: bounds.width, height: h))
+                y += h + spacing
+            }
+            return
+        }
+        let (w1, w2) = widths(bounds.width)
+        subviews[0].place(at: bounds.origin, proposal: ProposedViewSize(width: w1, height: bounds.height))
+        subviews[1].place(at: CGPoint(x: bounds.minX + w1 + spacing, y: bounds.minY),
+                          proposal: ProposedViewSize(width: w2, height: bounds.height))
     }
 }

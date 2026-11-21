@@ -8,6 +8,10 @@ struct RouteMapCard: View {
     let route: Route
     let track: RouteTrack
     let distance: Double
+    /// Alto del mapa; `nil` = ocupa todo el sitio que le den (al lado del perfil).
+    var mapHeight: CGFloat? = 320
+    /// Empieza siguiéndote (mientras ruedas, lo normal es querer verte).
+    var followsOnAppear = false
 
     @State private var camera: MapCameraPosition = .automatic
     @State private var following = false
@@ -53,7 +57,7 @@ struct RouteMapCard: View {
                 }
                 .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
                 .mapControls { MapScaleView() }
-                .frame(height: 320)
+                .frame(minHeight: mapHeight ?? 200, maxHeight: mapHeight ?? .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: M3.Shape.medium))
                 .onMapCameraChange(frequency: .onEnd) { context in
                     // Si lo mueves tú (y no estamos siguiéndote a ti), se deja de seguir.
@@ -61,6 +65,12 @@ struct RouteMapCard: View {
                 }
                 .onChange(of: Int(distance / 20)) { // cada 20 m, no en cada muestra
                     if following { follow(route.mapPosition(atDistance: distance)?.point) }
+                }
+                .onAppear {
+                    if followsOnAppear, !following {
+                        following = true
+                        follow(here?.point)
+                    }
                 }
                 .onChange(of: route.id) {
                     following = false
