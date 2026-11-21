@@ -108,6 +108,7 @@ struct SectionTitle: View {
             Text(title).font(Theme.font(.titleLarge)).foregroundStyle(Color.primary)
             if let subtitle {
                 Text(subtitle).font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

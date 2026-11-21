@@ -148,6 +148,9 @@ final class IntervalsService {
             let n = outdoorRides.count
             status = n == 0 ? "Sincronizado: sin salidas en exterior en estas fechas."
                 : "Sincronizado: \(n) salida\(n == 1 ? "" : "s") en exterior."
+        } catch is CancellationError {
+            // Se cambió de pantalla a mitad: no es un error, se sincroniza la próxima vez.
+        } catch let e as URLError where e.code == .cancelled {
         } catch {
             status = error.localizedDescription
         }

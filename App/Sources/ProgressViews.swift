@@ -34,12 +34,24 @@ struct TodayCard: View {
                         Text("Conecta intervals.icu en Historial para tener en cuenta tu cansancio.")
                             .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
                     }
+                    if let next = nextSession, next.session.id != todaySession?.id || advice.call == .rest {
+                        Text("Siguiente: \(next.session.workout?.name ?? "salida en exterior"), el \(next.date.formatted(.dateTime.weekday(.wide).day()))")
+                            .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
-                if let w = todaySession?.workout, advice.call != .rest {
-                    Button("Cargar", systemImage: "square.and.arrow.down.on.square") { ride.load(w) }
-                        .buttonStyle(.borderedProminent)
-                        .help("Cargar «\(w.name)» para hacerlo ahora")
+                if let w = nextSession?.session.workout {
+                    let isToday = nextSession?.session.id == todaySession?.id
+                    NavigationLink {
+                        WorkoutDetailView(workout: w)
+                            .onAppear {
+                                // Se carga solo, salvo que estés en plena actividad con otra cosa.
+                                if !ride.isRunning, ride.workout?.id != w.id || ride.mode != .workout { ride.load(w) }
+                            }
+                    } label: {
+                        Label(isToday && advice.call != .rest ? "Ir al entreno" : "Ver entreno", systemImage: "play.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
         }
@@ -54,6 +66,13 @@ struct TodayCard: View {
         let offset = Calendar.current.dateComponents([.day], from: weekStart,
                                                      to: Calendar.current.startOfDay(for: today)).day ?? -1
         return week.sessions.first { $0.weekdayOffset == offset }
+    }
+
+    /// La próxima sesión pendiente del plan (la de hoy si aún no está hecha) y su día.
+    private var nextSession: (session: PlanSession, date: Date)? {
+        guard let week = ride.currentPlanWeek,
+              let s = ride.plan.nextSession(in: week, statuses: ride.planStatus(week)) else { return nil }
+        return (s, ride.date(of: s, in: week))
     }
 
     private var advice: TodayAdvice {
@@ -242,21 +261,17 @@ struct WeeklyLoadCard: View {
                 SectionTitle(title: "Carga semanal", subtitle: "TSS hecho (color) frente al previsto (gris)")
                 Chart {
                     ForEach(data) { w in
-                        BarMark(x: .value("Semana", w.week), y: .value("TSS", w.planned), width: .ratio(0.7))
+                        // yStart/yEnd: las dos barras se superponen en vez de apilarse.
+                        BarMark(x: .value("Semana", w.week), yStart: .value("TSS", 0), yEnd: .value("TSS", w.planned),
+                                width: .fixed(16))
                             .foregroundStyle(Color.secondary.opacity(0.22))
                             .cornerRadius(3)
                         if w.week <= current {
-                            BarMark(x: .value("Semana", w.week), y: .value("TSS", w.done), width: .ratio(0.45))
+                            BarMark(x: .value("Semana", w.week), yStart: .value("TSS", 0), yEnd: .value("TSS", w.done),
+                                    width: .fixed(9))
                                 .foregroundStyle(w.week == current ? Theme.accent.opacity(0.7) : Theme.accent)
                                 .cornerRadius(3)
                         }
-                    }
-                    if current > 0 {
-                        RuleMark(x: .value("Semana", current))
-                            .foregroundStyle(.clear)
-                            .annotation(position: .top) {
-                                Text("Ahora").font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
-                            }
                     }
                     if let s = selected, let w = data.first(where: { $0.week == s }) {
                         RuleMark(x: .value("Semana", s))
@@ -342,7 +357,7 @@ struct ImprovementCard: View {
                     Stat(title: "Mejor 20'", value: best(1_200).map { "\($0)" } ?? "—", unit: "W", size: .headlineMedium,
                          caption: "últimas 6 semanas")
                 }
-                if eftp.count >= 2 { eftpChart }
+                if Set(eftp.map { Calendar.current.startOfDay(for: $0.date) }).count >= 2 { eftpChart }
                 efficiency
             }
         }
@@ -372,6 +387,12 @@ struct ImprovementCard: View {
                     }
             }
             .chartYScale(domain: .automatic(includesZero: false))
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                    AxisGridLine().foregroundStyle(Theme.separator.opacity(0.6))
+                    AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(Color.secondary)
+                }
+            }
             .frame(height: 110)
         }
     }
@@ -400,6 +421,19 @@ struct ImprovementCard: View {
                 }
                 .foregroundStyle(Color.green)
                 .chartYScale(domain: .automatic(includesZero: false))
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                        AxisGridLine().foregroundStyle(Theme.separator.opacity(0.6))
+                        AxisValueLabel(format: .dateTime.day().month(.abbreviated)).foregroundStyle(Color.secondary)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { v in
+                        AxisGridLine().foregroundStyle(Theme.separator.opacity(0.6))
+                        AxisValueLabel { if let d = v.as(Double.self) { Text(d, format: .number.precision(.fractionLength(2))) } }
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
                 .frame(height: 110)
                 let change = (points.last!.ef / points.first!.ef - 1) * 100
                 Text(change >= 0 ? "+\(Int(change.rounded())) % desde el primer rodaje: sacas más vatios con el mismo pulso."

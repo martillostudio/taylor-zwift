@@ -10,6 +10,9 @@ struct TaylorZwiftApp: App {
     @State private var ride: RideController
 
     init() {
+        // La app está escrita en castellano: fechas, días y números en español aunque el Mac
+        // esté en otro idioma (es lo mismo que elegir el idioma de la app en Ajustes).
+        UserDefaults.standard.set(["es-ES"], forKey: "AppleLanguages")
         let hub = BluetoothHub()
         let store = ActivityStore()
         let strava = StravaService()

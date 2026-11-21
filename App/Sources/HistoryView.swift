@@ -306,14 +306,17 @@ struct ActivityCard: View {
             }
             Text(a.name).font(Theme.font(.titleMedium)).foregroundStyle(Color.primary).lineLimit(1)
             PowerSparkline(activity: a).frame(height: 44)
-            HStack(spacing: 14) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 10, alignment: .leading)],
+                      alignment: .leading, spacing: 6) {
                 Label(formatDuration(Int(a.timerSeconds)), systemImage: "clock")
                 Label("\((a.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1)))) km", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                 if let p = a.averagePower { Label("\(p) W", systemImage: "bolt.fill") }
                 if let t = a.tss { Label("TSS \(t)", systemImage: "flame") }
-                if let hr = a.averageHeartRate { Label("\(hr)", systemImage: "heart.fill") }
+                if let hr = a.averageHeartRate { Label("\(hr) ppm", systemImage: "heart.fill") }
             }
-            .font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: false, vertical: true)
+            .font(Theme.font(.labelMedium, numeric: true)).foregroundStyle(Color.secondary)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

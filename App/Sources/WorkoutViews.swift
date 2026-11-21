@@ -252,9 +252,8 @@ private struct PlanBox: View {
                 }
                 if let week = ride.currentPlanWeek {
                     let statuses = ride.planStatus(week)
-                    if let next = ride.plan.nextSession(in: week, statuses: statuses) {
-                        NextSessionBanner(session: next, week: week, status: statuses[next.id] ?? .upcoming)
-                    } else {
+                    // Lo que toca hoy (y el botón para hacerlo) está en la tarjeta «Hoy», arriba.
+                    if ride.plan.nextSession(in: week, statuses: statuses) == nil {
                         Label("Semana completada. ¡Buen trabajo! Descansa hasta el lunes.", systemImage: "checkmark.seal.fill")
                             .font(Theme.font(.titleMedium)).foregroundStyle(Theme.positive)
                     }
@@ -328,54 +327,6 @@ private struct OutdoorSyncLine: View {
     }
 }
 
-/// «Hoy toca»: la sesión siguiente del plan con un botón para cargarla.
-private struct NextSessionBanner: View {
-    let session: PlanSession
-    let week: PlanWeek
-    let status: PlanSessionStatus
-    @Environment(RideController.self) private var ride
-
-    private var title: String {
-        switch status {
-        case .today: "Hoy toca"
-        case .partial: "A medias"
-        default: "Próxima sesión · \(ride.date(of: session, in: week).formatted(.dateTime.weekday(.wide).day()))"
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: Space.l) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(title.uppercased()).font(Theme.font(.labelMedium)).tracking(0.6)
-                    .foregroundStyle(Theme.accent.opacity(0.8))
-                Text(session.workout?.name ?? "Salida en exterior").font(Theme.font(.titleLarge))
-                    .foregroundStyle(Theme.accent)
-                Text(session.workout.map { "\(formatDuration($0.durationSeconds)) · \($0.shortDescription)" } ?? session.note)
-                    .font(Theme.font(.bodyMedium)).foregroundStyle(Theme.accent.opacity(0.8))
-                    .lineLimit(2)
-            }
-            Spacer(minLength: 0)
-            if let w = session.workout {
-                NavigationLink {
-                    WorkoutDetailView(workout: w)
-                        .onAppear {
-                            // Se carga solo, salvo que estés en plena actividad con otra cosa.
-                            if !ride.isRunning, ride.workout?.id != w.id || ride.mode != .workout { ride.load(w) }
-                        }
-                } label: {
-                    Label("Ir al entreno", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-            } else {
-                Button("Marcar hecha", systemImage: "checkmark") { ride.toggleManualMark(session, week: week) }
-                    .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding(Space.l)
-        .background(Theme.accentFill, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
-    }
-}
-
 /// Una semana del plan: bloque, objetivo y sus sesiones con su estado.
 struct PlanWeekView: View {
     let week: PlanWeek
@@ -401,7 +352,7 @@ struct PlanWeekView: View {
                         .background(Theme.neutralFill, in: Capsule())
                 }
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220, maximum: 360), spacing: Space.m)],
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: Space.m, alignment: .top)],
                       alignment: .leading, spacing: Space.m) {
                 ForEach(week.sessions) { session in
                     SessionCell(session: session, week: week, status: statuses[session.id] ?? .upcoming)
@@ -539,10 +490,10 @@ struct WorkoutCard: View {
                 .lineLimit(2, reservesSpace: !compact)
             ZoneBar(workout: workout)
             HStack(spacing: 12) {
-                Label(formatDuration(workout.durationSeconds), systemImage: "clock")
-                Label("TSS \(Int(workout.tss.rounded()))", systemImage: "bolt.fill")
+                Label(formatDuration(workout.durationSeconds), systemImage: "clock").fixedSize()
+                Label("TSS \(Int(workout.tss.rounded()))", systemImage: "bolt.fill").fixedSize()
                 if workout.hasCadenceTargets {
-                    Label("rpm", systemImage: "gauge.with.dots.needle.33percent")
+                    Label("rpm", systemImage: "gauge.with.dots.needle.33percent").fixedSize()
                 }
                 Spacer(minLength: 0)
                 // Siempre en una línea: si no cabe el nombre de la zona, solo «Z7».
@@ -550,7 +501,6 @@ struct WorkoutCard: View {
                     zoneBadge("Z\(zone.rawValue) \(zone.name)", zone)
                     zoneBadge("Z\(zone.rawValue)", zone)
                 }
-                .layoutPriority(1)
             }
             .lineLimit(1)
             .font(.caption)
@@ -670,6 +620,32 @@ struct WorkoutChart: View {
     }
 
     var body: some View {
+        if !showAxes, elapsed == nil, trace.isEmpty, window == nil {
+            miniProfile
+        } else {
+            chart
+        }
+    }
+
+    /// En las tarjetas: el perfil dibujado con rectángulos (ligero y siempre a su alto).
+    private var miniProfile: some View {
+        let total = max(Double(workout.durationSeconds) / 60, 1)
+        let top = max(bars.map(\.power).max() ?? 100, 100)
+        return GeometryReader { geo in
+            ForEach(bars) { b in
+                let h = geo.size.height * CGFloat(b.power / top)
+                Rectangle()
+                    .fill(b.color)
+                    .frame(width: max(geo.size.width * CGFloat((b.end - b.start) / total), 0.5), height: h)
+                    .offset(x: geo.size.width * CGFloat(b.start / total), y: geo.size.height - h)
+            }
+        }
+        .frame(height: height)
+        .clipped()
+        .accessibilityHidden(true)
+    }
+
+    private var chart: some View {
         Chart {
             ForEach(bars) { b in
                 RectangleMark(
