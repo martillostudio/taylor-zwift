@@ -13,7 +13,21 @@ public struct PlannedEvent: Equatable, Sendable {
     public var load: Int?
 }
 
+extension PlanSession {
+    /// Horas previstas de una salida en exterior, sacadas de la nota («3–3,5 h» → 3,25).
+    /// Sin horas en la nota, 3 h.
+    public var outdoorHours: Double {
+        guard let r = note.range(of: #"[\d,–-]+(?= h)"#, options: .regularExpression) else { return 3 }
+        let numbers = note[r].split(whereSeparator: { $0 == "–" || $0 == "-" })
+            .compactMap { Double($0.replacingOccurrences(of: ",", with: ".")) }
+        return numbers.isEmpty ? 3 : numbers.reduce(0, +) / Double(numbers.count)
+    }
+}
+
 extension TrainingPlan {
+    /// Carga por hora de una salida en exterior (media de tus salidas de gravel, jul–nov 2026).
+    public static let outdoorLoadPerHour = 46.0
+
     /// El test de rampa está escrito hasta el 224 % del FTP para que nadie se quede sin escalones,
     /// pero casi todo el mundo para hacia el 130 %. En el calendario se corta ahí (+ 5' suaves)
     /// para que la duración y la carga previstas sean realistas.
@@ -45,8 +59,9 @@ extension TrainingPlan {
                     name: w?.name ?? "Salida en exterior",
                     description: text,
                     workout: w,
-                    seconds: w?.durationSeconds ?? 3 * 3_600,
-                    load: w.map { Int($0.tss.rounded()) }
+                    seconds: w?.durationSeconds ?? Int(session.outdoorHours * 3_600),
+                    // Tus salidas por la calle dan unos 46 de carga por hora (por pulso, sin potenciómetro).
+                    load: w.map { Int($0.tss.rounded()) } ?? Int((session.outdoorHours * Self.outdoorLoadPerHour).rounded())
                 )
             }
         }

@@ -28,6 +28,8 @@ final class IntervalsService {
     /// Actividades recientes de intervals.icu (se guardan para tenerlas sin conexión).
     private(set) var recent: [IntervalsActivity] = []
     private(set) var lastSync: Date?
+    /// Forma, cansancio y frescura por día; los días futuros son la proyección con el plan.
+    private(set) var fitness: [FitnessDay] = []
 
     /// Salidas en bici por la calle (no rodillo, ni las que subimos nosotros).
     var outdoorRides: [IntervalsActivity] { recent.filter(\.isOutdoorRide) }
@@ -58,6 +60,10 @@ final class IntervalsService {
             recent = cached
         }
         lastSync = UserDefaults.standard.object(forKey: "intervalsSincronizado") as? Date
+        if let data = UserDefaults.standard.data(forKey: "intervalsForma"),
+           let cached = try? JSONDecoder().decode([FitnessDay].self, from: data) {
+            fitness = cached
+        }
     }
 
     // MARK: Cuenta
@@ -93,6 +99,8 @@ final class IntervalsService {
         UserDefaults.standard.removeObject(forKey: "intervalsAtleta")
         status = nil
         recent = []
+        fitness = []
+        UserDefaults.standard.removeObject(forKey: "intervalsForma")
         lastSync = nil
         UserDefaults.standard.removeObject(forKey: "intervalsRecientes")
         UserDefaults.standard.removeObject(forKey: "intervalsSincronizado")
@@ -102,7 +110,8 @@ final class IntervalsService {
 
     /// Trae las actividades desde `oldest` hasta mañana. Sin `force`, no repite si la última
     /// sincronización fue hace menos de 10 minutos.
-    func sync(since oldest: Date, force: Bool = false) async {
+    /// También trae la forma día a día hasta `fitnessUntil` (el final del plan).
+    func sync(since oldest: Date, fitnessUntil: Date? = nil, force: Bool = false) async {
         guard let apiKey, !isBusy else { return }
         if !force, let lastSync, Date().timeIntervalSince(lastSync) < 600 { return }
         isBusy = true
@@ -123,6 +132,19 @@ final class IntervalsService {
             lastSync = Date()
             UserDefaults.standard.set(try? JSONEncoder().encode(recent), forKey: "intervalsRecientes")
             UserDefaults.standard.set(lastSync, forKey: "intervalsSincronizado")
+            // Forma: las 6 últimas semanas y, si hay plan, la proyección hasta su final.
+            var wellness = URLComponents(url: Self.base.appendingPathComponent("athlete/0/wellness"),
+                                         resolvingAgainstBaseURL: false)!
+            wellness.queryItems = [
+                URLQueryItem(name: "oldest", value: Date().addingTimeInterval(-42 * 86_400).formatted(day)),
+                URLQueryItem(name: "newest", value: max(fitnessUntil ?? Date(), Date()).formatted(day)),
+            ]
+            var wRequest = URLRequest(url: wellness.url!)
+            wRequest.setValue(Self.authorization(apiKey), forHTTPHeaderField: "Authorization")
+            let (wData, wResponse) = try await URLSession.shared.data(for: wRequest)
+            try Self.check(wData, wResponse)
+            fitness = FitnessDay.parseWellness(wData)
+            UserDefaults.standard.set(try? JSONEncoder().encode(fitness), forKey: "intervalsForma")
             let n = outdoorRides.count
             status = n == 0 ? "Sincronizado: sin salidas en exterior en estas fechas."
                 : "Sincronizado: \(n) salida\(n == 1 ? "" : "s") en exterior."

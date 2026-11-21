@@ -56,6 +56,7 @@ struct WorkoutsView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     ProfileBox()
                     FreeRideCard()
+                    FitnessCard()
                     PlanBox()
 
                     if ride.mode == .workout, let w = ride.workout {

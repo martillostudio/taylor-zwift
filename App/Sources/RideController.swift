@@ -56,7 +56,8 @@ final class RideController {
     /// Pendiente que eliges en el modo libre (−10 % a 20 %).
     private(set) var freeGrade = 0.0
     /// Pestaña visible (para saltar de «Entrenar» a «Rodar»).
-    var selectedTab = "rodar"
+    /// Pestaña al abrir (para desarrollar: `open TaylorZwift.app --args -pestanaInicial entrenar`).
+    var selectedTab = UserDefaults.standard.string(forKey: "pestanaInicial") ?? "rodar"
     static let freeGradeStep = 0.5
     private(set) var ergWatts = 150
     private(set) var session = RideSession()
@@ -113,7 +114,8 @@ final class RideController {
         guard intervals.isConnected else { return }
         let now = Date()
         let from = min(max(planStart, now.addingTimeInterval(-112 * 86_400)), now.addingTimeInterval(-42 * 86_400))
-        await intervals.sync(since: from, force: force)
+        let planEnd = plan.startOfWeek(plan.weeks.count + 1, start: planStart)
+        await intervals.sync(since: from, fitnessUntil: planEnd, force: force)
     }
 
     /// Cuando cambias el FTP (a mano o tras un test), se copia a intervals.icu a los 3 s
@@ -136,6 +138,7 @@ final class RideController {
             hub.appendLog("🔵 Plan en intervals.icu: \(n) sesiones")
             UserDefaults.standard.set(planStart.timeIntervalSince1970, forKey: "planEnIntervals")
             planPushedStart = planStart
+            await syncIntervals(force: true) // la proyección de la forma cambia con el plan
         } catch {
             hub.appendLog("⚠️ intervals.icu (plan): \(error.localizedDescription)")
         }

@@ -175,6 +175,40 @@ struct ZwoEncoderTests {
         #expect((first.load ?? 0) < 45)
         let outdoor = events.first { $0.workout == nil }
         #expect(outdoor?.name == "Salida en exterior")
-        #expect(outdoor?.load == nil)
+        #expect(outdoor?.seconds == Int(2.75 * 3_600)) // «2,5–3 h»
+        #expect(outdoor?.load == 127)
+        #expect(PlanSession("Sáb", nil, "Salida en exterior de 3 h, en Z2").outdoorHours == 3)
+        #expect(PlanSession("Sáb", nil, "Salida en exterior de 3,5–4 h: come").outdoorHours == 3.75)
+        #expect(PlanSession("Sáb", nil, "Salida libre en exterior.").outdoorHours == 3)
+    }
+}
+
+@Suite("Forma y frescura")
+struct FitnessTests {
+    @Test func parsesWellness() {
+        let json = """
+        [{"id": "2026-11-21", "ctl": 18.8, "atl": 15.4},
+         {"id": "2026-11-20", "ctl": 19.2, "atl": 17.8, "hrv": null},
+         {"id": "2026-11-22"},
+         {"id": "nada", "ctl": 1, "atl": 1}]
+        """
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Madrid")!
+        let days = FitnessDay.parseWellness(Data(json.utf8), timeZone: cal.timeZone)
+        #expect(days.count == 2)
+        #expect(days[0].fitness == 19.2) // ordenados por fecha
+        #expect(abs(days[1].freshness - 3.4) < 0.001)
+        let later = cal.date(from: DateComponents(year: 2026, month: 11, day: 25, hour: 12))!
+        #expect(days.day(on: later, calendar: cal)?.fitness == 18.8)
+    }
+
+    @Test func formStates() {
+        #expect(FormState(freshness: 25) == .transition)
+        #expect(FormState(freshness: 10) == .fresh)
+        #expect(FormState(freshness: 3.4) == .neutral)
+        #expect(FormState(freshness: -10) == .neutral)
+        #expect(FormState(freshness: -10.5) == .optimal)
+        #expect(FormState(freshness: -20) == .optimal)
+        #expect(FormState(freshness: -31) == .highRisk)
     }
 }
