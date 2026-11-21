@@ -36,8 +36,10 @@
 		BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E10DC2A8D445E089A9F7EB6 /* RideController.swift */; };
 		C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC2B36F439B128659783D3B /* StravaService.swift */; };
 		CEBDCD17E3E6FB7DC4981590 /* RideScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00F138BCCA37643B77254B7 /* RideScene.swift */; };
+		CEF8FD454170CD69417954FE /* SceneStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */; };
 		DEA7734381A5BE871013E9D5 /* GradeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABB43D303D77746CDB2C94E /* GradeColors.swift */; };
 		E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E4515ABF42AF0C84D91FE /* ScanSection.swift */; };
+		E68AC0C67A99ADD2DA27833F /* SceneRider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A986A24FCA408C038742AA /* SceneRider.swift */; };
 		EB447ED12A5E35725FBF231F /* KeyboardSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */; };
 		F91C8515C7D0727DF3D65842 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7D07120B56B3DD2608D5FD /* CicloBluetooth */; };
 /* End PBXBuildFile section */
@@ -54,8 +56,10 @@
 		499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsService.swift; sourceTree = "<group>"; };
 		4AF3EF73BB829F6F5855356F /* CicloKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CicloKit; path = ../CicloKit; sourceTree = SOURCE_ROOT; };
 		55572BB6639FE3C30213D09F /* SceneLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneLocation.swift; sourceTree = "<group>"; };
+		60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneStyles.swift; sourceTree = "<group>"; };
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
+		81A986A24FCA408C038742AA /* SceneRider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneRider.swift; sourceTree = "<group>"; };
 		863663EEE45FBB2051721FB9 /* BridgeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModel.swift; sourceTree = "<group>"; };
 		8843EDCD9E67795BE65FB2CC /* WorkoutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutViews.swift; sourceTree = "<group>"; };
 		8CBF2A669AD1089602E50C21 /* DemoPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPanel.swift; sourceTree = "<group>"; };
@@ -159,6 +163,8 @@
 				DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */,
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
 				55572BB6639FE3C30213D09F /* SceneLocation.swift */,
+				81A986A24FCA408C038742AA /* SceneRider.swift */,
+				60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */,
 				FFC2B36F439B128659783D3B /* StravaService.swift */,
 				2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */,
 				A7C86DA6C149571AE01FF604 /* Theme.swift */,
@@ -300,6 +306,8 @@
 				14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */,
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
 				60017AB4614A6FE0F3973DB9 /* SceneLocation.swift in Sources */,
+				E68AC0C67A99ADD2DA27833F /* SceneRider.swift in Sources */,
+				CEF8FD454170CD69417954FE /* SceneStyles.swift in Sources */,
 				C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */,
 				B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */,
 				1D4AA0CF3E560F20C0D32728 /* Theme.swift in Sources */,

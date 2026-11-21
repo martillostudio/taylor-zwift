@@ -10,7 +10,12 @@ struct RideScene: View {
     @Environment(BluetoothHub.self) private var hub
     @State private var motion = SceneMotion()
     @State private var location = SceneLocation()
-    @State private var palette = ScenePalette.day
+    @State private var sun: Sun.Position?
+    /// Estilo elegido (se recuerda). `--args -estiloSimulador pixel` para abrir con otro.
+    @AppStorage("estiloSimulador") private var styleID = SceneStyle.silhouette.rawValue
+
+    private var style: SceneStyle { SceneStyle(rawValue: styleID) ?? .silhouette }
+    private var palette: ScenePalette { sun.map { ScenePalette(sun: $0, keys: style.keys) } ?? .day }
 
     var body: some View {
         let table = motion.table(for: ride.route)
@@ -20,17 +25,28 @@ struct RideScene: View {
                     let now = timeline.date.timeIntervalSinceReferenceDate
                     let d = motion.distance(at: now, recorded: ride.session.distanceMeters,
                                             speedKmh: ride.isRunning ? ride.speedKmh ?? 0 : 0)
-                    SceneRenderer(route: ride.route, table: table, distance: d, time: now,
-                                  cadence: ride.isRunning ? hub.bikeData.cadenceRpm ?? 0 : 0,
-                                  palette: palette)
-                        .draw(in: &context, size: size)
+                    let cadence = ride.isRunning ? hub.bikeData.cadenceRpm ?? 0 : 0
+                    switch style {
+                    case .silhouette:
+                        SceneRenderer(route: ride.route, table: table, distance: d, time: now,
+                                      cadence: cadence, palette: palette)
+                            .draw(in: &context, size: size)
+                    case .pixel:
+                        PixelRenderer(cam: SceneCamera(size: size, distance: d, table: table, isLoop: ride.route.isLoop),
+                                      palette: palette, time: now, cadence: cadence)
+                            .draw(in: &context)
+                    case .print:
+                        PrintRenderer(cam: SceneCamera(size: size, distance: d, table: table, isLoop: ride.route.isLoop),
+                                      palette: palette, time: now, cadence: cadence)
+                            .draw(in: &context)
+                    }
                 }
             }
             .ignoresSafeArea()
             VStack {
                 SceneHUD(table: table)
                 Spacer()
-                SceneBottomBar(table: table)
+                SceneBottomBar(table: table, styleID: $styleID)
             }
             .padding(Space.xl)
         }
@@ -54,7 +70,7 @@ struct RideScene: View {
         let lat = location.coordinate?.latitude ?? routeStart?.latitude ?? 41.39
         let lon = location.coordinate?.longitude ?? routeStart?.longitude ?? 2.17
         let date = ScenePalette.forcedDate ?? Date()
-        palette = ScenePalette(sun: Sun.position(at: date, latitude: lat, longitude: lon))
+        sun = Sun.position(at: date, latitude: lat, longitude: lon)
     }
 }
 
@@ -133,11 +149,41 @@ struct ScenePalette: Equatable {
                      ridges: zip(ridges, o.ridges).map { $0.mix($1, t) }, ground: ground.mix(o.ground, t))
     }
 
-    init(sun: Sun.Position) {
+    /// Los fotogramas del cielo de un estilo.
+    struct Keys {
+        var night, blueHour, dawn, dusk, golden, day: ScenePalette
+        var moon: RGB
+
+        static let silhouette = Keys(night: .night, blueHour: .blueHour, dawn: .dawn, dusk: .dusk, golden: .golden,
+                                     day: .day, moon: RGB(0.92, 0.94, 1.0))
+        /// Grabado japonés: azul de Prusia de noche, papel crema de día, sol bermellón al ponerse.
+        static let print = Keys(
+            night: ScenePalette(skyTop: RGB(0.06, 0.11, 0.24), skyBottom: RGB(0.20, 0.29, 0.43), light: RGB(0.96, 0.92, 0.78),
+                                ridges: [RGB(0.27, 0.36, 0.50), RGB(0.18, 0.27, 0.41), RGB(0.12, 0.19, 0.31), RGB(0.08, 0.13, 0.23)],
+                                ground: RGB(0.07, 0.11, 0.18)),
+            blueHour: ScenePalette(skyTop: RGB(0.12, 0.18, 0.36), skyBottom: RGB(0.42, 0.46, 0.58), light: RGB(0.96, 0.92, 0.78),
+                                   ridges: [RGB(0.38, 0.44, 0.56), RGB(0.27, 0.34, 0.46), RGB(0.18, 0.25, 0.36), RGB(0.12, 0.17, 0.27)],
+                                   ground: RGB(0.11, 0.14, 0.19)),
+            dawn: ScenePalette(skyTop: RGB(0.20, 0.27, 0.48), skyBottom: RGB(0.95, 0.80, 0.62), light: RGB(0.86, 0.27, 0.18),
+                               ridges: [RGB(0.58, 0.60, 0.66), RGB(0.42, 0.46, 0.54), RGB(0.30, 0.35, 0.42), RGB(0.20, 0.25, 0.30)],
+                               ground: RGB(0.20, 0.24, 0.20)),
+            dusk: ScenePalette(skyTop: RGB(0.20, 0.24, 0.44), skyBottom: RGB(0.93, 0.62, 0.45), light: RGB(0.84, 0.22, 0.15),
+                               ridges: [RGB(0.60, 0.52, 0.56), RGB(0.44, 0.40, 0.48), RGB(0.30, 0.30, 0.38), RGB(0.20, 0.21, 0.28)],
+                               ground: RGB(0.18, 0.20, 0.18)),
+            golden: ScenePalette(skyTop: RGB(0.38, 0.52, 0.66), skyBottom: RGB(0.96, 0.88, 0.72), light: RGB(0.90, 0.42, 0.24),
+                                 ridges: [RGB(0.64, 0.70, 0.70), RGB(0.46, 0.55, 0.55), RGB(0.32, 0.43, 0.40), RGB(0.22, 0.33, 0.28)],
+                                 ground: RGB(0.27, 0.34, 0.22)),
+            day: ScenePalette(skyTop: RGB(0.47, 0.62, 0.74), skyBottom: RGB(0.95, 0.92, 0.83), light: RGB(0.97, 0.86, 0.66),
+                              ridges: [RGB(0.66, 0.74, 0.76), RGB(0.48, 0.60, 0.62), RGB(0.34, 0.47, 0.44), RGB(0.24, 0.36, 0.28)],
+                              ground: RGB(0.31, 0.39, 0.22)),
+            moon: RGB(0.97, 0.93, 0.78))
+    }
+
+    init(sun: Sun.Position, keys k: Keys = .silhouette) {
         let e = sun.elevation
         // Fotogramas clave por altura del sol (grados); amanecer y atardecer tienen su tono.
-        let twilight = sun.isMorning ? Self.dawn : Self.dusk
-        let keys: [(Double, ScenePalette)] = [(-12, .night), (-5, .blueHour), (0, twilight), (7, .golden), (20, .day)]
+        let twilight = sun.isMorning ? k.dawn : k.dusk
+        let keys: [(Double, ScenePalette)] = [(-12, k.night), (-5, k.blueHour), (0, twilight), (7, k.golden), (20, k.day)]
         var p = keys[0].1
         if e >= keys[keys.count - 1].0 {
             p = keys[keys.count - 1].1
@@ -157,7 +203,7 @@ struct ScenePalette: Equatable {
             isMoon = true
             lightX = 0.85
             lightY = 0.27
-            light = RGB(0.92, 0.94, 1.0)
+            light = k.moon
         }
     }
 
@@ -539,7 +585,7 @@ private struct SceneRenderer {
     }
 }
 
-private func fract(_ x: Double) -> Double { x - x.rounded(.down) }
+
 
 // MARK: - Panel de datos y controles
 
@@ -661,6 +707,7 @@ private struct GearGauge: View {
 /// y tres botones redondos: empezar/pausa, pantalla completa y salir. Las marchas, con los mandos.
 private struct SceneBottomBar: View {
     let table: RouteElevationTable
+    @Binding var styleID: String
     @Environment(RideController.self) private var ride
     @Environment(BluetoothHub.self) private var hub
 
@@ -685,6 +732,22 @@ private struct SceneBottomBar: View {
                 GradeProfile(table: table, position: ride.route.positionInLap(ride.session.distanceMeters))
                     .frame(height: 46)
             }
+            Menu {
+                Picker("Estilo", selection: $styleID) {
+                    ForEach(SceneStyle.allCases) { s in Label(s.title, systemImage: s.systemImage).tag(s.rawValue) }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Image(systemName: "paintpalette.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 38, height: 38)
+                    .background(.quaternary, in: Circle())
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Estilo del dibujo")
             #if os(macOS)
             RoundButton(systemImage: "arrow.up.left.and.arrow.down.right", help: "Pantalla completa") {
                 NSApp.keyWindow?.toggleFullScreen(nil)
