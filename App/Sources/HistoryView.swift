@@ -19,6 +19,7 @@ struct HistoryView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Historial").font(M3.font(.headlineMedium)).foregroundStyle(M3.onSurface)
                     TotalsCard()
+                    IntervalsCard()
                     GarminCard()
                     StravaCard()
                     if store.activities.isEmpty {
@@ -77,6 +78,80 @@ private struct TotalsCard: View {
 }
 
 /// Conexión con Strava: pasos para crear tu «app» de Strava, conectar y subida automática.
+/// intervals.icu: subida automática con la clave de API (gratis, sin suscripción).
+struct IntervalsCard: View {
+    @Environment(IntervalsService.self) private var intervals
+    @Environment(\.openURL) private var openURL
+    @State private var key = ""
+
+    static let brand = Color(red: 0.13, green: 0.47, blue: 0.85)
+
+    var body: some View {
+        @Bindable var intervals = intervals
+        M3Card(style: .outlined) {
+            VStack(alignment: .leading, spacing: Space.m) {
+                HStack(alignment: .top, spacing: Space.m) {
+                    Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Self.brand, in: RoundedRectangle(cornerRadius: M3.Shape.small))
+                    M3SectionTitle(title: "intervals.icu", subtitle: intervals.isConnected
+                                   ? "Conectado como \(intervals.athleteName ?? "tu cuenta")"
+                                   : "Gratis. Analiza tu carga y tu forma, y junta el rodillo con tus salidas de Garmin.")
+                    Spacer()
+                    if intervals.isConnected {
+                        Toggle("Subir al terminar", isOn: $intervals.autoUpload).toggleStyle(.switch).fixedSize()
+                        Button("Desconectar") { intervals.disconnect() }.buttonStyle(.m3Text)
+                    }
+                }
+                if !intervals.isConnected {
+                    Text("1. Crea una cuenta en intervals.icu (puedes entrar con Garmin) y conecta Garmin Connect para que traiga tus salidas.\n2. En **Settings → Developer Settings** copia tu **API Key** y pégala aquí.")
+                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    HStack(spacing: Space.m) {
+                        SecureField("API Key", text: $key).textFieldStyle(.roundedBorder).frame(maxWidth: 320)
+                        Button(intervals.isBusy ? "Comprobando…" : "Conectar", systemImage: "link") {
+                            Task {
+                                await intervals.connect(apiKey: key)
+                                if intervals.isConnected { key = "" }
+                            }
+                        }
+                        .buttonStyle(.m3Filled)
+                        .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || intervals.isBusy)
+                        Button("Abrir ajustes", systemImage: "arrow.up.right.square") {
+                            openURL(URL(string: "https://intervals.icu/settings")!)
+                        }
+                        .buttonStyle(.m3Text)
+                    }
+                }
+                if let status = intervals.status {
+                    Text(status).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+/// Estado de un entreno en intervals.icu: enlace si ya está, o botón para subirlo.
+struct IntervalsBadge: View {
+    let activity: Activity
+    @Environment(RideController.self) private var ride
+    @Environment(IntervalsService.self) private var intervals
+
+    var body: some View {
+        if let id = activity.intervalsActivityID, let url = IntervalsService.activityURL(id) {
+            Link(destination: url) {
+                Label("Ver en intervals.icu", systemImage: "arrow.up.right.square")
+                    .font(M3.font(.labelLarge)).foregroundStyle(IntervalsCard.brand)
+            }
+        } else if intervals.isConnected {
+            Button(intervals.isBusy ? "Subiendo…" : "Subir a intervals.icu", systemImage: "arrow.up.circle") {
+                ride.uploadToIntervals(activity)
+            }
+            .buttonStyle(.m3Tonal)
+            .disabled(intervals.isBusy)
+        }
+    }
+}
+
 struct StravaCard: View {
     @Environment(StravaService.self) private var strava
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession
@@ -289,6 +364,7 @@ struct ActivityDetailView: View {
                             }
                             Spacer()
                             GarminImportButton(activity: a)
+                            IntervalsBadge(activity: a)
                             StravaBadge(activity: a)
                         }
                         HStack(spacing: 16) {

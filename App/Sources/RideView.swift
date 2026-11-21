@@ -329,6 +329,7 @@ struct RideView: View {
                     Spacer()
                     if let saved = ride.lastSaved {
                         GarminImportButton(activity: saved)
+                        IntervalsBadge(activity: saved)
                         StravaBadge(activity: saved)
                     }
                 }

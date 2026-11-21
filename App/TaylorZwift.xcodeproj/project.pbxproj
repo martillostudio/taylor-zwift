@@ -19,6 +19,7 @@
 		54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */; };
 		5BB8932B175C34562307D088 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 73886A525BAFEF0B64906260 /* CicloBluetooth */; };
 		5DA8CAC0930596C31F7F8DD3 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB996F07CD563F64B272A32 /* HistoryView.swift */; };
+		67AE0C9ADFBAC9E6472329B0 /* IntervalsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */; };
 		79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDA2488F1654582F648AE11 /* ControllersView.swift */; };
 		7A79021544CDD0DC2162DBBE /* BridgeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863663EEE45FBB2051721FB9 /* BridgeModel.swift */; };
 		7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F12F33A425BD8EE3BA6369 /* LogView.swift */; };
@@ -42,6 +43,7 @@
 		3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardSender.swift; sourceTree = "<group>"; };
 		4213815FF621063110F50F8B /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveMetricsView.swift; sourceTree = "<group>"; };
+		499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsService.swift; sourceTree = "<group>"; };
 		4AF3EF73BB829F6F5855356F /* CicloKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CicloKit; path = ../CicloKit; sourceTree = SOURCE_ROOT; };
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 				4213815FF621063110F50F8B /* DevicesView.swift */,
 				CABB43D303D77746CDB2C94E /* GradeColors.swift */,
 				AFB996F07CD563F64B272A32 /* HistoryView.swift */,
+				499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */,
 				4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */,
 				75F12F33A425BD8EE3BA6369 /* LogView.swift */,
 				A0E49C6D1076B55ADAEBFDCD /* M3.swift */,
@@ -263,6 +266,7 @@
 				3FF3272C7515184AAAEAD428 /* DevicesView.swift in Sources */,
 				DEA7734381A5BE871013E9D5 /* GradeColors.swift in Sources */,
 				5DA8CAC0930596C31F7F8DD3 /* HistoryView.swift in Sources */,
+				67AE0C9ADFBAC9E6472329B0 /* IntervalsService.swift in Sources */,
 				54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */,
 				7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */,
 				4692DDE0E5330F853DC63AE7 /* M3.swift in Sources */,
