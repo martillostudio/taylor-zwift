@@ -74,6 +74,8 @@ make instalar-mandos   # versión final en /Applications: luego se abre con dobl
 
 Y y Z repiten las marchas por si el mando izquierdo se bloquea (ver la guía, §5.1).
 
+Los Click v2 se duermen tras un rato sin pulsarlos (para ahorrar batería): la primera pulsación solo los despierta y la app avisa con «Mando listo».
+
 ## Licencia
 
 GPL-3.0. Ver [LICENSE](LICENSE).

@@ -292,6 +292,10 @@ final class RideController {
             self?.importedRoutes.sort { $0.name < $1.name }
         }
         hub.onButtonPress = { [weak self] pressed in self?.handleButtons(pressed) }
+        // Al despertar un mando dormido, la pulsación que lo despertó se pierde: avisamos de que ya vale.
+        hub.onClickAwake = { [weak self] _, awake in
+            if awake { self?.show("🎮 Mando listo: ya puedes usar los botones") }
+        }
         ticker = Task { [weak self] in
             while !Task.isCancelled {
                 self?.tick()

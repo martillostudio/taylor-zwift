@@ -28,7 +28,8 @@ struct ControllersView: View {
 
             ForEach(hub.clicks) { click in
                 Section(click.label) {
-                    LabeledContent("Estado", value: click.connection.description)
+                    LabeledContent("Estado", value: click.asleep && click.connection != .connected
+                                   ? "dormido: púlsalo una vez para despertarlo" : click.connection.description)
                     LabeledContent("Saludo RideOn", value: click.handshakeDone ? "hecho ✅" : "pendiente")
                     LabeledContent("Batería", value: click.batteryPercent.map { "\($0) %" } ?? "—")
                     LabeledContent("Pulsado según este mando",

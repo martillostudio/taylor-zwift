@@ -44,6 +44,9 @@ public struct ClickState: Identifiable, Equatable, Sendable {
     public var pressed: ZwiftButton = []
     public var rawMap: UInt32?
     public var batteryPercent: Int?
+    /// Se ha dormido: los Click se apagan solos tras un rato sin pulsarlos (para ahorrar batería).
+    /// La app lo tiene en espera; una pulsación lo despierta, pero esa primera no cuenta.
+    public var asleep = false
 
     /// Los dos Click se llaman igual: usamos el principio de su identificador para distinguirlos.
     public var shortID: String { String(id.uuidString.prefix(4)) }
@@ -100,6 +103,8 @@ public final class BluetoothHub: NSObject {
     public private(set) var autoConnectClicks = false
     /// Se llama con cada pulsación nueva, ya sin ecos del otro mando.
     @ObservationIgnored public var onButtonPress: (@MainActor (ZwiftButton) -> Void)?
+    /// Un mando se ha dormido (`false`) o se ha despertado y está listo (`true`).
+    @ObservationIgnored public var onClickAwake: (@MainActor (_ label: String, _ awake: Bool) -> Void)?
     /// Segundos sin noticias de un mando (los Click mandan la batería cada ~5 s) antes de reconectarlo.
     @ObservationIgnored public var silenceBeforeReconnect: Double = 20
     @ObservationIgnored private var lastClickMessage: [UUID: Double] = [:]
@@ -500,8 +505,19 @@ public final class BluetoothHub: NSObject {
         // Volvemos a pedir la conexión (salvo que el usuario lo haya desconectado a mano).
         // CoreBluetooth la deja pendiente y conecta en cuanto el mando vuelve a estar a tiro.
         if clicks.contains(where: { $0.id == p.identifier }), !userDisconnected.contains(p.identifier) {
-            updateClick(p.identifier) { $0.connection = .connecting }
-            addLog("↻ Reconectando «\(label(p))»…")
+            // Si se cae solo (no lo hemos cortado nosotros), casi siempre es que se ha dormido:
+            // los Click se apagan tras un rato sin pulsarlos y solo vuelven al pulsar un botón.
+            let slept = error != nil
+            updateClick(p.identifier) {
+                $0.connection = .connecting
+                $0.asleep = slept
+            }
+            if slept {
+                addLog("💤 «\(label(p))» se ha dormido (un rato sin pulsarlo). Lo espero: púlsalo una vez para despertarlo (esa pulsación no cuenta)")
+                onClickAwake?(label(p), false)
+            } else {
+                addLog("↻ Reconectando «\(label(p))»…")
+            }
             central.connect(p, options: nil)
         }
     }
@@ -635,8 +651,17 @@ public final class BluetoothHub: NSObject {
             switch try ZwiftClickMessage(parsing: bytes) {
             case .rideOnAck(let extra):
                 addLog("← «\(label(p))»: RideOn recibido ✅ (extra [\(extra.hexString)])")
-                updateClick(p.identifier) { $0.handshakeDone = true }
+                var wasAsleep = false
+                updateClick(p.identifier) {
+                    wasAsleep = $0.asleep
+                    $0.handshakeDone = true
+                    $0.asleep = false
+                }
                 lastClickButtons[p.identifier] = ProcessInfo.processInfo.systemUptime
+                if wasAsleep {
+                    addLog("☀️ «\(label(p))» despierto y listo")
+                    onClickAwake?(label(p), true)
+                }
 
             case .buttons(let pressed, let raw):
                 lastClickButtons[p.identifier] = ProcessInfo.processInfo.systemUptime

@@ -88,9 +88,12 @@ struct RideView: View {
             Spacer()
             M3Chip(title: hub.trainerName ?? "Rodillo", systemImage: "bicycle", dot: color(hub.trainerConnection))
             let clicks = hub.clicks.filter { $0.connection == .connected }.count
-            M3Chip(title: "\(clicks) mandos", systemImage: "gamecontroller", dot: clicks > 0 ? Color.green : M3.outline)
+            let asleep = hub.clicks.filter { $0.asleep && $0.connection != .connected }.count
+            M3Chip(title: "\(clicks) \(clicks == 1 ? "mando" : "mandos")" + (asleep > 0 ? " · \(asleep) 💤" : ""),
+                   systemImage: "gamecontroller", dot: clicks > 0 ? Color.green : (asleep > 0 ? Color.orange : M3.outline))
+                .help(asleep > 0 ? "Un mando se ha dormido por no usarlo. Púlsalo una vez para despertarlo (esa pulsación no cuenta)." : "")
             M3Chip(title: hub.heartRateBpm.map { "\($0) ppm" } ?? "Pulso", systemImage: "heart", dot: color(hub.heartRateConnection))
-            if hub.trainerConnection != .connected || hub.heartRateConnection != .connected || clicks == 0 {
+            if hub.trainerConnection != .connected || hub.heartRateConnection != .connected || clicks + asleep == 0 {
                 Button("Conectar", systemImage: "antenna.radiowaves.left.and.right") { hub.connectEverything() }
                     .buttonStyle(.m3Tonal)
             }
