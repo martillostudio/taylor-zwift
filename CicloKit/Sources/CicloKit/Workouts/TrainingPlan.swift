@@ -8,6 +8,9 @@ public struct PlanSession: Identifiable, Equatable, Sendable {
     /// Entreno de `Workout.library`; `nil` = salida en exterior o libre (ver `note`).
     public var workoutID: String?
     public var note: String
+    /// Clave de la sesión en el plan original (antes de moverla de día o cambiarla por otro
+    /// entreno). La ponen `moving` y `replacing`; `nil` = la sesión está como en el plan.
+    public var originalKey: String?
 
     public init(_ day: String, _ workoutID: String?, _ note: String = "") {
         self.day = day

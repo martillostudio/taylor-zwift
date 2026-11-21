@@ -54,7 +54,10 @@ public struct WorkoutReview: Equatable, Sendable {
     /// Umbral para considerar un tramo «de trabajo».
     static let workThreshold = 0.85
 
-    public init(workout: Workout, ftp: Int, samples: [ReviewSample], heartRateCap: Int? = nil) {
+    /// - Parameter baseIntensity: intensidad con la que empezó (la de su tipo); los objetivos se
+    ///   comparan con ella, no con tus ± durante el entreno.
+    public init(workout: Workout, ftp: Int, samples: [ReviewSample], heartRateCap: Int? = nil,
+                baseIntensity: Double = 1) {
         let done = samples.last.map { $0.t } ?? 0
         let isTest = workout.ftpTest != nil
 
@@ -71,7 +74,7 @@ public struct WorkoutReview: Equatable, Sendable {
                     $0.t >= Double(seg.startSeconds) + skip && $0.t < Double(seg.endSeconds)
                 }
                 guard !inSeg.isEmpty else { continue }
-                let target = (a + b) / 2 * Double(ftp)
+                let target = (a + b) / 2 * Double(ftp) * baseIntensity
                 let avg = Double(inSeg.map(\.power).reduce(0, +)) / Double(inSeg.count)
                 let cads = inSeg.compactMap(\.cadence).filter { $0 > 0 }
                 let hrs = inSeg.compactMap(\.heartRate).filter { $0 > 0 }

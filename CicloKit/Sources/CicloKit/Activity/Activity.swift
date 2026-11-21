@@ -41,6 +41,10 @@ public struct Activity: Codable, Identifiable, Equatable, Sendable {
     public var stravaActivityID: Int64?
     /// Id de la actividad en intervals.icu («i12345678»), cuando se ha subido.
     public var intervalsActivityID: String?
+    /// Intensidad con la que empezó el entreno (la de su tipo, p. ej. 0,97) y con la que acabó
+    /// tras tus ± (1 = 100 %). `nil` en los guardados antes de tenerla.
+    public var baseIntensity: Double?
+    public var intensity: Double?
 
     public init(id: UUID = UUID(), start: Date, name: String, kind: String, workoutID: String? = nil,
                 ftp: Int, samples: [ActivitySample] = [], stravaActivityID: Int64? = nil) {

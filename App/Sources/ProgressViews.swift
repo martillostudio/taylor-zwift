@@ -2,6 +2,61 @@ import CicloKit
 import Charts
 import SwiftUI
 
+// MARK: - Propuestas del entrenador
+
+/// Cambios del plan que propone la app (sesión saltada, cansancio, intensidad por tipo).
+/// Nada cambia hasta que pulsas «Aceptar»; «Ahora no» la quita para siempre.
+struct ProposalsCard: View {
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        let proposals = ride.planProposals
+        if !proposals.isEmpty {
+            Card(style: .outlined) {
+                VStack(alignment: .leading, spacing: Space.m) {
+                    Label("Propuestas para tu plan", systemImage: "wand.and.stars")
+                        .font(Theme.font(.titleSmall)).foregroundStyle(Theme.accent)
+                    ForEach(proposals) { p in
+                        VStack(alignment: .leading, spacing: Space.s) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Image(systemName: icon(p.change)).foregroundStyle(Color.secondary)
+                                    .accessibilityHidden(true)
+                                Text(p.title).font(Theme.font(.bodyLarge).weight(.semibold))
+                            }
+                            Text(p.detail).font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            HStack {
+                                Button("Aceptar", systemImage: "checkmark") { ride.accept(p) }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Ahora no") { ride.dismiss(p) }
+                                    .buttonStyle(.bordered)
+                                if ride.planPushedStart != nil, !isIntensity(p.change) {
+                                    Text("Se actualiza también en intervals.icu y Garmin.")
+                                        .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
+                                }
+                            }
+                        }
+                        if p.id != proposals.last?.id { Divider().overlay(Theme.separator) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func icon(_ c: PlanProposal.Change) -> String {
+        switch c {
+        case .move: "calendar.badge.clock"
+        case .swap: "arrow.triangle.2.circlepath"
+        case .intensity: "dial.medium"
+        }
+    }
+
+    private func isIntensity(_ c: PlanProposal.Change) -> Bool {
+        if case .intensity = c { return true }
+        return false
+    }
+}
+
 // MARK: - ¿Qué toca hoy?
 
 /// Semáforo del día: apretar, rodaje controlado, suave o descanso, y por qué.

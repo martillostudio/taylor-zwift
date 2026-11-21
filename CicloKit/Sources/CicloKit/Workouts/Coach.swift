@@ -246,12 +246,34 @@ extension TrainingPlan {
         copy.weeks = weeks.map { week in
             var w = week
             w.sessions = week.sessions.map { s in
-                guard let day = moves[s.key(week: week.number)] else { return s }
+                let key = s.originalKey ?? s.key(week: week.number)
+                guard let day = moves[key] else { return s }
                 var moved = s
                 moved.day = day
+                moved.originalKey = key
                 return moved
             }
             .sorted { $0.weekdayOffset < $1.weekdayOffset }
+            return w
+        }
+        return copy
+    }
+
+    /// El plan con algunas sesiones cambiadas por otro entreno de la biblioteca. `swaps` va de la
+    /// clave original de la sesión al id del entreno nuevo (p. ej. «s3-Jue-ss-2x20» → «z2-60»).
+    public func replacing(_ swaps: [String: String]) -> TrainingPlan {
+        guard !swaps.isEmpty else { return self }
+        var copy = self
+        copy.weeks = weeks.map { week in
+            var w = week
+            w.sessions = week.sessions.map { s in
+                let key = s.originalKey ?? s.key(week: week.number)
+                guard let id = swaps[key], Workout.library.contains(where: { $0.id == id }) else { return s }
+                var swapped = s
+                swapped.workoutID = id
+                swapped.originalKey = key
+                return swapped
+            }
             return w
         }
         return copy

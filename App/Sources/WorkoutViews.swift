@@ -66,6 +66,7 @@ struct WorkoutsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     TodayCard()
+                    ProposalsCard()
                     // Tu progreso: dos columnas en Mac e iPad, una en iPhone.
                     LazyVGrid(columns: progressColumns, alignment: .leading, spacing: Space.l) {
                         RoadAheadCard()

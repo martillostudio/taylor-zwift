@@ -104,7 +104,74 @@ final class RideController {
         }
     }
     /// El plan, con las sesiones que hayas cambiado de día.
-    var plan: TrainingPlan { TrainingPlan.winter.moving(planMoves) }
+    var plan: TrainingPlan { TrainingPlan.winter.replacing(planSwaps).moving(planMoves) }
+
+    /// Sesiones cambiadas por otro entreno (propuestas aceptadas): clave original → id del entreno.
+    private(set) var planSwaps: [String: String] =
+        UserDefaults.standard.dictionary(forKey: "sesionesCambiadas") as? [String: String] ?? [:]
+
+    /// Intensidad con la que empieza cada tipo de entreno (propuestas aceptadas). 1 = 100 %.
+    private(set) var categoryIntensity: [WorkoutCategory: Double] = {
+        let raw = UserDefaults.standard.dictionary(forKey: "intensidadPorTipo") as? [String: Double] ?? [:]
+        return Dictionary(uniqueKeysWithValues: raw.compactMap { k, v in WorkoutCategory(rawValue: k).map { ($0, v) } })
+    }()
+
+    /// Propuestas que has descartado («Ahora no»): no vuelven a salir.
+    private(set) var dismissedProposals: Set<String> =
+        Set(UserDefaults.standard.stringArray(forKey: "propuestasDescartadas") ?? [])
+
+    /// Con qué intensidad empieza un entreno: la de su tipo (los tests, siempre al 100 %).
+    func startIntensity(for w: Workout) -> Double {
+        w.ftpTest == nil ? categoryIntensity[w.category] ?? 1 : 1
+    }
+
+    /// Lo que el «entrenador» propone cambiar del plan esta semana (ver `PlanAdvisor`).
+    var planProposals: [PlanProposal] {
+        guard let week = currentPlanWeek else { return [] }
+        let cal = Calendar.current
+        let todayOffset = cal.dateComponents([.day], from: plan.startOfWeek(week.number, start: planStart),
+                                             to: cal.startOfDay(for: Date())).day ?? 0
+        let monthAgo = Date().addingTimeInterval(-30 * 86_400)
+        let all = Workout.library + importedWorkouts
+        let outcomes = store.activities.filter { $0.start > monthAgo }.compactMap { a -> WorkoutOutcome? in
+            guard let id = a.workoutID, let w = all.first(where: { $0.id == id }) else { return nil }
+            let base = a.baseIntensity ?? 1
+            return WorkoutOutcome(date: a.start, category: w.category, compliance: review(of: a)?.compliance,
+                                  baseIntensity: base, finalIntensity: a.intensity ?? base)
+        }
+        return PlanAdvisor.proposals(week: week, statuses: planStatus(week), todayOffset: todayOffset,
+                                     freshness: intervals.fitness.day(on: Date())?.freshness,
+                                     outcomes: outcomes, categoryIntensity: categoryIntensity)
+            .filter { !dismissedProposals.contains($0.id) }
+    }
+
+    func accept(_ p: PlanProposal) {
+        switch p.change {
+        case .move(let key, let day):
+            let originalDay = TrainingPlan.winter.weeks.flatMap { w in w.sessions.map { (w.number, $0) } }
+                .first { $0.1.key(week: $0.0) == key }?.1.day
+            planMoves[key] = day == originalDay ? nil : day
+            UserDefaults.standard.set(planMoves, forKey: "sesionesMovidas")
+        case .swap(let key, let id):
+            planSwaps[key] = id
+            UserDefaults.standard.set(planSwaps, forKey: "sesionesCambiadas")
+        case .intensity(let category, let to):
+            categoryIntensity[category] = to
+            UserDefaults.standard.set(Dictionary(uniqueKeysWithValues: categoryIntensity.map { ($0.key.rawValue, $0.value) }),
+                                      forKey: "intensidadPorTipo")
+        }
+        hub.appendLog("🧭 Propuesta aceptada: \(p.title)")
+        show("✅ \(p.title)", seconds: 3)
+        // Los cambios de día o de entreno van también al calendario de intervals.icu (y a Garmin).
+        if case .intensity = p.change { return }
+        if planPushedStart != nil { Task { await pushPlanToIntervals() } }
+    }
+
+    func dismiss(_ p: PlanProposal) {
+        dismissedProposals.insert(p.id)
+        UserDefaults.standard.set(Array(dismissedProposals), forKey: "propuestasDescartadas")
+        hub.appendLog("🧭 Propuesta descartada: \(p.title)")
+    }
 
     /// Sesiones cambiadas de día: clave original («s1-Sáb-z2-90») → día nuevo («Dom»).
     private(set) var planMoves: [String: String] =
@@ -113,9 +180,9 @@ final class RideController {
     /// Cambia una sesión de día (dentro de su semana) y, si el plan ya está en intervals.icu,
     /// lo actualiza allí.
     func moveSession(_ session: PlanSession, week: PlanWeek, to day: String) {
+        let key = session.originalKey ?? session.key(week: week.number)
         guard let original = TrainingPlan.winter.weeks.first(where: { $0.number == week.number })?.sessions
-            .first(where: { $0.workoutID == session.workoutID && $0.note == session.note }) else { return }
-        let key = original.key(week: week.number)
+            .first(where: { $0.key(week: week.number) == key }) else { return }
         if day == original.day { planMoves[key] = nil } else { planMoves[key] = day }
         UserDefaults.standard.set(planMoves, forKey: "sesionesMovidas")
         hub.appendLog("📅 \(session.workout?.name ?? "Salida") de la semana \(week.number) pasa al \(day)")
@@ -271,6 +338,8 @@ final class RideController {
     private(set) var workoutSeconds = 0.0
     /// Ajuste de intensidad sobre el entreno (1 = 100 %), con los botones de los Click.
     private(set) var intensity = 1.0
+    /// Intensidad con la que empezó el entreno (la de su tipo).
+    private(set) var baseIntensity = 1.0
     private(set) var powerHistory = PowerHistory()
     private(set) var summary: RideSummary?
     private(set) var importedWorkouts: [Workout] = []
@@ -438,7 +507,8 @@ final class RideController {
         let samples = a.samples.enumerated().map { i, s in
             ReviewSample(t: Double(i), power: s.power ?? 0, heartRate: s.heartRate, cadence: s.cadence)
         }
-        return WorkoutReview(workout: w, ftp: a.ftp, samples: samples, heartRateCap: heartRateCap(for: w))
+        return WorkoutReview(workout: w, ftp: a.ftp, samples: samples, heartRateCap: heartRateCap(for: w),
+                             baseIntensity: a.baseIntensity ?? 1)
     }
 
     var heartRateAboveCap: Bool {
@@ -519,7 +589,8 @@ final class RideController {
         currentGrade = route.grade(atDistance: 0)
         lastClimbAnnounced = nil
         workoutSeconds = 0
-        intensity = 1
+        intensity = mode == .workout ? workout.map(startIntensity) ?? 1 : 1
+        baseIntensity = intensity
         powerHistory = PowerHistory()
         summary = nil
         lastSegmentID = nil
@@ -545,7 +616,8 @@ final class RideController {
         mode = .workout
         reset()
         let minutes = w.durationSeconds / 60
-        hub.appendLog("🏋️ Entreno cargado: \(w.name) · \(minutes)' · TSS \(Int(w.tss.rounded())) · FTP \(ftp) W")
+        let start = intensity == 1 ? "" : " · empieza al \(Int((intensity * 100).rounded())) % (\(w.category.rawValue))"
+        hub.appendLog("🏋️ Entreno cargado: \(w.name) · \(minutes)' · TSS \(Int(w.tss.rounded())) · FTP \(ftp) W\(start)")
     }
 
     /// Termina el entreno (o el test) y calcula el resumen.
@@ -563,7 +635,7 @@ final class RideController {
             review: mode == .workout ? workout.map { w in
                 WorkoutReview(workout: w, ftp: ftp,
                               samples: trace.map { ReviewSample(t: $0.t, power: $0.power, heartRate: $0.heartRate, cadence: $0.cadence) },
-                              heartRateCap: heartRateCap)
+                              heartRateCap: heartRateCap, baseIntensity: baseIntensity)
             } : nil
         )
         summary = s
@@ -683,7 +755,11 @@ final class RideController {
 
     /// Guarda lo grabado (si pasa del minuto) y, si está activado, lo sube a Strava.
     private func saveRecording() {
-        guard let rec = recording else { return }
+        guard var rec = recording else { return }
+        if mode == .workout {
+            rec.baseIntensity = baseIntensity
+            rec.intensity = intensity
+        }
         recording = nil
         guard !hub.isDemo else {
             hub.appendLog("🧪 Modo prueba: no se guarda ni se sube")
