@@ -41,6 +41,22 @@ public struct RiderPhysics: Equatable, Sendable {
         return (lo + hi) / 2
     }
 
+    /// Rueda libre: la velocidad tras `dt` segundos sin pedalear (gravedad, rodadura y aire).
+    /// En bajada acelera hasta su velocidad terminal; en llano o subida frena hasta pararse.
+    public func coast(speedKmh: Double, gradePercent: Double, dt: Double) -> Double {
+        var v = max(speedKmh, 0) / 3.6
+        let theta = atan(gradePercent / 100)
+        var left = dt
+        while left > 0 {
+            let step = min(left, 0.1)
+            let rolling = v > 0.05 || gradePercent < 0 ? crr * cos(theta) : 0
+            let a = -Self.gravity * (sin(theta) + rolling) - 0.5 * airDensity * cdA * v * v / massKg
+            v = max(v + a * step, 0)
+            left -= step
+        }
+        return v * 3.6
+    }
+
     /// Velocidad (km/h) a la que te llevan esos vatios con esa pendiente.
     public func speed(powerWatts: Double, gradePercent: Double) -> Double {
         guard powerWatts > 0 else { return 0 }

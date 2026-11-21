@@ -947,7 +947,16 @@ final class RideController {
 
         if trainerConnected, let kmh = data.speedKmh {
             if usesGears {
-                speedKmh = gears.virtualSpeed(fromTrainerKmh: kmh)
+                let pedalling = gears.virtualSpeed(fromTrainerKmh: kmh)
+                if isRunning {
+                    // Rueda libre: el volante del rodillo se para en cuanto dejas de pedalear, pero en
+                    // la carretera seguirías rodando (o acelerando cuesta abajo). Vas a lo que dé más:
+                    // tu pedalada o la inercia con la física (como un piñón libre de verdad).
+                    let coasting = physics.coast(speedKmh: speedKmh ?? 0, gradePercent: currentGrade, dt: dt)
+                    speedKmh = max(pedalling, coasting)
+                } else {
+                    speedKmh = pedalling
+                }
             } else {
                 // En ERG el rodillo manda los vatios: la velocidad es la que llevarías en llano
                 // con esa potencia (como Zwift o TrainerRoad). Sin pedalear, parado.
