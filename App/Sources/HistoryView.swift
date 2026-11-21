@@ -213,22 +213,43 @@ struct StravaCard: View {
 /// Lleva un entreno a Garmin Connect por la vía oficial: abre su página «Importar datos» en el
 /// navegador y te deja el .fit a mano (en el Mac, seleccionado en el Finder para arrastrarlo).
 /// La API personal de Garmin solo permite descargar, no subir.
+/// Llevar un entreno a Garmin Connect. Garmin no tiene API pública para subir actividades,
+/// así que se hace por su página «Importar datos»: se abre y el .fit queda seleccionado en el
+/// Finder para arrastrarlo. Con «Abrir al terminar» pasa solo al acabar cada entreno (Mac).
+enum GarminExport {
+    static let importPage = URL(string: "https://connect.garmin.com/modern/import-data")!
+    static let autoKey = "garminAbrirAlTerminar"
+
+    /// Abrir la página de importar al terminar (por defecto, sí).
+    static var opensOnFinish: Bool {
+        get { UserDefaults.standard.object(forKey: autoKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: autoKey) }
+    }
+
+    @MainActor
+    static func open(_ activity: Activity, store: ActivityStore) {
+        #if os(macOS)
+        let fit = store.fitURL(activity)
+        if !FileManager.default.fileExists(atPath: fit.path) {
+            try? store.fitData(activity).write(to: fit)
+        }
+        NSWorkspace.shared.activateFileViewerSelecting([fit])
+        NSWorkspace.shared.open(importPage)
+        #endif
+    }
+}
+
 struct GarminImportButton: View {
     let activity: Activity
     @Environment(ActivityStore.self) private var store
     @Environment(\.openURL) private var openURL
 
-    static let importPage = URL(string: "https://connect.garmin.com/modern/import-data")!
+    static let importPage = GarminExport.importPage
 
     var body: some View {
         #if os(macOS)
         Button("Subir a Garmin Connect", systemImage: "arrow.up.forward.app") {
-            let fit = store.fitURL(activity)
-            if !FileManager.default.fileExists(atPath: fit.path) {
-                try? store.fitData(activity).write(to: fit)
-            }
-            NSWorkspace.shared.activateFileViewerSelecting([fit])
-            openURL(Self.importPage)
+            GarminExport.open(activity, store: store)
         }
         .buttonStyle(.bordered)
         .help("Abre «Importar datos» de Garmin Connect y te enseña el .fit en el Finder: arrástralo a la página.")
@@ -245,6 +266,8 @@ struct GarminImportButton: View {
 
 /// Explica cómo llevar los entrenos a Garmin Connect.
 struct GarminCard: View {
+    @State private var opensOnFinish = GarminExport.opensOnFinish
+
     var body: some View {
         Card(style: .outlined) {
             HStack(alignment: .top, spacing: 12) {
@@ -254,6 +277,11 @@ struct GarminCard: View {
                     Text("Garmin Connect").font(Theme.font(.titleLarge))
                     Text("Cada entreno se guarda como .fit. Con «Subir a Garmin Connect» se abre su página de importar y el fichero aparece seleccionado en el Finder: arrástralo a la página y listo. Si la página no reacciona, prueba con Chrome o Edge (Safari a veces falla al importar).")
                         .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
+                    #if os(macOS)
+                    Toggle("Abrirla sola al terminar cada entreno", isOn: $opensOnFinish)
+                        .onChange(of: opensOnFinish) { GarminExport.opensOnFinish = opensOnFinish }
+                        .padding(.top, 4)
+                    #endif
                 }
             }
         }

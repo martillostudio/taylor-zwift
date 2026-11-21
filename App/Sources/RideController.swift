@@ -589,6 +589,12 @@ final class RideController {
             hub.appendLog("💾 Guardado: \(rec.name) · \(Int(rec.timerSeconds / 60))' · \(rec.tss.map { "TSS \($0)" } ?? "")")
             if intervals.autoUpload, intervals.isConnected { uploadToIntervals(rec) }
             if strava.autoUpload, strava.isConnected { uploadToStrava(rec) }
+            #if os(macOS)
+            if GarminExport.opensOnFinish {
+                GarminExport.open(rec, store: store)
+                hub.appendLog("🟦 Garmin Connect: abierta la página de importar; arrastra el .fit seleccionado")
+            }
+            #endif
         } catch {
             hub.appendLog("⚠️ No se pudo guardar el entreno: \(error.localizedDescription)")
         }
