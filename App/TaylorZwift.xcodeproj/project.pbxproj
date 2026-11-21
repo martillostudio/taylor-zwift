@@ -16,6 +16,7 @@
 		32397EFA7DC9D54BF1C8D269 /* TaylorMandosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */; };
 		35DF4BD02904C0F2A2776308 /* SceneClearLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */; };
 		390CEB0D5EB53A2E689D709C /* FitnessCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E62F35D849BBC71788A1F /* FitnessCard.swift */; };
+		3C0431E12C0D3C31BF3FE5EC /* PixelWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A62AF9A2F6EBC6F4C93E034 /* PixelWorld.swift */; };
 		3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */; };
 		3FF3272C7515184AAAEAD428 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4213815FF621063110F50F8B /* DevicesView.swift */; };
 		4494A2257C90AE51AA73A8C0 /* BridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */; };
@@ -29,6 +30,7 @@
 		7A79021544CDD0DC2162DBBE /* BridgeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863663EEE45FBB2051721FB9 /* BridgeModel.swift */; };
 		7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F12F33A425BD8EE3BA6369 /* LogView.swift */; };
 		88A3CB40F5F98CC7FC9F051F /* DemoPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBF2A669AD1089602E50C21 /* DemoPanel.swift */; };
+		960E97D3AC95DDC6AFA3F0CE /* Escenarios in Resources */ = {isa = PBXBuildFile; fileRef = EA635CCD4662E8770DD609C9 /* Escenarios */; };
 		9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AE67EA9B3F5BDCB7270A503 /* RideView.swift */; };
 		9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */; };
 		ADC16D87744078AA0851B2EA /* CicloNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = 63F04261BFB7770CF70BCBA9 /* CicloNetwork */; };
@@ -59,6 +61,7 @@
 		514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneClearLine.swift; sourceTree = "<group>"; };
 		55572BB6639FE3C30213D09F /* SceneLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneLocation.swift; sourceTree = "<group>"; };
 		60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneStyles.swift; sourceTree = "<group>"; };
+		6A62AF9A2F6EBC6F4C93E034 /* PixelWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelWorld.swift; sourceTree = "<group>"; };
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
 		81A986A24FCA408C038742AA /* SceneRider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneRider.swift; sourceTree = "<group>"; };
@@ -76,6 +79,7 @@
 		CABB43D303D77746CDB2C94E /* GradeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradeColors.swift; sourceTree = "<group>"; };
 		DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
 		E00F138BCCA37643B77254B7 /* RideScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideScene.swift; sourceTree = "<group>"; };
+		EA635CCD4662E8770DD609C9 /* Escenarios */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Escenarios; sourceTree = SOURCE_ROOT; };
 		EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorMandosApp.swift; sourceTree = "<group>"; };
 		F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapCard.swift; sourceTree = "<group>"; };
 		FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeView.swift; sourceTree = "<group>"; };
@@ -116,6 +120,7 @@
 		51298314B928A914EB16B74D = {
 			isa = PBXGroup;
 			children = (
+				EA635CCD4662E8770DD609C9 /* Escenarios */,
 				921B905C36856747286C8EFA /* BridgeSources */,
 				0503DEF6E91EC07037F5B2D2 /* Packages */,
 				E63781A9FFEAF255E208F7FF /* Sources */,
@@ -157,6 +162,7 @@
 				499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */,
 				4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */,
 				75F12F33A425BD8EE3BA6369 /* LogView.swift */,
+				6A62AF9A2F6EBC6F4C93E034 /* PixelWorld.swift */,
 				0464B20E69550416FCED48A4 /* ProgressViews.swift */,
 				8E10DC2A8D445E089A9F7EB6 /* RideController.swift */,
 				E00F138BCCA37643B77254B7 /* RideScene.swift */,
@@ -207,6 +213,7 @@
 			buildConfigurationList = 90E1AC58A86C719775EFC233 /* Build configuration list for PBXNativeTarget "TaylorZwift" */;
 			buildPhases = (
 				A9E11B339EA337A8A23439F1 /* Sources */,
+				9E3ADFFB216BBDB823B1D94B /* Resources */,
 				3819170ACFACD1ED684E88C5 /* Frameworks */,
 			);
 			buildRules = (
@@ -265,6 +272,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		9E3ADFFB216BBDB823B1D94B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				960E97D3AC95DDC6AFA3F0CE /* Escenarios in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E9143A668477484B5F50F6BB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -301,6 +316,7 @@
 				67AE0C9ADFBAC9E6472329B0 /* IntervalsService.swift in Sources */,
 				54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */,
 				7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */,
+				3C0431E12C0D3C31BF3FE5EC /* PixelWorld.swift in Sources */,
 				5063173ED488E4E607D836B6 /* ProgressViews.swift in Sources */,
 				BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */,
 				CEBDCD17E3E6FB7DC4981590 /* RideScene.swift in Sources */,

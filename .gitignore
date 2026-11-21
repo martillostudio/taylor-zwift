@@ -17,3 +17,6 @@ Package.resolved
 
 # Skills de Claude Code del proyecto (se reinstalan con `npx skills experimental_install`, ver skills-lock.json)
 .claude/skills/
+
+# Fondos de pixel art con licencia que no permite redistribuirlos (ver tools/instalar-escenarios.sh)
+App/Escenarios/

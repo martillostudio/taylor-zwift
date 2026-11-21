@@ -1,5 +1,6 @@
 import CicloBluetooth
 import CicloKit
+import SpriteKit
 import SwiftUI
 
 /// Simulador 2D: tú de perfil sobre el relieve real de la ruta, con el paisaje desplazándose a tu
@@ -14,12 +15,28 @@ struct RideScene: View {
     /// Estilo elegido (se recuerda). `--args -estiloSimulador pixel` para abrir con otro.
     @AppStorage("estiloSimulador") private var styleID = SceneStyle.silhouette.rawValue
 
-    private var style: SceneStyle { SceneStyle(rawValue: styleID) ?? .silhouette }
+    @AppStorage("zonaSimulador") private var zoneID = "prados"
+    @State private var world: PixelWorldScene?
+
+    private var style: SceneStyle {
+        let s = SceneStyle(rawValue: styleID) ?? .silhouette
+        return s == .pixelWorld && PixelZone.available.isEmpty ? .pixel : s
+    }
+    private var zone: PixelZone { PixelZone.available.first { $0.id == zoneID } ?? PixelZone.available.first ?? PixelZone.all[0] }
     private var palette: ScenePalette { sun.map { ScenePalette(sun: $0, keys: style.keys) } ?? .day }
 
     var body: some View {
         let table = motion.table(for: ride.route)
+        let _ = { motion.palette = palette }()
         ZStack {
+            if style == .pixelWorld {
+                if let world, world.zone == zone {
+                    SpriteView(scene: world, preferredFramesPerSecond: 30, options: [.ignoresSiblingOrder])
+                        .ignoresSafeArea()
+                } else {
+                    Color.black.onAppear { makeWorld() }
+                }
+            } else {
             TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
                 Canvas { context, size in
                     let now = timeline.date.timeIntervalSinceReferenceDate
@@ -27,7 +44,7 @@ struct RideScene: View {
                                             speedKmh: ride.isRunning ? ride.speedKmh ?? 0 : 0)
                     let crank = motion.crank(at: now, cadence: ride.isRunning ? hub.bikeData.cadenceRpm ?? 0 : 0)
                     switch style {
-                    case .silhouette:
+                    case .silhouette, .pixelWorld:
                         SceneRenderer(route: ride.route, table: table, distance: d, time: now,
                                       crank: crank, palette: palette)
                             .draw(in: &context, size: size)
@@ -47,10 +64,11 @@ struct RideScene: View {
                 }
             }
             .ignoresSafeArea()
+            }
             VStack {
                 SceneHUD(table: table)
                 Spacer()
-                SceneBottomBar(table: table, styleID: $styleID)
+                SceneBottomBar(table: table, styleID: $styleID, zoneID: $zoneID)
             }
             .padding(Space.xl)
         }
@@ -66,6 +84,23 @@ struct RideScene: View {
             }
         }
         .onChange(of: location.coordinate?.latitude) { updatePalette() }
+        .onChange(of: zoneID) { world = nil }
+    }
+
+    /// Monta la escena de SpriteKit del escenario elegido; en cada fotograma pide distancia,
+    /// pedalada, cielo y relieve.
+    private func makeWorld() {
+        let scene = PixelWorldScene(zone: zone)
+        let motion = motion, ride = ride, hub = hub
+        scene.feed = {
+            let now = Date().timeIntervalSinceReferenceDate
+            let d = motion.distance(at: now, recorded: ride.session.distanceMeters,
+                                    speedKmh: ride.isRunning ? ride.speedKmh ?? 0 : 0)
+            let crank = motion.crank(at: now, cadence: ride.isRunning ? hub.bikeData.cadenceRpm ?? 0 : 0)
+            return PixelWorldFeed(distance: d, crank: crank, palette: motion.palette, table: motion.table(for: ride.route),
+                                  isLoop: ride.route.isLoop)
+        }
+        world = scene
     }
 
     private func updatePalette() {
@@ -82,6 +117,8 @@ struct RideScene: View {
 /// avanza a tu velocidad (sin pasarse más de 0,6 s) y nunca se va hacia atrás.
 final class SceneMotion {
     private var cachedTable: RouteElevationTable?
+    /// El cielo de ahora (para la escena de SpriteKit, que lo lee en cada fotograma).
+    var palette = ScenePalette.day
 
     /// Tabla de alturas de la ruta (se hace una vez por ruta).
     func table(for route: Route) -> RouteElevationTable {
@@ -154,7 +191,9 @@ struct ScenePalette: Equatable {
 
     /// Para probar otra hora: `--args -horaSimulador 20` (hora local de hoy).
     static var forcedDate: Date? {
-        guard let h = UserDefaults.standard.object(forKey: "horaSimulador") as? Int else { return nil }
+        // Los argumentos de arranque llegan como texto: `integer(forKey:)` los convierte.
+        guard UserDefaults.standard.object(forKey: "horaSimulador") != nil else { return nil }
+        let h = UserDefaults.standard.integer(forKey: "horaSimulador")
         return Calendar.current.date(bySettingHour: h, minute: 0, second: 0, of: Date())
     }
 
@@ -723,6 +762,7 @@ private struct GearGauge: View {
 private struct SceneBottomBar: View {
     let table: RouteElevationTable
     @Binding var styleID: String
+    @Binding var zoneID: String
     @Environment(RideController.self) private var ride
     @Environment(BluetoothHub.self) private var hub
 
@@ -749,9 +789,15 @@ private struct SceneBottomBar: View {
             }
             Menu {
                 Picker("Estilo", selection: $styleID) {
-                    ForEach(SceneStyle.allCases) { s in Label(s.title, systemImage: s.systemImage).tag(s.rawValue) }
+                    ForEach(SceneStyle.selectable) { s in Label(s.title, systemImage: s.systemImage).tag(s.rawValue) }
                 }
                 .pickerStyle(.inline)
+                if styleID == SceneStyle.pixelWorld.rawValue, !PixelZone.available.isEmpty {
+                    Picker("Escenario", selection: $zoneID) {
+                        ForEach(PixelZone.available) { z in Text(z.title).tag(z.id) }
+                    }
+                    .pickerStyle(.inline)
+                }
             } label: {
                 Image(systemName: "paintpalette.fill")
                     .font(.system(size: 15, weight: .semibold))

@@ -8,7 +8,7 @@ DERIVED  := build/DerivedData
 APP      := $(DERIVED)/Build/Products/Debug/TaylorZwift.app
 MANDOS   := $(DERIVED)/Build/Products/Debug/TaylorMandos.app
 
-.PHONY: test project build build-ios run logs clean build-mandos mandos build-mandos-ios instalar-mandos
+.PHONY: escenarios test project build build-ios run logs clean build-mandos mandos build-mandos-ios instalar-mandos
 
 test:            ## Tests de CicloKit (sin hardware)
 	cd CicloKit && swift test
@@ -56,3 +56,6 @@ logs:            ## Muestra en vivo los logs de Bluetooth de la app
 
 clean:
 	rm -rf build
+
+escenarios: ## Copia los fondos de pixel art (packs descargados en el Escritorio) a App/Escenarios
+	tools/instalar-escenarios.sh

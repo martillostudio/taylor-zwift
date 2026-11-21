@@ -7,8 +7,13 @@ enum SceneStyle: String, CaseIterable, Identifiable {
     case pixel
     case print = "grabado"
     case clearLine = "lineaclara"
+    /// Pixel art con fondos de packs (App/Escenarios), en SpriteKit.
+    case pixelWorld = "escenarios"
 
     var id: String { rawValue }
+
+    /// Los que se pueden elegir (los escenarios, solo si están instalados).
+    static var selectable: [SceneStyle] { allCases.filter { $0 != .pixelWorld || !PixelZone.available.isEmpty } }
 
     var title: String {
         switch self {
@@ -16,6 +21,7 @@ enum SceneStyle: String, CaseIterable, Identifiable {
         case .pixel: "Pixel art"
         case .print: "Grabado japonés"
         case .clearLine: "Línea clara"
+        case .pixelWorld: "Escenarios (pixel art)"
         }
     }
 
@@ -25,13 +31,14 @@ enum SceneStyle: String, CaseIterable, Identifiable {
         case .pixel: "square.grid.3x3.fill"
         case .print: "paintbrush.pointed"
         case .clearLine: "pencil.line"
+        case .pixelWorld: "photo.stack"
         }
     }
 
     /// Fotogramas del cielo de cada estilo.
     var keys: ScenePalette.Keys {
         switch self {
-        case .silhouette, .pixel: .silhouette
+        case .silhouette, .pixel, .pixelWorld: .silhouette
         case .print: .print
         case .clearLine: .clearLine
         }
