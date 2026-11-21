@@ -20,23 +20,25 @@ struct RiderModel {
     }
 
     /// Equipación y bici. La Grizl CF: cuadro color arena, tija, sillín y cinta negros, cubiertas
-    /// anchas de gravel. Maillot naranja (el color de la app), culotte negro, casco blanco.
+    /// anchas de gravel. Equipación como en tu foto: maillot claro de manga corta, culotte negro,
+    /// calcetines blancos altos, zapatillas blancas, casco negro y gafas oscuras.
     struct Kit {
-        var jersey = RGB(0.95, 0.47, 0.13)
-        var jerseyDark = RGB(0.70, 0.30, 0.08)
+        var jersey = RGB(0.92, 0.92, 0.91)
+        var jerseyDark = RGB(0.70, 0.72, 0.76)
         var shorts = RGB(0.10, 0.10, 0.12)
         var skin = RGB(0.86, 0.66, 0.52)
         var skinDark = RGB(0.70, 0.50, 0.38)
-        var helmet = RGB(0.96, 0.96, 0.94)
+        var helmet = RGB(0.11, 0.11, 0.13)
         var socks = RGB(0.96, 0.96, 0.94)
-        var shoes = RGB(0.12, 0.12, 0.14)
+        var shoes = RGB(0.95, 0.95, 0.94)
+        var soles = RGB(0.12, 0.12, 0.14)
         var frame = RGB(0.80, 0.77, 0.69)
         var frameShade = RGB(0.64, 0.61, 0.54)
         var black = RGB(0.10, 0.10, 0.11)
         var tyre = RGB(0.13, 0.12, 0.12)
-        var tyreWall = RGB(0.55, 0.45, 0.33)
+        var tyreWall = RGB(0.22, 0.21, 0.20)
         var metal = RGB(0.55, 0.56, 0.58)
-        var glasses = RGB(0.15, 0.20, 0.30)
+        var glasses = RGB(0.08, 0.09, 0.12)
     }
 
     static func parts(crank crankAngle: Double, distance: Double, kit k: Kit = Kit()) -> [Part] {
@@ -69,9 +71,11 @@ struct RiderModel {
         let farKnee = SceneIK.joint(from: farHip, to: farPedal, a: 20.6, b: 21.8, bendForward: true)
         let farAnkle = pt(farPedal.x - 1.2, farPedal.y - 3.2)
         cap(farHip, farKnee, 8.6, k.shorts.mix(RGB(0, 0, 0), 0.3))
-        cap(farKnee, farAnkle, 6, k.skinDark)
-        cap(farAnkle, pt(farAnkle.x, farAnkle.y + 1.2), 4.8, k.socks.mix(RGB(0, 0, 0), 0.2))
-        cap(pt(farPedal.x - 2.5, farPedal.y - 0.5), pt(farPedal.x + 3.5, farPedal.y + 0.3), 3.6, k.shoes)
+        let farSock = pt(farKnee.x + (farAnkle.x - farKnee.x) * 0.55, farKnee.y + (farAnkle.y - farKnee.y) * 0.55)
+        cap(farKnee, farSock, 6, k.skinDark)
+        cap(farSock, pt(farAnkle.x, farAnkle.y + 1.2), 5.2, k.socks.mix(RGB(0, 0, 0), 0.22))
+        cap(pt(farPedal.x - 2.5, farPedal.y - 0.5), pt(farPedal.x + 3.5, farPedal.y + 0.3), 3.6, k.shoes.mix(RGB(0, 0, 0), 0.22))
+        cap(pt(farPedal.x - 2.5, farPedal.y + 1.2), pt(farPedal.x + 3.5, farPedal.y + 1.6), 1.2, k.soles, outline: false)
         let farShoulder = pt(shoulder.x - 1.5, shoulder.y + 1.5)
         let farHands = pt(hands.x - 1, hands.y + 0.5)
         let farElbow = SceneIK.joint(from: farShoulder, to: farHands, a: 14.4, b: 13.4, bendForward: false)
@@ -124,9 +128,11 @@ struct RiderModel {
         cap(hip, nearKnee, 9.2, k.shorts)
         let kneeSkin = pt(nearKnee.x + (hip.x - nearKnee.x) * 0.18, nearKnee.y + (hip.y - nearKnee.y) * 0.18)
         cap(kneeSkin, nearKnee, 7.4, k.skin)
-        cap(nearKnee, ankle, 6.4, k.skin)
-        cap(ankle, pt(ankle.x, ankle.y + 1.4), 5, k.socks)
+        let sock = pt(nearKnee.x + (ankle.x - nearKnee.x) * 0.55, nearKnee.y + (ankle.y - nearKnee.y) * 0.55)
+        cap(nearKnee, sock, 6.4, k.skin)
+        cap(sock, pt(ankle.x, ankle.y + 1.4), 5.6, k.socks)
         cap(pt(nearPedal.x - 2.8, nearPedal.y - 0.6), pt(nearPedal.x + 3.8, nearPedal.y + 0.3), 4, k.shoes)
+        cap(pt(nearPedal.x - 2.8, nearPedal.y + 1.4), pt(nearPedal.x + 3.8, nearPedal.y + 1.8), 1.3, k.soles, outline: false)
         let elbow = SceneIK.joint(from: shoulder, to: hands, a: 14.4, b: 13.4, bendForward: false)
         let sleeveEnd = pt(shoulder.x + (elbow.x - shoulder.x) * 0.55, shoulder.y + (elbow.y - shoulder.y) * 0.55)
         cap(shoulder, sleeveEnd, 6.4, k.jersey)
@@ -138,7 +144,7 @@ struct RiderModel {
         cap(pt(head.x + 1.5, head.y - 0.6), pt(head.x + 5.2, head.y - 0.2), 2.2, k.glasses, outline: false)
         // Casco: alargado hacia atrás, por encima de la cabeza.
         cap(pt(head.x - 6.5, head.y - 3.6), pt(head.x + 3.5, head.y - 4.8), 6.6, k.helmet)
-        cap(pt(head.x - 3, head.y - 6.6), pt(head.x + 1, head.y - 7.2), 1.2, k.helmet.mix(RGB(0, 0, 0), 0.25), outline: false)
+        cap(pt(head.x - 3, head.y - 6.6), pt(head.x + 1, head.y - 7.2), 1.2, k.helmet.mix(RGB(1, 1, 1), 0.3), outline: false) // rejilla
         return parts
     }
 
