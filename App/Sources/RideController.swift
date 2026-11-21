@@ -92,6 +92,82 @@ final class RideController {
     var currentPlanWeek: PlanWeek? {
         plan.weekNumber(on: Date(), start: planStart).map { plan.weeks[$0 - 1] }
     }
+
+    /// Sesiones marcadas a mano como hechas (salidas en exterior, o entrenos hechos en otra app).
+    private(set) var manualPlanMarks: Set<String> =
+        Set(UserDefaults.standard.stringArray(forKey: "sesionesHechas") ?? [])
+
+    /// Estado de cada sesión de la semana, cruzando el plan con el historial.
+    func planStatus(_ week: PlanWeek) -> [String: PlanSessionStatus] {
+        plan.status(of: week, start: planStart, completed: store.activities.map(\.asCompletedWorkout),
+                    manuallyDone: manualPlanMarks)
+    }
+
+    func toggleManualMark(_ session: PlanSession, week: PlanWeek) {
+        let key = session.key(week: week.number)
+        if manualPlanMarks.contains(key) { manualPlanMarks.remove(key) } else { manualPlanMarks.insert(key) }
+        UserDefaults.standard.set(Array(manualPlanMarks), forKey: "sesionesHechas")
+    }
+
+    /// Fecha de una sesión del plan.
+    func date(of session: PlanSession, in week: PlanWeek) -> Date {
+        Calendar.current.date(byAdding: .day, value: session.weekdayOffset,
+                              to: plan.startOfWeek(week.number, start: planStart)) ?? planStart
+    }
+
+    // MARK: Botones A / B del mando derecho
+
+    /// Mensaje corto que se enseña unos segundos encima de todo (p. ej. «Pulsa B otra vez…»).
+    private(set) var notice: String?
+    @ObservationIgnored private var noticeTask: Task<Void, Never>?
+    @ObservationIgnored private var finishArmedUntil: Double = 0
+    static let finishConfirmSeconds = 3.0
+
+    func show(_ text: String, seconds: Double = 2.5) {
+        notice = text
+        noticeTask?.cancel()
+        noticeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            self?.notice = nil
+        }
+    }
+
+    /// A: empezar o pausar (lo que haría el botón grande).
+    func togglePlayPause() {
+        if isRunning {
+            pause()
+            show("⏸ En pausa · A para seguir")
+        } else if hub.trainerConnection != .connected {
+            show("Conecta el rodillo para empezar")
+        } else if summary != nil {
+            show("Entreno terminado · pulsa «A cero» para otro")
+        } else if mode == .workout && workout == nil {
+            show("Elige un entreno en «Entrenar»")
+        } else {
+            start()
+            show("▶︎ En marcha")
+        }
+    }
+
+    /// B: terminar, pero pidiendo una segunda pulsación para no acabar sin querer.
+    func requestFinish() {
+        let now = ProcessInfo.processInfo.systemUptime
+        let hasSomething = session.movingSeconds > 0 || workoutSeconds > 0
+        guard hasSomething, summary == nil else {
+            show("No hay nada que terminar")
+            return
+        }
+        if now < finishArmedUntil {
+            finishArmedUntil = 0
+            finish()
+            show("🏁 Terminado y guardado", seconds: 3)
+        } else {
+            finishArmedUntil = now + Self.finishConfirmSeconds
+            show("Pulsa B otra vez para terminar", seconds: Self.finishConfirmSeconds)
+            hub.appendLog("🏁 B: pulsa otra vez en \(Int(Self.finishConfirmSeconds)) s para terminar")
+        }
+    }
     private(set) var workout: Workout?
     /// Segundos transcurridos del entrenamiento (avanzan mientras está en marcha).
     private(set) var workoutSeconds = 0.0
@@ -509,6 +585,8 @@ final class RideController {
             case .shiftDown: easier()
             case .up where mode == .free || (mode == .workout && usesGears): setFreeGrade(freeGrade + Self.freeGradeStep)
             case .down where mode == .free || (mode == .workout && usesGears): setFreeGrade(freeGrade - Self.freeGradeStep)
+            case .select: togglePlayPause()
+            case .back: requestFinish()
             default: break
             }
         }

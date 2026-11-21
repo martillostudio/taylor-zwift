@@ -229,30 +229,37 @@ extension HeartRateZone {
     }
 }
 
-/// La semana del plan que toca y acceso al plan entero.
+/// La semana del plan que toca: «hoy toca», cómo vas y acceso al plan entero.
 private struct PlanBox: View {
     @Environment(RideController.self) private var ride
+    @Environment(ActivityStore.self) private var store
 
     var body: some View {
         @Bindable var ride = ride
-        M3Card(style: .filled) {
-            VStack(alignment: .leading, spacing: 12) {
-                M3SectionTitle(title: ride.plan.name)
-                HStack {
-                    Text(ride.plan.summary).font(.callout).foregroundStyle(.secondary)
+        M3Card(style: .filled, padding: Space.xl) {
+            VStack(alignment: .leading, spacing: Space.l) {
+                HStack(alignment: .top) {
+                    M3SectionTitle(title: ride.plan.name, subtitle: ride.plan.summary)
                     Spacer()
                     DatePicker("Empieza el lunes", selection: $ride.planStart, displayedComponents: .date)
                         .fixedSize()
                 }
                 if let week = ride.currentPlanWeek {
+                    let statuses = ride.planStatus(week)
+                    if let next = ride.plan.nextSession(in: week, statuses: statuses) {
+                        NextSessionBanner(session: next, week: week, status: statuses[next.id] ?? .upcoming)
+                    } else {
+                        Label("Semana completada. ¡Buen trabajo! Descansa hasta el lunes.", systemImage: "checkmark.seal.fill")
+                            .font(M3.font(.titleMedium)).foregroundStyle(M3.tertiary)
+                    }
                     PlanWeekView(week: week, isCurrent: true)
                 } else if ride.planStart > Date() {
                     Text("Empieza el \(ride.planStart.formatted(date: .complete, time: .omitted)). Así será la primera semana:")
-                        .foregroundStyle(.secondary)
+                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
                     PlanWeekView(week: ride.plan.weeks[0], isCurrent: false)
                 } else {
                     Text("Plan terminado. Pon una fecha nueva para repetirlo (con tu FTP nuevo).")
-                        .foregroundStyle(.secondary)
+                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
                 }
                 NavigationLink {
                     PlanView()
@@ -265,39 +272,141 @@ private struct PlanBox: View {
     }
 }
 
-/// Una semana del plan: bloque, objetivo y sus 3 sesiones en tarjetas.
+/// «Hoy toca»: la sesión siguiente del plan con un botón para cargarla.
+private struct NextSessionBanner: View {
+    let session: PlanSession
+    let week: PlanWeek
+    let status: PlanSessionStatus
+    @Environment(RideController.self) private var ride
+
+    private var title: String {
+        switch status {
+        case .today: "Hoy toca"
+        case .partial: "A medias"
+        default: "Próxima sesión · \(ride.date(of: session, in: week).formatted(.dateTime.weekday(.wide).day()))"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: Space.l) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(title.uppercased()).font(M3.font(.labelMedium)).tracking(0.6)
+                    .foregroundStyle(M3.onPrimaryContainer.opacity(0.8))
+                Text(session.workout?.name ?? "Salida en exterior").font(M3.font(.titleLarge))
+                    .foregroundStyle(M3.onPrimaryContainer)
+                Text(session.workout.map { "\(formatDuration($0.durationSeconds)) · \($0.shortDescription)" } ?? session.note)
+                    .font(M3.font(.bodyMedium)).foregroundStyle(M3.onPrimaryContainer.opacity(0.8))
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+            if let w = session.workout {
+                NavigationLink {
+                    WorkoutDetailView(workout: w)
+                        .onAppear {
+                            // Se carga solo, salvo que estés en plena actividad con otra cosa.
+                            if !ride.isRunning, ride.workout?.id != w.id || ride.mode != .workout { ride.load(w) }
+                        }
+                } label: {
+                    Label("Ir al entreno", systemImage: "play.fill")
+                }
+                .buttonStyle(.m3Filled)
+            } else {
+                Button("Marcar hecha", systemImage: "checkmark") { ride.toggleManualMark(session, week: week) }
+                    .buttonStyle(.m3Filled)
+            }
+        }
+        .padding(Space.l)
+        .background(M3.primaryContainer, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
+    }
+}
+
+/// Una semana del plan: bloque, objetivo y sus sesiones con su estado.
 struct PlanWeekView: View {
     let week: PlanWeek
     var isCurrent = false
+    @Environment(RideController.self) private var ride
+    @Environment(ActivityStore.self) private var store
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
+        let statuses = ride.planStatus(week)
+        let done = week.sessions.filter { statuses[$0.id]?.isDone == true }.count
+        VStack(alignment: .leading, spacing: Space.m) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
                 Text("Semana \(week.number)").font(M3.font(.titleMedium))
-                Text("· \(week.block) · \(week.focus)").foregroundStyle(.secondary)
+                Text("\(week.block) · \(week.focus)").font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    .lineLimit(1)
                 Spacer()
+                Text("\(done)/\(week.sessions.count)")
+                    .font(M3.font(.labelLarge, numeric: true))
+                    .foregroundStyle(done == week.sessions.count ? M3.tertiary : M3.onSurfaceVariant)
                 if isCurrent {
-                    Text("ESTA SEMANA").font(.caption2.bold())
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Color.accentColor.opacity(0.2), in: Capsule())
+                    Text("ESTA SEMANA").font(M3.font(.labelSmall))
+                        .padding(.horizontal, Space.s).padding(.vertical, 2)
+                        .background(M3.secondaryContainer, in: Capsule())
                 }
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220, maximum: 360), spacing: 12)], alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220, maximum: 360), spacing: Space.m)],
+                      alignment: .leading, spacing: Space.m) {
                 ForEach(week.sessions) { session in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(session.day).font(.caption.bold()).foregroundStyle(.secondary)
-                        if let w = session.workout {
-                            NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutCard(workout: w, compact: true) }
-                                .buttonStyle(.plain)
-                        } else {
-                            OutdoorCard(note: session.note)
-                        }
-                        if session.workout != nil, !session.note.isEmpty {
-                            Text(session.note).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
+                    SessionCell(session: session, week: week, status: statuses[session.id] ?? .upcoming)
                 }
             }
+        }
+    }
+}
+
+/// Una sesión: día, estado y su tarjeta (o la salida en exterior).
+private struct SessionCell: View {
+    let session: PlanSession
+    let week: PlanWeek
+    let status: PlanSessionStatus
+    @Environment(RideController.self) private var ride
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.s) {
+                Text(ride.date(of: session, in: week).formatted(.dateTime.weekday(.abbreviated).day()).uppercased())
+                    .font(M3.font(.labelMedium)).tracking(0.6).foregroundStyle(M3.onSurfaceVariant)
+                Spacer()
+                StatusBadge(status: status)
+            }
+            Group {
+                if let w = session.workout {
+                    NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutCard(workout: w, compact: true) }
+                        .buttonStyle(.plain)
+                } else {
+                    OutdoorCard(note: session.note)
+                }
+            }
+            .opacity(status.isDone || status == .skipped ? 0.6 : 1)
+            if session.workout != nil, !session.note.isEmpty {
+                Text(session.note).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+            }
+        }
+        .contextMenu {
+            Button(ride.manualPlanMarks.contains(session.key(week: week.number)) ? "Quitar marca de hecha" : "Marcar como hecha",
+                   systemImage: "checkmark.circle") {
+                ride.toggleManualMark(session, week: week)
+            }
+        }
+    }
+}
+
+private struct StatusBadge: View {
+    let status: PlanSessionStatus
+
+    var body: some View {
+        let (text, icon, color): (String, String, Color) = switch status {
+        case .done: ("Hecha", "checkmark.circle.fill", M3.tertiary)
+        case .partial(let f, _): ("\(Int((f * 100).rounded())) %", "circle.lefthalf.filled", Color.orange)
+        case .today: ("Hoy", "circle.fill", M3.primary)
+        case .skipped: ("No hecha", "minus.circle", M3.outline)
+        case .upcoming: ("", "", Color.clear)
+        }
+        if !text.isEmpty {
+            Label(text, systemImage: icon)
+                .font(M3.font(.labelMedium))
+                .foregroundStyle(color)
         }
     }
 }
@@ -306,12 +415,14 @@ private struct OutdoorCard: View {
     let note: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.s) {
             Image(systemName: "sun.max.fill").font(.title2).foregroundStyle(.orange)
-            Text("Salida en exterior").font(.headline)
-            Text(note).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text("Salida en exterior").font(M3.font(.titleMedium))
+            Text(note).font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Clic derecho → «Marcar como hecha»").font(M3.font(.labelSmall)).foregroundStyle(M3.outline)
         }
-        .padding(12)
+        .padding(Space.m)
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
         .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
         .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
@@ -712,7 +823,7 @@ struct WorkoutDetailView: View {
                     .frame(minWidth: 64)
                 M3IconButton(systemImage: "plus", size: 36) { ride.harder() }
                 Spacer(minLength: 0)
-                Text("Mando derecho: + / Z suben · Y bajan")
+                Text("Mando derecho: + / Z suben · Y bajan · A empieza/pausa · B dos veces termina")
                     .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
             }
         }

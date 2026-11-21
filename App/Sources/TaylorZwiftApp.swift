@@ -61,6 +61,20 @@ struct ContentView: View {
         }
         .background(M3.surface)
         .tint(M3.primary)
+        .overlay(alignment: .top) {
+            if let notice = ride.notice {
+                Text(notice)
+                    .font(M3.font(.titleMedium))
+                    .foregroundStyle(M3.onSurface)
+                    .padding(.horizontal, 20).padding(.vertical, 12)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .accessibilityAddTraits(.isStaticText)
+            }
+        }
+        .animation(.spring(duration: 0.3), value: ride.notice)
     }
 
     private var rail: some View {
