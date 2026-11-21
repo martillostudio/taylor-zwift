@@ -186,6 +186,8 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 ### Fase 3 — Extras
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
 
+- [x] **Rutas GPX** (21-nov): «⋯ → Importar GPX…» en el modo Ruta. Vale cualquier GPX con altura (recorridos de Garmin Connect, Strava, Komoot, Wikiloc). La altura se remuestrea cada 25 m, se suaviza con una media de 200 m (el GPS baila) y se trocea en tramos de 50 m con la pendiente limitada a ±20 %. Se guardan en Application Support/Rutas; perfil por colores, subidas tipo ClimbPro y adelanto de 2 km como las rutas incluidas.
+
 ## 7. Decisiones de la Fase 0 (resueltas)
 
 1. **Versiones mínimas**: iOS/iPadOS 17 y macOS 14.
@@ -245,3 +247,4 @@ Notas:
 | 2026-11-19 | Datos reales: rampa → FTP 167 W (limitado por piernas/cadencia, pulso máx. 162); Z2 60' a 136 W con pulso 131–137 (71–74 % FCmáx: zona gris). **FTP de trabajo: 175 W.** Entrenos de base con **tope de pulso** (70 % FCmáx ≈ 130 ppm) y aviso para aflojar. |
 | 2026-11-19 | UI: solo lo esencial. Fila principal de 3–4 datos según el modo (objetivo/potencia/cadencia/pulso con vatios fijos; potencia/velocidad/cadencia/pulso con marchas) y fila secundaria de 4 acumulados. Entreno: tarjeta del tramo (cuenta atrás + objetivo + siguiente), perfil con zoom, tramos plegados. En ERG la velocidad vuelve a ser la de llano para esa potencia y no se inventa desnivel. |
 | 2026-11-21 | Seguimiento del plan cruzando historial y sesiones (`PlanProgress.swift`, con tests) y botones A (empezar/pausar) y B×2 (terminar) del mando derecho. |
+| 2026-11-21 | Rutas GPX importadas (`GPXParser.swift`, con tests): rodar tus recorridos de siempre con su pendiente real. |

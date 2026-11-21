@@ -1,6 +1,7 @@
 import CicloBluetooth
 import CicloKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Pestaña «Rodar»: el entrenamiento en vivo, con Material 3 y vista 2D tipo Garmin / Wahoo.
 struct RideView: View {
@@ -10,6 +11,8 @@ struct RideView: View {
 
     /// Metros del adelanto del perfil (como el «2 km» de Wahoo).
     private let previewMeters = 2_000.0
+    @State private var importingGPX = false
+    @State private var importError: String?
 
     var body: some View {
         @Bindable var ride = ride
@@ -49,6 +52,28 @@ struct RideView: View {
         }
         .background(M3.surface)
         .overlay(alignment: .bottom) { actionBar.padding(Space.xl) }
+        .fileImporter(isPresented: $importingGPX,
+                      allowedContentTypes: [UTType(filenameExtension: "gpx") ?? .xml, .xml]) { result in
+            importGPX(result)
+        }
+        .alert("No se pudo importar la ruta", isPresented: Binding(get: { importError != nil },
+                                                                 set: { if !$0 { importError = nil } })) {
+            Button("Vale", role: .cancel) {}
+        } message: {
+            Text(importError ?? "")
+        }
+    }
+
+    private func importGPX(_ result: Result<URL, Error>) {
+        do {
+            let url = try result.get()
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let r = try ride.importGPX(Data(contentsOf: url), fileName: url.lastPathComponent)
+            ride.route = r
+        } catch {
+            importError = error.localizedDescription
+        }
     }
 
     // MARK: Cabecera y conexión
@@ -118,10 +143,30 @@ struct RideView: View {
                                    subtitle: "\(km(ride.route.lengthMeters)) km · +\(Int(ride.route.climbMeters)) m\(ride.route.isLoop ? " por vuelta" : "")")
                     Spacer()
                     Picker("Ruta", selection: $ride.route) {
-                        ForEach(Route.builtIn) { Text($0.name).tag($0) }
+                        Section("Incluidas") {
+                            ForEach(Route.builtIn) { Text($0.name).tag($0) }
+                        }
+                        if !ride.importedRoutes.isEmpty {
+                            Section("Mis rutas") {
+                                ForEach(ride.importedRoutes) { Text($0.name).tag($0) }
+                            }
+                        }
                     }
                     .labelsHidden()
                     .fixedSize()
+                    Menu {
+                        Button("Importar GPX…", systemImage: "square.and.arrow.down") { importingGPX = true }
+                        if ride.route.id.hasPrefix("gpx-") {
+                            Button("Borrar «\(ride.route.name)»", systemImage: "trash", role: .destructive) {
+                                ride.deleteRoute(ride.route)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").font(.system(size: 20))
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("Importar una ruta GPX (de Garmin Connect, Strava, Komoot…)")
                 }
                 HStack(alignment: .center, spacing: 16) {
                     GradeTile(grade: ride.currentGrade)

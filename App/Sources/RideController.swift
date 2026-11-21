@@ -231,6 +231,7 @@ final class RideController {
         let savedStart = defaults.double(forKey: Self.planStartKey)
         planStart = savedStart > 0 ? Date(timeIntervalSince1970: savedStart) : TrainingPlan.monday(onOrAfter: Date())
         importedWorkouts = Self.loadImported()
+        importedRoutes = Self.loadRoutes()
         hub.onButtonPress = { [weak self] pressed in self?.handleButtons(pressed) }
         ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -567,6 +568,53 @@ final class RideController {
         stored[w.id] = nil
         UserDefaults.standard.set(stored, forKey: Self.importedKey)
         importedWorkouts.removeAll { $0.id == w.id }
+    }
+
+    // MARK: Rutas GPX
+
+    /// Rutas importadas de ficheros GPX (se guardan en Application Support/Rutas).
+    private(set) var importedRoutes: [Route] = []
+
+    var allRoutes: [Route] { Route.builtIn + importedRoutes }
+
+    private static var routesFolder: URL {
+        let base = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                                 appropriateFor: nil, create: true))
+            ?? FileManager.default.temporaryDirectory
+        let folder = base.appendingPathComponent("Rutas", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }
+
+    @discardableResult
+    func importGPX(_ data: Data, fileName: String) throws -> Route {
+        let id = "gpx-\(UUID().uuidString.prefix(8))"
+        let name = (fileName as NSString).deletingPathExtension
+        let r = try GPXParser.parse(data, id: id, fallbackName: name)
+        try data.write(to: Self.routesFolder.appendingPathComponent("\(id).gpx"), options: .atomic)
+        importedRoutes.append(r)
+        importedRoutes.sort { $0.name < $1.name }
+        let km = (r.lengthMeters / 1000).formatted(.number.precision(.fractionLength(1)))
+        hub.appendLog("📥 Ruta importada: \(r.name) · \(km) km · +\(Int(r.climbMeters)) m")
+        return r
+    }
+
+    func deleteRoute(_ r: Route) {
+        guard r.id.hasPrefix("gpx-") else { return }
+        try? FileManager.default.removeItem(at: Self.routesFolder.appendingPathComponent("\(r.id).gpx"))
+        importedRoutes.removeAll { $0.id == r.id }
+        if route.id == r.id { route = .rolling }
+    }
+
+    private static func loadRoutes() -> [Route] {
+        let files = (try? FileManager.default.contentsOfDirectory(at: routesFolder, includingPropertiesForKeys: nil)) ?? []
+        return files.filter { $0.pathExtension.lowercased() == "gpx" }
+            .compactMap { url in
+                (try? Data(contentsOf: url)).flatMap { data in
+                    try? GPXParser.parse(data, id: url.deletingPathExtension().lastPathComponent)
+                }
+            }
+            .sorted { $0.name < $1.name }
     }
 
     private static func loadImported() -> [Workout] {
