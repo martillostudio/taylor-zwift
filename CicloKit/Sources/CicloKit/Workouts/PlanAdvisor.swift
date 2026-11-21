@@ -125,6 +125,7 @@ public enum PlanAdvisor {
 
     /// Primer día desde `from` sin sesión, que no esté pegado a una sesión dura (ni antes ni después).
     static func freeDay(in week: PlanWeek, from: Int, statuses: [String: PlanSessionStatus]) -> Int? {
+        guard from <= 6 else { return nil }
         let busy = Set(week.sessions.map(\.weekdayOffset))
         let hard = Set(week.sessions.filter { s in
             guard let w = s.workout, Coach.isHard(w) else { return false }

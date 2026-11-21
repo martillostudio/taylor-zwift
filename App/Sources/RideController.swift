@@ -965,7 +965,9 @@ final class RideController {
         case .route:
             announceClimb()
         case .workout:
-            workoutSeconds += dt
+            // Sin rodillo no avanza el entreno: al volver sigues en el mismo tramo (y la grabación,
+            // una muestra por segundo de entreno, sigue alineada con los tramos para el análisis).
+            if trainerConnected { workoutSeconds += dt }
             if let w = workout, workoutSeconds >= Double(w.durationSeconds) {
                 hub.appendLog("✅ Entreno completado")
                 finish()

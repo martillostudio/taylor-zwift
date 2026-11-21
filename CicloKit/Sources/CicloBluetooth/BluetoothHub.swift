@@ -212,7 +212,8 @@ public final class BluetoothHub: NSObject {
         heartRateName = "Pulsómetro de prueba"
         heartRateConnection = .connected
         heartRateBpm = demoRider.heartRateBpm
-        clicks = zip(Self.demoClickIDs, ["Click izq. de prueba", "Click dcha. de prueba"]).map { id, name in
+        clicks.removeAll { Self.demoClickIDs.contains($0.id) }
+        clicks += zip(Self.demoClickIDs, ["Click izq. de prueba", "Click dcha. de prueba"]).map { id, name in
             var c = ClickState(id: id, name: name)
             c.connection = .connected
             c.handshakeDone = true
