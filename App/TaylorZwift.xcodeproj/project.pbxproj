@@ -18,6 +18,7 @@
 		3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */; };
 		3FF3272C7515184AAAEAD428 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4213815FF621063110F50F8B /* DevicesView.swift */; };
 		4494A2257C90AE51AA73A8C0 /* BridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */; };
+		5063173ED488E4E607D836B6 /* ProgressViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0464B20E69550416FCED48A4 /* ProgressViews.swift */; };
 		54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */; };
 		5BB8932B175C34562307D088 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 73886A525BAFEF0B64906260 /* CicloBluetooth */; };
 		5DA8CAC0930596C31F7F8DD3 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB996F07CD563F64B272A32 /* HistoryView.swift */; };
@@ -40,6 +41,7 @@
 
 /* Begin PBXFileReference section */
 		016E4515ABF42AF0C84D91FE /* ScanSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanSection.swift; sourceTree = "<group>"; };
+		0464B20E69550416FCED48A4 /* ProgressViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressViews.swift; sourceTree = "<group>"; };
 		0CBA6D3C397E76000063ABFD /* ActivityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityStore.swift; sourceTree = "<group>"; };
 		2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorZwiftApp.swift; sourceTree = "<group>"; };
 		2AE35A2B67F635CBEFA1BF27 /* TaylorMandos.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaylorMandos.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -142,6 +144,7 @@
 				499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */,
 				4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */,
 				75F12F33A425BD8EE3BA6369 /* LogView.swift */,
+				0464B20E69550416FCED48A4 /* ProgressViews.swift */,
 				8E10DC2A8D445E089A9F7EB6 /* RideController.swift */,
 				9AE67EA9B3F5BDCB7270A503 /* RideView.swift */,
 				F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */,
@@ -279,6 +282,7 @@
 				67AE0C9ADFBAC9E6472329B0 /* IntervalsService.swift in Sources */,
 				54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */,
 				7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */,
+				5063173ED488E4E607D836B6 /* ProgressViews.swift in Sources */,
 				BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */,
 				9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */,
 				9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */,

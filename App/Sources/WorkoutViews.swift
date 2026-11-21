@@ -42,6 +42,17 @@ func formatDuration(_ seconds: Int) -> String {
 
 struct WorkoutsView: View {
     @Environment(RideController.self) private var ride
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+
+    private var progressColumns: [GridItem] {
+        var count = 2
+        #if os(iOS)
+        if sizeClass == .compact { count = 1 }
+        #endif
+        return Array(repeating: GridItem(.flexible(), spacing: Space.l, alignment: .top), count: count)
+    }
     @State private var importing = false
     @State private var importError: String?
 
@@ -54,9 +65,16 @@ struct WorkoutsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    ProfileBox()
-                    FitnessCard()
+                    TodayCard()
+                    // Tu progreso: dos columnas en Mac e iPad, una en iPhone.
+                    LazyVGrid(columns: progressColumns, alignment: .leading, spacing: Space.l) {
+                        RoadAheadCard()
+                        WeeklyLoadCard()
+                        FitnessCard()
+                        ImprovementCard()
+                    }
                     PlanBox()
+                    ProfileBox()
 
                     if ride.mode == .workout, let w = ride.workout {
                         VStack(alignment: .leading, spacing: 10) {
