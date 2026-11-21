@@ -87,7 +87,12 @@ final class RideController {
     }
     /// Lunes en que empieza (o empezó) el plan.
     var planStart: Date {
-        didSet { UserDefaults.standard.set(planStart.timeIntervalSince1970, forKey: Self.planStartKey) }
+        didSet {
+            // Siempre en lunes: si eliges otro día, el lunes de esa semana.
+            let monday = TrainingPlan.monday(onOrBefore: planStart)
+            if monday != planStart { planStart = monday; return }
+            UserDefaults.standard.set(planStart.timeIntervalSince1970, forKey: Self.planStartKey)
+        }
     }
     let plan = TrainingPlan.winter
 
@@ -277,7 +282,8 @@ final class RideController {
         let savedDrivetrain = defaults.string(forKey: Self.drivetrainKey)
         gears = VirtualGears(drivetrain: Drivetrain.all.first { $0.id == savedDrivetrain } ?? .grx1x12)
         let savedStart = defaults.double(forKey: Self.planStartKey)
-        planStart = savedStart > 0 ? Date(timeIntervalSince1970: savedStart) : TrainingPlan.monday(onOrAfter: Date())
+        planStart = savedStart > 0 ? TrainingPlan.monday(onOrBefore: Date(timeIntervalSince1970: savedStart))
+            : TrainingPlan.monday(onOrAfter: Date())
         importedWorkouts = Self.loadImported()
         // Las rutas GPX se leen en segundo plano: con muchas, tardaría en abrir la ventana.
         Task { [weak self] in

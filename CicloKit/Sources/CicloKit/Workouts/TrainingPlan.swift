@@ -64,6 +64,15 @@ public struct TrainingPlan: Identifiable, Equatable, Sendable {
         let offset = (9 - weekday) % 7 // días hasta el próximo lunes (0 si ya es lunes)
         return cal.date(byAdding: .day, value: offset, to: start) ?? start
     }
+
+    /// El lunes de la semana de `date` (el mismo día si ya es lunes). El plan siempre empieza en
+    /// lunes: si eliges otro día, empieza el lunes de esa semana.
+    public static func monday(onOrBefore date: Date, calendar: Calendar = .current) -> Date {
+        let start = calendar.startOfDay(for: date)
+        let weekday = calendar.component(.weekday, from: start) // 1 = domingo, 2 = lunes
+        let back = (weekday + 5) % 7 // días desde el lunes
+        return calendar.date(byAdding: .day, value: -back, to: start) ?? start
+    }
 }
 
 extension TrainingPlan {

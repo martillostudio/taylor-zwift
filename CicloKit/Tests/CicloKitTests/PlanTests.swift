@@ -79,4 +79,15 @@ struct StrengthAndHeartTests {
         #expect(HeartRateZone(bpm: 80, max: 185) == .z1)
         #expect(HeartRateZone(bpm: 180, max: 185) == .z5)
     }
+
+    @Test func mondayOnOrBefore() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Madrid")!
+        func day(_ d: Int) -> Date { cal.date(from: DateComponents(year: 2026, month: 11, day: d, hour: 10))! }
+        let monday16 = cal.date(from: DateComponents(year: 2026, month: 11, day: 16))!
+        #expect(TrainingPlan.monday(onOrBefore: day(21), calendar: cal) == monday16) // sábado
+        #expect(TrainingPlan.monday(onOrBefore: day(22), calendar: cal) == monday16) // domingo
+        #expect(TrainingPlan.monday(onOrBefore: day(16), calendar: cal) == monday16) // lunes
+        #expect(TrainingPlan.monday(onOrBefore: day(17), calendar: cal) == monday16)
+    }
 }

@@ -258,3 +258,4 @@ Notas:
 | 2026-11-21 | Rutas GPX importadas (`GPXParser.swift`, con tests): rodar tus recorridos de siempre con su pendiente real. |
 | 2026-11-21 | intervals.icu como destino principal de los entrenos (gratis, con API); Garmin Connect por importación manual; Strava opcional. |
 | 2026-11-21 | Las salidas en exterior de Garmin entran en el plan vía intervals.icu (no hace falta leer los `.fit` de Garmin a mano) y su eFTP se propone como FTP. |
+| 2026-11-21 | Segundo test de rampa: mejor minuto 245 W → **FTP 184 W** (eFTP de intervals.icu: 181), pulso máx. 170, se paró a 243 W con la cadencia cayendo. El plan empieza siempre en lunes (si eliges otro día, el lunes de esa semana): empieza el **16-nov** y esta semana es la 1 (Z2 60' el 19 y el test el 21). |
