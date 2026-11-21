@@ -27,6 +27,6 @@ import Testing
 
     @Test func gradeIsClamped() {
         #expect(rider.grade(powerWatts: 2000, speedKmh: 8) == 25)
-        #expect(rider.grade(powerWatts: 0, speedKmh: 40) == -15)
+        #expect(rider.grade(powerWatts: 0, speedKmh: 100) == -15)
     }
 }

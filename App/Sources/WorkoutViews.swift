@@ -166,6 +166,7 @@ private struct FreeRideCard: View {
 /// FTP, peso, FC máxima y las zonas de potencia y de pulso.
 private struct ProfileBox: View {
     @Environment(RideController.self) private var ride
+    @Environment(IntervalsService.self) private var intervals
 
     var body: some View {
         @Bindable var ride = ride
@@ -180,6 +181,14 @@ private struct ProfileBox: View {
                 }
                 Text("\((Double(ride.ftp) / ride.weightKg).formatted(.number.precision(.fractionLength(2)))) W/kg al FTP. Si no sabes tu FTP, haz el test de rampa: al terminar te propone el valor.")
                     .font(.caption).foregroundStyle(.secondary)
+                if let eftp = intervals.estimatedFTP, abs(eftp - ride.ftp) >= 5 {
+                    HStack(spacing: Space.m) {
+                        Label("intervals.icu estima tu FTP en **\(eftp) W** con tus últimas salidas (eFTP).",
+                              systemImage: "chart.line.uptrend.xyaxis")
+                            .font(M3.font(.bodyMedium))
+                        Button("Usar \(eftp) W") { ride.ftp = eftp }.buttonStyle(.m3Tonal)
+                    }
+                }
                 HStack(alignment: .top, spacing: 32) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Potencia").font(.caption.bold()).foregroundStyle(.secondary)
@@ -233,6 +242,7 @@ extension HeartRateZone {
 private struct PlanBox: View {
     @Environment(RideController.self) private var ride
     @Environment(ActivityStore.self) private var store
+    @Environment(IntervalsService.self) private var intervals
 
     var body: some View {
         @Bindable var ride = ride
@@ -261,14 +271,48 @@ private struct PlanBox: View {
                     Text("Plan terminado. Pon una fecha nueva para repetirlo (con tu FTP nuevo).")
                         .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
                 }
-                NavigationLink {
-                    PlanView()
-                } label: {
-                    Label("Ver las 16 semanas", systemImage: "calendar")
+                HStack(spacing: Space.m) {
+                    NavigationLink {
+                        PlanView()
+                    } label: {
+                        Label("Ver las 16 semanas", systemImage: "calendar")
+                    }
+                    .buttonStyle(.m3Tonal)
+                    OutdoorSyncLine()
                 }
-                .buttonStyle(.m3Tonal)
             }
         }
+        .task { await ride.syncIntervals() }
+    }
+}
+
+/// De dónde salen las salidas en exterior del plan: intervals.icu (que las trae de Garmin).
+private struct OutdoorSyncLine: View {
+    @Environment(RideController.self) private var ride
+    @Environment(IntervalsService.self) private var intervals
+
+    var body: some View {
+        if intervals.isConnected {
+            HStack(spacing: Space.s) {
+                Text(syncText).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                Button(intervals.isBusy ? "Sincronizando…" : "Actualizar", systemImage: "arrow.clockwise") {
+                    Task { await ride.syncIntervals(force: true) }
+                }
+                .buttonStyle(.m3Text)
+                .disabled(intervals.isBusy)
+            }
+        } else {
+            Button("Conecta intervals.icu para que tus salidas cuenten solas", systemImage: "link") {
+                ride.selectedTab = "historial"
+            }
+            .buttonStyle(.m3Text)
+        }
+    }
+
+    private var syncText: String {
+        let rides = intervals.outdoorRides.count
+        let when = intervals.lastSync.map { $0.formatted(.relative(presentation: .named)) } ?? "nunca"
+        return "Salidas en exterior de intervals.icu: \(rides) · sincronizado \(when)"
     }
 }
 
@@ -420,7 +464,9 @@ private struct OutdoorCard: View {
             Text("Salida en exterior").font(M3.font(.titleMedium))
             Text(note).font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Clic derecho → «Marcar como hecha»").font(M3.font(.labelSmall)).foregroundStyle(M3.outline)
+            Text("Cuenta sola con una salida de 1 h 30 min o más en intervals.icu · o clic derecho → «Marcar como hecha»")
+                .font(M3.font(.labelSmall)).foregroundStyle(M3.outline)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(Space.m)
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)

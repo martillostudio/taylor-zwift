@@ -23,11 +23,14 @@ public struct CompletedWorkout: Equatable, Sendable {
     public var start: Date
     public var workoutID: String?
     public var seconds: Double
+    /// Salida en exterior (de Garmin vía intervals.icu): cuenta para las sesiones sin entreno.
+    public var isOutdoor: Bool
 
-    public init(start: Date, workoutID: String?, seconds: Double) {
+    public init(start: Date, workoutID: String?, seconds: Double, isOutdoor: Bool = false) {
         self.start = start
         self.workoutID = workoutID
         self.seconds = seconds
+        self.isOutdoor = isOutdoor
     }
 }
 
@@ -38,6 +41,11 @@ extension Activity {
 }
 
 extension PlanSession {
+    /// Lo mínimo que tiene que durar una salida en exterior para darla por hecha.
+    public static let outdoorMinimumSeconds: Double = 90 * 60
+    /// Si hace malo, la salida en exterior se puede cambiar por «Resistencia 2 h» en el rodillo.
+    public static let indoorAlternativeID = "z2-120"
+
     /// Días desde el lunes: «Lun» = 0 … «Dom» = 6.
     public var weekdayOffset: Int {
         let days = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
@@ -56,7 +64,9 @@ extension TrainingPlan {
     }
 
     /// Estado de cada sesión de una semana. Un entreno cuenta para una sesión si es el mismo
-    /// entreno y se hizo esa semana (da igual el día). Cada entreno cuenta una sola vez.
+    /// entreno y se hizo esa semana (da igual el día). Una salida en exterior cuenta para las
+    /// sesiones sin entreno («Salida en exterior»): hecha si dura al menos 1 h 30 min.
+    /// Cada entreno o salida cuenta una sola vez.
     public func status(
         of week: PlanWeek, start: Date, completed: [CompletedWorkout], manuallyDone: Set<String> = [],
         now: Date = Date(), calendar: Calendar = .current
@@ -76,14 +86,22 @@ extension TrainingPlan {
             }
             var best: (index: Int, fraction: Double)?
             if let w = session.workout {
+                // El test de rampa acaba cuando no puedes más: vale con pasar del calentamiento
+                // y unos cuantos escalones (10'), no con llegar al final previsto.
+                let needed = w.ftpTest == .ramp ? 600 : Double(max(w.durationSeconds, 1))
                 for (i, c) in pool.enumerated() where c.workoutID == w.id {
-                    let f = c.seconds / Double(max(w.durationSeconds, 1))
+                    let f = min(c.seconds / needed, 1)
+                    if best == nil || f > best!.fraction { best = (i, f) }
+                }
+            } else {
+                for (i, c) in pool.enumerated() where c.isOutdoor || c.workoutID == PlanSession.indoorAlternativeID {
+                    let f = c.seconds / PlanSession.outdoorMinimumSeconds
                     if best == nil || f > best!.fraction { best = (i, f) }
                 }
             }
             if let best {
                 let c = pool.remove(at: best.index)
-                result[session.id] = best.fraction >= 0.8 ? .done(on: c.start) : .partial(fraction: best.fraction, on: c.start)
+                result[session.id] = best.fraction >= (session.workout == nil ? 1 : 0.8) ? .done(on: c.start) : .partial(fraction: best.fraction, on: c.start)
                 continue
             }
             let day = calendar.date(byAdding: .day, value: session.weekdayOffset, to: weekStart) ?? weekStart

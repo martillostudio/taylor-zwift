@@ -3,7 +3,8 @@ import Foundation
 import Observation
 import Security
 
-/// Conexión con intervals.icu: subida automática de cada entreno (.fit).
+/// Conexión con intervals.icu: subida automática de cada entreno (.fit) y descarga de tus
+/// salidas en exterior (las que trae de Garmin Connect) para el plan, más su FTP estimado (eFTP).
 ///
 /// intervals.icu es gratis, analiza la carga (CTL/ATL, curvas de potencia, zonas) y además puede
 /// traer tus salidas de Garmin Connect, así que junta en un sitio el rodillo y la calle.
@@ -24,6 +25,15 @@ final class IntervalsService {
 
     @ObservationIgnored private var apiKey: String?
 
+    /// Actividades recientes de intervals.icu (se guardan para tenerlas sin conexión).
+    private(set) var recent: [IntervalsActivity] = []
+    private(set) var lastSync: Date?
+
+    /// Salidas en bici por la calle (no rodillo, ni las que subimos nosotros).
+    var outdoorRides: [IntervalsActivity] { recent.filter(\.isOutdoorRide) }
+    /// FTP estimado por intervals.icu con tus últimas salidas (eFTP), redondeado a 5 W.
+    var estimatedFTP: Int? { IntervalsActivity.latestEstimatedFTP(in: recent) }
+
     var isConnected: Bool { apiKey != nil && athleteName != nil }
 
     enum Failure: LocalizedError {
@@ -43,6 +53,11 @@ final class IntervalsService {
         autoUpload = UserDefaults.standard.object(forKey: "intervalsSubidaAuto") as? Bool ?? true
         athleteName = UserDefaults.standard.string(forKey: "intervalsAtleta")
         apiKey = Keychain.read(account: "intervals.icu")
+        if let data = UserDefaults.standard.data(forKey: "intervalsRecientes"),
+           let cached = try? JSONDecoder().decode([IntervalsActivity].self, from: data) {
+            recent = cached
+        }
+        lastSync = UserDefaults.standard.object(forKey: "intervalsSincronizado") as? Date
     }
 
     // MARK: Cuenta
@@ -77,6 +92,43 @@ final class IntervalsService {
         athleteName = nil
         UserDefaults.standard.removeObject(forKey: "intervalsAtleta")
         status = nil
+        recent = []
+        lastSync = nil
+        UserDefaults.standard.removeObject(forKey: "intervalsRecientes")
+        UserDefaults.standard.removeObject(forKey: "intervalsSincronizado")
+    }
+
+    // MARK: Descarga
+
+    /// Trae las actividades desde `oldest` hasta mañana. Sin `force`, no repite si la última
+    /// sincronización fue hace menos de 10 minutos.
+    func sync(since oldest: Date, force: Bool = false) async {
+        guard let apiKey, !isBusy else { return }
+        if !force, let lastSync, Date().timeIntervalSince(lastSync) < 600 { return }
+        isBusy = true
+        defer { isBusy = false }
+        let day = Date.ISO8601FormatStyle(timeZone: .current).year().month().day()
+        var components = URLComponents(url: Self.base.appendingPathComponent("athlete/0/activities"),
+                                       resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "oldest", value: oldest.formatted(day)),
+            URLQueryItem(name: "newest", value: Date().addingTimeInterval(86_400).formatted(day)),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.setValue(Self.authorization(apiKey), forHTTPHeaderField: "Authorization")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try Self.check(data, response)
+            recent = IntervalsActivity.parseList(data).sorted { $0.start > $1.start }
+            lastSync = Date()
+            UserDefaults.standard.set(try? JSONEncoder().encode(recent), forKey: "intervalsRecientes")
+            UserDefaults.standard.set(lastSync, forKey: "intervalsSincronizado")
+            let n = outdoorRides.count
+            status = n == 0 ? "Sincronizado: sin salidas en exterior en estas fechas."
+                : "Sincronizado: \(n) salida\(n == 1 ? "" : "s") en exterior."
+        } catch {
+            status = error.localizedDescription
+        }
     }
 
     // MARK: Subida

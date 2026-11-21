@@ -183,6 +183,8 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 - [x] **Garmin Connect** (vía oficial): su API personal solo permite *descargar*, así que el botón «Subir a Garmin Connect» abre su página «Importar datos» y selecciona el `.fit` en el Finder para arrastrarlo (Safari a veces falla al importar: mejor Chrome o Edge).
 - Nota (19-nov): **Strava exige suscripción para crear una app de la API**; sin ella la subida a Strava no se puede usar (queda como opción).
 - [x] **intervals.icu** (21-nov): gratis, clave de API (Settings → Developer Settings), autenticación básica `API_KEY:<clave>`, `POST /api/v1/athlete/0/activities` con el `.fit` (no duplica: comprueba el hash). Subida automática al terminar; la clave va al llavero. intervals.icu puede traer también las salidas de Garmin Connect: junta rodillo y calle.
+- [x] **Salidas en exterior en el plan** (21-nov): la app descarga de intervals.icu tus actividades (`GET /api/v1/athlete/0/activities`) al abrir «Entrenar» (como mucho cada 10', o con «Actualizar»). Las salidas en bici por la calle (`Ride`, `GravelRide`, `MountainBikeRide`, sin `trainer` y que no subimos nosotros) cuentan para las sesiones «Salida en exterior» de su semana: hecha con 1 h 30 min o más, si no «a medias». «Resistencia 2 h» en el rodillo también vale para esas sesiones. Si el eFTP de intervals.icu (`icu_rolling_ftp`) difiere 5 W o más del tuyo, «Tu perfil» propone usarlo.
+- [x] El test de rampa cuenta como hecho a partir de 10' (acaba cuando no puedes más, no al final previsto).
 
 ### Fase 3 — Extras
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
@@ -250,3 +252,4 @@ Notas:
 | 2026-11-21 | Seguimiento del plan cruzando historial y sesiones (`PlanProgress.swift`, con tests) y botones A (empezar/pausar) y B×2 (terminar) del mando derecho. |
 | 2026-11-21 | Rutas GPX importadas (`GPXParser.swift`, con tests): rodar tus recorridos de siempre con su pendiente real. |
 | 2026-11-21 | intervals.icu como destino principal de los entrenos (gratis, con API); Garmin Connect por importación manual; Strava opcional. |
+| 2026-11-21 | Las salidas en exterior de Garmin entran en el plan vía intervals.icu (no hace falta leer los `.fit` de Garmin a mano) y su eFTP se propone como FTP. |

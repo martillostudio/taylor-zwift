@@ -100,8 +100,19 @@ final class RideController {
 
     /// Estado de cada sesión de la semana, cruzando el plan con el historial.
     func planStatus(_ week: PlanWeek) -> [String: PlanSessionStatus] {
-        plan.status(of: week, start: planStart, completed: store.activities.map(\.asCompletedWorkout),
+        plan.status(of: week, start: planStart,
+                    completed: store.activities.map(\.asCompletedWorkout)
+                        + intervals.outdoorRides.map(\.asCompletedWorkout),
                     manuallyDone: manualPlanMarks)
+    }
+
+    /// Trae de intervals.icu las salidas desde que empezó el plan (como mucho 16 semanas atrás)
+    /// y al menos las de las últimas 6 semanas (para su FTP estimado).
+    func syncIntervals(force: Bool = false) async {
+        guard intervals.isConnected else { return }
+        let now = Date()
+        let from = min(max(planStart, now.addingTimeInterval(-112 * 86_400)), now.addingTimeInterval(-42 * 86_400))
+        await intervals.sync(since: from, force: force)
     }
 
     func toggleManualMark(_ session: PlanSession, week: PlanWeek) {
