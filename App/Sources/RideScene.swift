@@ -30,7 +30,7 @@ struct RideScene: View {
             VStack {
                 SceneHUD(table: table)
                 Spacer()
-                SceneControls()
+                SceneBottomBar(table: table)
             }
             .padding(Space.xl)
         }
@@ -152,11 +152,11 @@ struct ScenePalette: Equatable {
         if e > -2 {
             // El sol cruza de izquierda (mañana) a derecha (tarde) y baja hasta el horizonte.
             lightX = min(max(0.5 + sun.hourAngle * 1.3, 0.08), 0.92)
-            lightY = 0.56 - min(max(e, -4), 60) / 60 * 0.46
+            lightY = 0.58 - min(max(e, -4), 60) / 60 * 0.30
         } else {
             isMoon = true
-            lightX = 0.78
-            lightY = 0.14
+            lightX = 0.85
+            lightY = 0.38
             light = RGB(0.92, 0.94, 1.0)
         }
     }
@@ -241,20 +241,15 @@ private struct SceneRenderer {
         drawTrees(&c, size, pxPerM: pxPerM, riderX: riderX, groundY: groundY)
         c.fill(ground, with: .color(palette.ground.color))
 
-        // Línea fina con el color de la pendiente sobre el borde del terreno.
+        // Borde del terreno: una línea fina y discreta (los colores de la pendiente van en el perfil).
+        var edge = Path()
         x = 0
-        let chunk: CGFloat = 10
-        while x <= size.width {
-            let d0 = world(x), d1 = world(x + chunk)
-            var p = Path()
-            p.move(to: CGPoint(x: x, y: groundY(d0)))
-            p.addLine(to: CGPoint(x: x + chunk, y: groundY(d1)))
-            let outside = d0 < 0 || (!route.isLoop && d0 > length)
-            let color = outside ? Color.white.opacity(0.25)
-                : GradeBand(gradePercent: table.grade(atDistance: (d0 + d1) / 2)).color
-            c.stroke(p, with: .color(color), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-            x += chunk
+        edge.move(to: CGPoint(x: 0, y: groundY(world(0))))
+        while x <= size.width + step {
+            edge.addLine(to: CGPoint(x: x, y: groundY(world(x))))
+            x += step
         }
+        c.stroke(edge, with: .color(palette.ridges[3].mix(palette.skyBottom, 0.35).color), lineWidth: 1.5)
 
         drawMarkers(&c, size, pxPerM: pxPerM, riderX: riderX, groundY: groundY)
 
@@ -397,73 +392,136 @@ private struct SceneRenderer {
         }
     }
 
-    /// El ciclista en silueta, de perfil: ruedas que giran con la distancia y piernas que
-    /// pedalean a tu cadencia.
+    /// El ciclista en silueta, de perfil, con las medidas de una bici de carretera y un ciclista
+    /// de 1,75 m (1 m ≈ 48 px): ruedas que giran con la distancia, bielas y piernas a tu cadencia.
+    /// Se pinta dos veces: primero un contorno de luz (para que no se pierda con los árboles) y
+    /// encima la silueta; la pierna y el brazo del otro lado, un poco más claros.
     private func drawRider(_ c: inout GraphicsContext, at p: CGPoint, angle: Double, scale: CGFloat) {
         var g = c
         g.translateBy(x: p.x, y: p.y)
         g.rotate(by: .radians(angle))
         g.scaleBy(x: scale, y: scale)
-        let ink = palette.ground.color
-        let wheelR: CGFloat = 16
-        let rear = CGPoint(x: -24, y: -wheelR), front = CGPoint(x: 25, y: -wheelR)
 
-        // Ruedas: llanta gruesa y buje; tres radios finos para que se note el giro.
+        let rim = palette.ridges[2].mix(palette.skyBottom, 0.5).color
+        drawFigure(&g, near: rim, far: rim, extra: 2.5)
+        let ink = palette.ground
+        drawFigure(&g, near: ink.color, far: ink.mix(palette.ridges[3], 0.55).color, extra: 0)
+    }
+
+    private func drawFigure(_ g: inout GraphicsContext, near: Color, far: Color, extra: CGFloat) {
+        func line(_ pts: [CGPoint], _ width: CGFloat, _ color: Color) {
+            var path = Path()
+            path.move(to: pts[0])
+            for q in pts.dropFirst() { path.addLine(to: q) }
+            g.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: width + extra, lineCap: .round, lineJoin: .round))
+        }
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
+
+        // Bici (55): ruedas de 700, batalla de 99 cm, eje de pedalier 7 cm por debajo de los ejes.
+        let r: CGFloat = 16
+        let rear = pt(-19.7, -r), front = pt(27.8, -r), bb = pt(0, -12.7)
+        let seatCluster = pt(-7.1, -36.7), headTop = pt(18.7, -39.1), headBottom = pt(20.7, -32.2)
+        let saddle = pt(-9.8, -45.8), barTop = pt(24, -41)
+        let crankAngle = time * cadence / 60 * 2 * .pi
+        let crank: CGFloat = 8.3
+        func pedal(_ side: Double) -> CGPoint {
+            pt(bb.x + CGFloat(cos(crankAngle + side)) * crank, bb.y + CGFloat(sin(crankAngle + side)) * crank)
+        }
+
+        // Ciclista: cadera sobre el sillín, tronco a ~42°, brazos a las manetas.
+        let hip = pt(-11, -46.5)
+        let shoulder = pt(-11 + 18.6, -46.5 - 16.7)
+        let hands = pt(24.5, -40.5)
+        let headCenter = pt(shoulder.x + 6.5, shoulder.y - 5.5)
+
+        // Lado de lejos: pierna y brazo.
+        let farPedal = pedal(.pi)
+        let farKnee = Self.knee(hip: hip, foot: farPedal, thigh: 20.6, shin: 22.4)
+        line([hip, farKnee], 7.5, far)
+        line([farKnee, farPedal, pt(farPedal.x + 3.5, farPedal.y + 0.5)], 5, far)
+
+        // Ruedas: cubierta, radios finos (para que se vea el giro) y buje.
         let turn = distance / 2.1 * 2 * .pi
         for w in [rear, front] {
-            let rim = CGRect(x: w.x - wheelR, y: w.y - wheelR, width: wheelR * 2, height: wheelR * 2)
-            g.stroke(Path(ellipseIn: rim), with: .color(ink), lineWidth: 3.2)
-            var spokes = Path()
-            for k in 0..<3 {
-                let a = turn + Double(k) * .pi / 3
-                spokes.move(to: CGPoint(x: w.x + CGFloat(cos(a)) * wheelR, y: w.y + CGFloat(sin(a)) * wheelR))
-                spokes.addLine(to: CGPoint(x: w.x - CGFloat(cos(a)) * wheelR, y: w.y - CGFloat(sin(a)) * wheelR))
+            var tyre = Path()
+            tyre.addEllipse(in: CGRect(x: w.x - r, y: w.y - r, width: r * 2, height: r * 2))
+            g.stroke(tyre, with: .color(near), lineWidth: 3 + extra)
+            if extra == 0 {
+                var spokes = Path()
+                for k in 0..<4 {
+                    let a = turn + Double(k) * .pi / 4
+                    spokes.move(to: pt(w.x + CGFloat(cos(a)) * r, w.y + CGFloat(sin(a)) * r))
+                    spokes.addLine(to: pt(w.x - CGFloat(cos(a)) * r, w.y - CGFloat(sin(a)) * r))
+                }
+                g.stroke(spokes, with: .color(near.opacity(0.45)), lineWidth: 0.7)
             }
-            g.stroke(spokes, with: .color(ink.opacity(0.6)), lineWidth: 0.8)
+            g.fill(Path(ellipseIn: CGRect(x: w.x - 2 - extra / 2, y: w.y - 2 - extra / 2, width: 4 + extra, height: 4 + extra)),
+                   with: .color(near))
         }
 
-        // Cuadro de carretera.
-        let bb = CGPoint(x: 0, y: -wheelR + 2)
-        let seatTop = CGPoint(x: -7, y: -40), headTop = CGPoint(x: 17, y: -41), headBottom = CGPoint(x: 19, y: -33)
-        var frame = Path()
-        frame.move(to: rear); frame.addLine(to: bb); frame.addLine(to: seatTop); frame.addLine(to: rear)
-        frame.move(to: bb); frame.addLine(to: headBottom); frame.addLine(to: headTop); frame.addLine(to: seatTop)
-        frame.move(to: headBottom); frame.addLine(to: front)
-        g.stroke(frame, with: .color(ink), style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-        // Sillín y manillar de bajada.
-        var parts = Path()
-        parts.move(to: CGPoint(x: -13, y: -43)); parts.addLine(to: CGPoint(x: -1, y: -43))
-        parts.move(to: headTop); parts.addLine(to: CGPoint(x: 23, y: -42))
-        parts.addQuadCurve(to: CGPoint(x: 22, y: -34), control: CGPoint(x: 28, y: -38))
-        g.stroke(parts, with: .color(ink), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        // Cuadro, horquilla, tija, sillín, potencia y manillar de bajada.
+        line([rear, bb, seatCluster, rear], 2.6, near)
+        line([bb, headBottom, headTop, seatCluster], 3, near)
+        line([headBottom, front], 2.4, near)
+        line([seatCluster, pt(saddle.x + 1.5, saddle.y + 1.5)], 2.2, near)
+        line([pt(saddle.x - 5, saddle.y), pt(saddle.x + 5.5, saddle.y + 0.4)], 2.6, near)
+        line([headTop, barTop], 2.4, near)
+        var drop = Path()
+        drop.move(to: barTop)
+        drop.addQuadCurve(to: pt(barTop.x + 1, barTop.y + 7.5), control: pt(barTop.x + 6, barTop.y + 3))
+        g.stroke(drop, with: .color(near), style: StrokeStyle(lineWidth: 2.4 + extra, lineCap: .round))
+        // Plato y biela de este lado.
+        g.fill(Path(ellipseIn: CGRect(x: bb.x - 4.5 - extra / 2, y: bb.y - 4.5 - extra / 2, width: 9 + extra, height: 9 + extra)),
+               with: .color(near))
+        let nearPedal = pedal(0)
+        line([bb, nearPedal], 2.4, near)
 
-        // Piernas: pedal a la cadencia; rodilla por cinemática de dos tramos.
-        let hip = CGPoint(x: -6, y: -47)
-        let crankAngle = time * cadence / 60 * 2 * .pi
-        for (k, side) in [0.0, Double.pi].enumerated() {
-            let a = crankAngle + side
-            let pedal = CGPoint(x: bb.x + CGFloat(cos(a)) * 8, y: bb.y + CGFloat(sin(a)) * 8)
-            let knee = Self.knee(hip: hip, foot: pedal, thigh: 21, shin: 21)
-            var leg = Path()
-            leg.move(to: hip); leg.addLine(to: knee); leg.addLine(to: pedal)
-            g.stroke(leg, with: .color(ink.opacity(k == 0 ? 1 : 0.75)),
-                     style: StrokeStyle(lineWidth: k == 0 ? 7 : 6, lineCap: .round, lineJoin: .round))
-        }
+        // Brazo de lejos (detrás del tronco).
+        let farElbow = Self.elbow(shoulder: pt(shoulder.x - 1, shoulder.y + 1), hand: pt(hands.x - 1, hands.y), upper: 14.4, fore: 13.2)
+        line([pt(shoulder.x - 1, shoulder.y + 1), farElbow, pt(hands.x - 1, hands.y)], 4, far)
 
-        // Tronco inclinado, brazos al manillar, cabeza y casco.
-        let shoulder = CGPoint(x: 13, y: -63)
-        var torso = Path()
-        torso.move(to: hip); torso.addQuadCurve(to: shoulder, control: CGPoint(x: 0, y: -62))
-        g.stroke(torso, with: .color(ink), style: StrokeStyle(lineWidth: 11, lineCap: .round))
-        var arm = Path()
-        arm.move(to: shoulder); arm.addLine(to: CGPoint(x: 20, y: -50)); arm.addLine(to: CGPoint(x: 24, y: -41))
-        g.stroke(arm, with: .color(ink), style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
-        g.fill(Path(ellipseIn: CGRect(x: 15, y: -78, width: 11, height: 11)), with: .color(ink))
+        // Tronco (más ancho en la espalda) y glúteo.
+        g.fill(Path(ellipseIn: CGRect(x: hip.x - 6 - extra / 2, y: hip.y - 5 - extra / 2, width: 11 + extra, height: 10 + extra)),
+               with: .color(near))
+        var back = Path()
+        back.move(to: hip)
+        back.addQuadCurve(to: shoulder, control: pt((hip.x + shoulder.x) / 2 - 2, (hip.y + shoulder.y) / 2 - 5))
+        g.stroke(back, with: .color(near), style: StrokeStyle(lineWidth: 11.5 + extra, lineCap: .round))
+
+        // Pierna de cerca.
+        let nearKnee = Self.knee(hip: hip, foot: nearPedal, thigh: 20.6, shin: 22.4)
+        line([hip, nearKnee], 8.5, near)
+        line([nearKnee, nearPedal], 5.5, near)
+        line([nearPedal, pt(nearPedal.x + 4, nearPedal.y + 0.5)], 3.5, near)
+
+        // Brazo de cerca.
+        let elbow = Self.elbow(shoulder: shoulder, hand: hands, upper: 14.4, fore: 13.2)
+        line([shoulder, elbow], 5, near)
+        line([elbow, hands], 4.2, near)
+
+        // Cuello, cabeza y casco alargado hacia atrás.
+        line([shoulder, pt(headCenter.x - 2, headCenter.y + 2)], 5, near)
+        g.fill(Path(ellipseIn: CGRect(x: headCenter.x - 5.3 - extra / 2, y: headCenter.y - 5.3 - extra / 2,
+                                      width: 10.6 + extra, height: 10.6 + extra)), with: .color(near))
         var helmet = Path()
-        helmet.move(to: CGPoint(x: 12, y: -72))
-        helmet.addQuadCurve(to: CGPoint(x: 27, y: -73), control: CGPoint(x: 18, y: -83))
-        helmet.addLine(to: CGPoint(x: 12, y: -72))
-        g.fill(helmet, with: .color(ink))
+        helmet.move(to: pt(headCenter.x + 6, headCenter.y - 1.5))
+        helmet.addQuadCurve(to: pt(headCenter.x - 9, headCenter.y - 2), control: pt(headCenter.x - 1, headCenter.y - 12))
+        helmet.addQuadCurve(to: pt(headCenter.x + 6, headCenter.y - 1.5), control: pt(headCenter.x - 1, headCenter.y - 4))
+        g.fill(helmet, with: .color(near))
+        if extra > 0 { g.stroke(helmet, with: .color(near), lineWidth: extra) }
+    }
+
+    /// Codo de un brazo de dos tramos del hombro a la mano, doblado hacia abajo.
+    static func elbow(shoulder: CGPoint, hand: CGPoint, upper: CGFloat, fore: CGFloat) -> CGPoint {
+        let dx = hand.x - shoulder.x, dy = hand.y - shoulder.y
+        let dist = min(max(sqrt(dx * dx + dy * dy), 1), upper + fore - 0.01)
+        let a = (upper * upper - fore * fore + dist * dist) / (2 * dist)
+        let h = sqrt(max(upper * upper - a * a, 0))
+        let ux = dx / dist, uy = dy / dist
+        let mid = CGPoint(x: shoulder.x + ux * a, y: shoulder.y + uy * a)
+        let k1 = CGPoint(x: mid.x - uy * h, y: mid.y + ux * h)
+        let k2 = CGPoint(x: mid.x + uy * h, y: mid.y - ux * h)
+        return k1.y > k2.y ? k1 : k2
     }
 
     /// Rodilla de una pierna de dos tramos que va de la cadera al pie, doblada hacia delante.
@@ -508,18 +566,6 @@ private struct SceneHUD: View {
                 divider
                 GearGauge()
             }
-            Divider()
-            HStack(spacing: Space.m) {
-                Text(ride.route.name).font(Theme.font(.bodyMedium).weight(.semibold)).lineLimit(1)
-                Text(kmText).font(Theme.font(.bodyMedium)).monospacedDigit().foregroundStyle(.secondary)
-                Spacer(minLength: Space.m)
-                if let climb = climbText {
-                    Label(climb, systemImage: "mountain.2.fill")
-                        .font(Theme.font(.bodyMedium)).foregroundStyle(.secondary).lineLimit(1)
-                }
-            }
-            MiniProfile(table: table, position: ride.route.positionInLap(ride.session.distanceMeters))
-                .frame(height: 34)
         }
         .padding(Space.l)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.extraLarge))
@@ -549,21 +595,6 @@ private struct SceneHUD: View {
                 .background(band.color, in: RoundedRectangle(cornerRadius: Theme.Radius.small))
         }
         .fixedSize()
-    }
-
-    private var kmText: String {
-        let km = (ride.session.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1)))
-        let total = (ride.route.lengthMeters / 1000).formatted(.number.precision(.fractionLength(1)))
-        return ride.route.isLoop ? "km \(km) · vuelta de \(total) km" : "km \(km) de \(total)"
-    }
-
-    private var climbText: String? {
-        guard let s = ride.climbStatus else { return nil }
-        func km(_ m: Double) -> String { (m / 1000).formatted(.number.precision(.fractionLength(1))) }
-        let avg = s.climb.averageGradePercent.formatted(.number.precision(.fractionLength(1)))
-        return s.isOnClimb
-            ? "Subida: quedan \(km(s.remainingMeters)) km y \(Int(s.remainingAscentMeters)) m"
-            : "Subida en \(km(s.distanceToStart)) km: \(km(s.climb.lengthMeters)) km al \(avg) %"
     }
 }
 
@@ -626,72 +657,119 @@ private struct GearGauge: View {
     }
 }
 
-/// El perfil de toda la ruta (o de la vuelta) con lo hecho y un punto donde vas.
-private struct MiniProfile: View {
+/// Abajo: la ruta (km y subida), el perfil entero con el color de la pendiente y dónde vas,
+/// y tres botones redondos: empezar/pausa, pantalla completa y salir. Las marchas, con los mandos.
+private struct SceneBottomBar: View {
+    let table: RouteElevationTable
+    @Environment(RideController.self) private var ride
+    @Environment(BluetoothHub.self) private var hub
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Space.l) {
+            if ride.isRunning {
+                RoundButton(systemImage: "pause.fill", prominent: true, help: "Pausa (A en el mando)") { ride.pause() }
+            } else {
+                RoundButton(systemImage: "play.fill", prominent: true, help: "Empezar (A en el mando)") { ride.start() }
+                    .disabled(ride.summary != nil || hub.trainerConnection != .connected)
+            }
+            VStack(alignment: .leading, spacing: Space.xs) {
+                HStack(spacing: Space.m) {
+                    Text(ride.route.name).font(Theme.font(.bodyMedium).weight(.semibold)).lineLimit(1)
+                    Text(kmText).font(Theme.font(.bodyMedium)).monospacedDigit().foregroundStyle(.secondary)
+                    Spacer(minLength: Space.m)
+                    if let climb = climbText {
+                        Label(climb, systemImage: "mountain.2.fill")
+                            .font(Theme.font(.bodyMedium)).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                GradeProfile(table: table, position: ride.route.positionInLap(ride.session.distanceMeters))
+                    .frame(height: 46)
+            }
+            #if os(macOS)
+            RoundButton(systemImage: "arrow.up.left.and.arrow.down.right", help: "Pantalla completa") {
+                NSApp.keyWindow?.toggleFullScreen(nil)
+            }
+            #endif
+            RoundButton(systemImage: "xmark", help: "Salir (Esc)") { ride.showScene = false }
+                .keyboardShortcut(.cancelAction)
+        }
+        .padding(Space.l)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.extraLarge))
+        .frame(maxWidth: 1100)
+    }
+
+    private var kmText: String {
+        let km = (ride.session.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1)))
+        let total = (ride.route.lengthMeters / 1000).formatted(.number.precision(.fractionLength(1)))
+        return ride.route.isLoop ? "km \(km) · vuelta de \(total) km" : "km \(km) de \(total)"
+    }
+
+    private var climbText: String? {
+        guard let s = ride.climbStatus else { return nil }
+        func km(_ m: Double) -> String { (m / 1000).formatted(.number.precision(.fractionLength(1))) }
+        let avg = s.climb.averageGradePercent.formatted(.number.precision(.fractionLength(1)))
+        return s.isOnClimb
+            ? "Subida: quedan \(km(s.remainingMeters)) km y \(Int(s.remainingAscentMeters)) m"
+            : "Subida en \(km(s.distanceToStart)) km: \(km(s.climb.lengthMeters)) km al \(avg) %"
+    }
+}
+
+private struct RoundButton: View {
+    let systemImage: String
+    var prominent = false
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: prominent ? 20 : 15, weight: .semibold))
+                .frame(width: prominent ? 52 : 38, height: prominent ? 52 : 38)
+                .foregroundStyle(prominent ? Color.white : Color.primary)
+                .background(prominent ? AnyShapeStyle(Theme.accent) : AnyShapeStyle(.quaternary), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
+/// El perfil de toda la ruta (o de la vuelta) con el color de la pendiente en cada trozo;
+/// lo ya hecho, apagado, y una línea donde vas.
+private struct GradeProfile: View {
     let table: RouteElevationTable
     let position: Double
 
     var body: some View {
         Canvas { c, size in
-            let n = 240
+            let n = 200
             let length = max(table.lengthMeters, 1)
             let heights = (0...n).map { table.elevation(atDistance: Double($0) / Double(n) * length) }
-            let lo = heights.min() ?? 0, hi = max(heights.max() ?? 1, lo + 20)
-            func point(_ i: Int) -> CGPoint {
-                CGPoint(x: CGFloat(i) / CGFloat(n) * size.width,
-                        y: size.height - CGFloat((heights[i] - lo) / (hi - lo)) * (size.height - 4) - 2)
+            let lo = heights.min() ?? 0, hi = max(heights.max() ?? 1, lo + 30)
+            func y(_ i: Int) -> CGFloat { size.height - CGFloat((heights[i] - lo) / (hi - lo)) * (size.height - 6) - 1 }
+            let w = size.width / CGFloat(n)
+            for i in 0..<n {
+                var slice = Path()
+                slice.move(to: CGPoint(x: CGFloat(i) * w, y: size.height))
+                slice.addLine(to: CGPoint(x: CGFloat(i) * w, y: y(i)))
+                slice.addLine(to: CGPoint(x: CGFloat(i + 1) * w + 0.5, y: y(i + 1)))
+                slice.addLine(to: CGPoint(x: CGFloat(i + 1) * w + 0.5, y: size.height))
+                slice.closeSubpath()
+                let grade = (heights[i + 1] - heights[i]) / (length / Double(n)) * 100
+                c.fill(slice, with: .color(GradeBand(gradePercent: grade).color))
             }
-            var area = Path()
-            area.move(to: CGPoint(x: 0, y: size.height))
-            for i in 0...n { area.addLine(to: point(i)) }
-            area.addLine(to: CGPoint(x: size.width, y: size.height))
-            area.closeSubpath()
-            c.fill(area, with: .color(.primary.opacity(0.14)))
-            // Lo hecho, en el color de acento.
+            // Lo hecho, apagado.
             let done = CGFloat(min(max(position / length, 0), 1)) * size.width
-            var clipped = c
-            clipped.clip(to: Path(CGRect(x: 0, y: 0, width: done, height: size.height)))
-            clipped.fill(area, with: .color(Theme.accent.opacity(0.45)))
-            let i = min(Int((position / length * Double(n)).rounded()), n)
-            let p = point(max(i, 0))
-            c.fill(Path(ellipseIn: CGRect(x: p.x - 5, y: p.y - 5, width: 10, height: 10)), with: .color(Theme.accent))
-            c.stroke(Path(ellipseIn: CGRect(x: p.x - 5, y: p.y - 5, width: 10, height: 10)), with: .color(.white), lineWidth: 2)
+            c.fill(Path(CGRect(x: 0, y: 0, width: done, height: size.height)), with: .color(Color.gray.opacity(0.55)))
+            // Dónde vas.
+            var marker = Path()
+            marker.addRect(CGRect(x: done - 1, y: 0, width: 2, height: size.height))
+            c.fill(marker, with: .color(.primary))
+            let i = min(max(Int((position / length * Double(n)).rounded()), 0), n)
+            c.fill(Path(ellipseIn: CGRect(x: done - 5, y: y(i) - 5, width: 10, height: 10)), with: .color(Theme.accent))
+            c.stroke(Path(ellipseIn: CGRect(x: done - 5, y: y(i) - 5, width: 10, height: 10)), with: .color(.white), lineWidth: 2)
         }
-        .accessibilityLabel("Perfil de la ruta")
-    }
-}
-
-private struct SceneControls: View {
-    @Environment(RideController.self) private var ride
-    @Environment(BluetoothHub.self) private var hub
-
-    var body: some View {
-        HStack(spacing: Space.m) {
-            Button("Salir", systemImage: "xmark") { ride.showScene = false }
-                .keyboardShortcut(.cancelAction)
-            #if os(macOS)
-            Button("Pantalla completa", systemImage: "arrow.up.left.and.arrow.down.right") {
-                NSApp.keyWindow?.toggleFullScreen(nil)
-            }
-            #endif
-            Spacer()
-            Button("Más blanda", systemImage: "minus") { ride.easier() }
-            Button("Más dura", systemImage: "plus") { ride.harder() }
-            if ride.isRunning {
-                Button("Pausa", systemImage: "pause.fill") { ride.pause() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
-            } else {
-                Button("Empezar", systemImage: "play.fill") { ride.start() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
-                    .disabled(ride.summary != nil || hub.trainerConnection != .connected)
-            }
-        }
-        .buttonStyle(.bordered)
-        .tint(.primary) // texto oscuro: se lee mejor que el naranja sobre el paisaje
-        .controlSize(.large)
-        .padding(Space.s)
-        .background(.ultraThinMaterial, in: Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small))
+        .accessibilityLabel("Perfil de la ruta con la pendiente")
     }
 }
