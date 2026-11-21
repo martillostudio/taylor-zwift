@@ -9,26 +9,26 @@ struct FitnessCard: View {
 
     var body: some View {
         if intervals.isConnected, !intervals.fitness.isEmpty {
-            M3Card(style: .filled, padding: Space.xl) {
+            Card(style: .filled, padding: Space.xl) {
                 VStack(alignment: .leading, spacing: Space.l) {
-                    M3SectionTitle(title: "Tu forma",
+                    SectionTitle(title: "Tu forma",
                                    subtitle: "De intervals.icu: el rodillo por potencia y las salidas por pulso. Lo de después de hoy es la previsión si sigues el plan.")
                     if let today = intervals.fitness.day(on: Date()) {
                         let state = FormState(freshness: today.freshness)
                         HStack(alignment: .top, spacing: Space.l) {
-                            M3Stat(title: "Forma", value: whole(today.fitness), size: .headlineMedium,
+                            Stat(title: "Forma", value: whole(today.fitness), size: .headlineMedium,
                                    caption: "media de 6 semanas")
-                            M3Stat(title: "Cansancio", value: whole(today.fatigue), size: .headlineMedium,
+                            Stat(title: "Cansancio", value: whole(today.fatigue), size: .headlineMedium,
                                    caption: "media de 1 semana")
-                            M3Stat(title: "Frescura", value: signed(today.freshness), size: .headlineMedium,
-                                   caption: state.name, captionColor: M3.onSurface)
+                            Stat(title: "Frescura", value: signed(today.freshness), size: .headlineMedium,
+                                   caption: state.name, captionColor: Color.primary)
                         }
                         Label(state.advice, systemImage: icon(state))
-                            .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurface)
+                            .font(Theme.font(.bodyMedium)).foregroundStyle(Color.primary)
                     }
                     chart
                     if let line = projectionText {
-                        Text(line).font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        Text(line).font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                     }
                 }
             }
@@ -54,14 +54,14 @@ struct FitnessCard: View {
                     .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
             }
             RuleMark(x: .value("Hoy", todayStart, unit: .day))
-                .foregroundStyle(M3.outline)
+                .foregroundStyle(Color.secondary)
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .annotation(position: .top, alignment: .leading) {
-                    Text("Hoy").font(M3.font(.labelSmall)).foregroundStyle(M3.onSurfaceVariant)
+                    Text("Hoy").font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
                 }
             if let d = selectedDay {
                 RuleMark(x: .value("Día", d.date, unit: .day))
-                    .foregroundStyle(M3.outlineVariant)
+                    .foregroundStyle(Theme.separator)
                 PointMark(x: .value("Día", d.date, unit: .day), y: .value("Forma", d.fitness))
                     .symbolSize(70)
                     .annotation(position: .top, spacing: 6,
@@ -70,18 +70,18 @@ struct FitnessCard: View {
                     }
             }
         }
-        .foregroundStyle(M3.primary)
+        .foregroundStyle(Theme.accent)
         .chartYScale(domain: .automatic(includesZero: true))
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
-                AxisGridLine().foregroundStyle(M3.outlineVariant.opacity(0.6))
-                AxisValueLabel().foregroundStyle(M3.onSurfaceVariant)
+                AxisGridLine().foregroundStyle(Theme.separator.opacity(0.6))
+                AxisValueLabel().foregroundStyle(Color.secondary)
             }
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .month)) { _ in
-                AxisTick().foregroundStyle(M3.outlineVariant)
-                AxisValueLabel(format: .dateTime.month(.abbreviated)).foregroundStyle(M3.onSurfaceVariant)
+                AxisTick().foregroundStyle(Theme.separator)
+                AxisValueLabel(format: .dateTime.month(.abbreviated)).foregroundStyle(Color.secondary)
             }
         }
         .chartXSelection(value: $selected)
@@ -99,13 +99,13 @@ struct FitnessCard: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(d.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
                  + (d.date > todayStart ? " · previsión" : ""))
-                .font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                .font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
             Text("Forma **\(whole(d.fitness))** · Cansancio \(whole(d.fatigue)) · Frescura \(signed(d.freshness))")
-                .font(M3.font(.bodySmall, numeric: true)).foregroundStyle(M3.onSurface)
+                .font(Theme.font(.bodySmall, numeric: true)).foregroundStyle(Color.primary)
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(M3.surfaceContainerHigh, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(M3.outlineVariant))
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.separator))
     }
 
     // MARK: Textos

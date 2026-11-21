@@ -4,7 +4,7 @@ import SwiftUI
 
 // MARK: - Espaciado
 
-/// Escala de espaciado (múltiplos de 4, como M3). Úsala en vez de números sueltos.
+/// Escala de espaciado (múltiplos de 4). Úsala en vez de números sueltos.
 enum Space {
     static let xs: CGFloat = 4
     static let s: CGFloat = 8
@@ -26,15 +26,15 @@ struct MetricCell<Accessory: View>: View {
     let value: String
     var unit = ""
     var caption: String?
-    var color: Color = M3.onSurface
-    var captionColor: Color = M3.onSurfaceVariant
-    var size: M3.TypeStyle = .displayMedium
+    var color: Color = Color.primary
+    var captionColor: Color = Color.secondary
+    var size: Theme.TypeStyle = .displayMedium
     var reservesCaption = true
     let accessory: Accessory
 
     init(_ title: String, _ value: String, unit: String = "", caption: String? = nil,
-         color: Color = M3.onSurface, captionColor: Color = M3.onSurfaceVariant,
-         size: M3.TypeStyle = .displayMedium, reservesCaption: Bool = true,
+         color: Color = Color.primary, captionColor: Color = Color.secondary,
+         size: Theme.TypeStyle = .displayMedium, reservesCaption: Bool = true,
          @ViewBuilder accessory: () -> Accessory) {
         self.reservesCaption = reservesCaption
         self.title = title
@@ -50,24 +50,24 @@ struct MetricCell<Accessory: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xs) {
             Text(title.uppercased())
-                .font(M3.font(.labelMedium)).tracking(0.6)
-                .foregroundStyle(M3.onSurfaceVariant)
+                .font(Theme.font(.labelMedium)).tracking(0.6)
+                .foregroundStyle(Color.secondary)
                 .lineLimit(1)
             HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
                 Text(value)
-                    .font(M3.font(size, numeric: true).weight(.semibold))
+                    .font(Theme.font(size, numeric: true).weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                 if !unit.isEmpty {
-                    Text(unit).font(M3.font(.titleSmall)).foregroundStyle(M3.onSurfaceVariant)
+                    Text(unit).font(Theme.font(.titleSmall)).foregroundStyle(Color.secondary)
                 }
             }
             accessory
             if caption != nil || reservesCaption {
                 Text(caption ?? " ")
-                    .font(M3.font(.labelMedium))
+                    .font(Theme.font(.labelMedium))
                     .foregroundStyle(captionColor)
                     .lineLimit(1)
             }
@@ -79,8 +79,8 @@ struct MetricCell<Accessory: View>: View {
 
 extension MetricCell where Accessory == EmptyView {
     init(_ title: String, _ value: String, unit: String = "", caption: String? = nil,
-         color: Color = M3.onSurface, captionColor: Color = M3.onSurfaceVariant,
-         size: M3.TypeStyle = .displayMedium, reservesCaption: Bool = true) {
+         color: Color = Color.primary, captionColor: Color = Color.secondary,
+         size: Theme.TypeStyle = .displayMedium, reservesCaption: Bool = true) {
         self.init(title, value, unit: unit, caption: caption, color: color, captionColor: captionColor,
                   size: size, reservesCaption: reservesCaption) { EmptyView() }
     }
@@ -122,7 +122,7 @@ struct LiveHero: View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: Space.l) {
             if showsTarget, let target = ride.targetWatts {
                 MetricCell("Objetivo", "\(target)", unit: "W",
-                           caption: "\(percentFTP(target)) % FTP", color: M3.primary)
+                           caption: "\(percentFTP(target)) % FTP", color: Theme.accent)
             }
             power
             if ride.targetWatts == nil {
@@ -142,12 +142,12 @@ struct LiveHero: View {
             let onTarget = abs(d) <= 5
             return MetricCell("Potencia", "\(watts)", unit: "W",
                               caption: onTarget ? "en objetivo" : (d > 0 ? "+\(d) W" : "\(d) W"),
-                              color: zone?.color ?? M3.onSurface,
-                              captionColor: onTarget ? M3.tertiary : Color.orange)
+                              color: zone?.color ?? Color.primary,
+                              captionColor: onTarget ? Theme.positive : Color.orange)
         }
         return MetricCell("Potencia", watts.map { "\($0)" } ?? "—", unit: "W",
                           caption: zone.map { "Z\($0.rawValue) · \($0.name)" },
-                          color: zone?.color ?? M3.onSurface)
+                          color: zone?.color ?? Color.primary)
     }
 
     private var cadence: some View {
@@ -156,8 +156,8 @@ struct LiveHero: View {
         let off = rpm.flatMap { r in target.map { abs(r - $0) > 5 } } ?? false
         return MetricCell("Cadencia", rpm.map { "\($0)" } ?? "—", unit: "rpm",
                           caption: target.map { "objetivo \($0) rpm" },
-                          color: off ? Color.orange : M3.onSurface,
-                          captionColor: off ? Color.orange : M3.onSurfaceVariant)
+                          color: off ? Color.orange : Color.primary,
+                          captionColor: off ? Color.orange : Color.secondary)
     }
 
     private var heartRate: some View {
@@ -169,7 +169,7 @@ struct LiveHero: View {
             zone.map { "Z\($0.rawValue) · \($0.name)" }
         }
         return MetricCell("Pulso", bpm.map { "\($0)" } ?? "—", unit: "ppm", caption: caption,
-                          color: zone?.color ?? M3.onSurface) {
+                          color: zone?.color ?? Color.primary) {
             HeartRateZoneMeter(current: zone)
         }
     }

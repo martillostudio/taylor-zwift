@@ -17,16 +17,16 @@ struct HistoryView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Historial").font(M3.font(.headlineMedium)).foregroundStyle(M3.onSurface)
+                    Text("Historial").font(Theme.font(.headlineMedium)).foregroundStyle(Color.primary)
                     TotalsCard()
                     IntervalsCard()
                     GarminCard()
                     StravaCard()
                     if store.activities.isEmpty {
-                        M3Card(style: .outlined) {
+                        Card(style: .outlined) {
                             Label("Aún no hay entrenos guardados. Cada entreno de más de 1 minuto se guarda al pulsar «Terminar» (o al ponerlo a cero).",
                                   systemImage: "tray")
-                                .font(M3.font(.bodyLarge)).foregroundStyle(M3.onSurfaceVariant)
+                                .font(Theme.font(.bodyLarge)).foregroundStyle(Color.secondary)
                         }
                     }
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
@@ -38,7 +38,7 @@ struct HistoryView: View {
                 }
                 .padding(24)
             }
-            .background(M3.surface)
+            .background(Theme.background)
         }
     }
 }
@@ -52,10 +52,10 @@ private struct TotalsCard: View {
         let now = Date()
         let week = store.activities.filter { cal.isDate($0.start, equalTo: now, toGranularity: .weekOfYear) }
         let month = store.activities.filter { cal.isDate($0.start, equalTo: now, toGranularity: .month) }
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             HStack(spacing: 24) {
                 totals("Esta semana", week)
-                Divider().overlay(M3.outlineVariant)
+                Divider().overlay(Theme.separator)
                 totals("Este mes", month)
             }
         }
@@ -66,12 +66,12 @@ private struct TotalsCard: View {
         let km = list.reduce(0) { $0 + $1.distanceMeters } / 1000
         let tss = list.compactMap(\.tss).reduce(0, +)
         return VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased()).font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+            Text(title.uppercased()).font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
             HStack(spacing: 16) {
-                M3Stat(title: "Entrenos", value: "\(list.count)", size: .headlineMedium)
-                M3Stat(title: "Tiempo", value: formatDuration(Int(seconds)), size: .headlineMedium)
-                M3Stat(title: "Distancia", value: km.formatted(.number.precision(.fractionLength(0))), unit: "km", size: .headlineMedium)
-                M3Stat(title: "TSS", value: "\(tss)", size: .headlineMedium)
+                Stat(title: "Entrenos", value: "\(list.count)", size: .headlineMedium)
+                Stat(title: "Tiempo", value: formatDuration(Int(seconds)), size: .headlineMedium)
+                Stat(title: "Distancia", value: km.formatted(.number.precision(.fractionLength(0))), unit: "km", size: .headlineMedium)
+                Stat(title: "TSS", value: "\(tss)", size: .headlineMedium)
             }
         }
     }
@@ -88,24 +88,24 @@ struct IntervalsCard: View {
 
     var body: some View {
         @Bindable var intervals = intervals
-        M3Card(style: .outlined) {
+        Card(style: .outlined) {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(alignment: .top, spacing: Space.m) {
                     Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(Self.brand, in: RoundedRectangle(cornerRadius: M3.Shape.small))
-                    M3SectionTitle(title: "intervals.icu", subtitle: intervals.isConnected
+                        .background(Self.brand, in: RoundedRectangle(cornerRadius: Theme.Radius.small))
+                    SectionTitle(title: "intervals.icu", subtitle: intervals.isConnected
                                    ? "Conectado como \(intervals.athleteName ?? "tu cuenta")"
                                    : "Gratis. Analiza tu carga y tu forma, y junta el rodillo con tus salidas de Garmin.")
                     Spacer()
                     if intervals.isConnected {
                         Toggle("Subir al terminar", isOn: $intervals.autoUpload).toggleStyle(.switch).fixedSize()
-                        Button("Desconectar") { intervals.disconnect() }.buttonStyle(.m3Text)
+                        Button("Desconectar") { intervals.disconnect() }.buttonStyle(.borderless)
                     }
                 }
                 if !intervals.isConnected {
                     Text("1. Crea una cuenta en intervals.icu (puedes entrar con Garmin) y conecta Garmin Connect para que traiga tus salidas.\n2. En **Settings → Developer Settings** copia tu **API Key** y pégala aquí.")
-                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                     HStack(spacing: Space.m) {
                         SecureField("API Key", text: $key).textFieldStyle(.roundedBorder).frame(maxWidth: 320)
                         Button(intervals.isBusy ? "Comprobando…" : "Conectar", systemImage: "link") {
@@ -114,16 +114,16 @@ struct IntervalsCard: View {
                                 if intervals.isConnected { key = "" }
                             }
                         }
-                        .buttonStyle(.m3Filled)
+                        .buttonStyle(.borderedProminent)
                         .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || intervals.isBusy)
                         Button("Abrir ajustes", systemImage: "arrow.up.right.square") {
                             openURL(URL(string: "https://intervals.icu/settings")!)
                         }
-                        .buttonStyle(.m3Text)
+                        .buttonStyle(.borderless)
                     }
                 }
                 if let status = intervals.status {
-                    Text(status).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                    Text(status).font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
                 }
             }
         }
@@ -140,13 +140,13 @@ struct IntervalsBadge: View {
         if let id = activity.intervalsActivityID, let url = IntervalsService.activityURL(id) {
             Link(destination: url) {
                 Label("Ver en intervals.icu", systemImage: "arrow.up.right.square")
-                    .font(M3.font(.labelLarge)).foregroundStyle(IntervalsCard.brand)
+                    .font(Theme.font(.labelLarge)).foregroundStyle(IntervalsCard.brand)
             }
         } else if intervals.isConnected {
             Button(intervals.isBusy ? "Subiendo…" : "Subir a intervals.icu", systemImage: "arrow.up.circle") {
                 ride.uploadToIntervals(activity)
             }
-            .buttonStyle(.m3Tonal)
+            .buttonStyle(.bordered)
             .disabled(intervals.isBusy)
         }
     }
@@ -159,18 +159,18 @@ struct StravaCard: View {
 
     var body: some View {
         @Bindable var strava = strava
-        M3Card(style: .outlined) {
+        Card(style: .outlined) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: "figure.outdoor.cycle").foregroundStyle(.white)
-                        .frame(width: 36, height: 36).background(M3.strava, in: RoundedRectangle(cornerRadius: M3.Shape.small))
-                    M3SectionTitle(title: "Strava", subtitle: strava.isConnected
+                        .frame(width: 36, height: 36).background(Theme.strava, in: RoundedRectangle(cornerRadius: Theme.Radius.small))
+                    SectionTitle(title: "Strava", subtitle: strava.isConnected
                                    ? "Conectado como \(strava.athleteName ?? "tu cuenta")"
                                    : "Opcional. Strava exige suscripción para usar su API: sin ella, no se puede conectar.")
                     Spacer()
                     if strava.isConnected {
                         Toggle("Subir al terminar", isOn: $strava.autoUpload).toggleStyle(.switch).fixedSize()
-                        Button("Desconectar") { strava.disconnect() }.buttonStyle(.m3Text)
+                        Button("Desconectar") { strava.disconnect() }.buttonStyle(.borderless)
                     }
                 }
                 if !strava.isConnected {
@@ -178,17 +178,17 @@ struct StravaCard: View {
                     1. En strava.com/settings/api crea una aplicación (nombre: Taylor Zwift; web: http://localhost) con **Authorization Callback Domain = localhost**.
                     2. Copia aquí su **Client ID** y su **Client Secret** y pulsa «Conectar con Strava».
                     """)
-                    .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                     HStack(spacing: 12) {
                         TextField("Client ID", text: $strava.clientID).textFieldStyle(.roundedBorder).frame(maxWidth: 160)
                         SecureField("Client Secret", text: $strava.clientSecret).textFieldStyle(.roundedBorder).frame(maxWidth: 320)
                         Button(connecting ? "Conectando…" : "Conectar con Strava", systemImage: "link") { connect() }
-                            .buttonStyle(.m3Filled)
+                            .buttonStyle(.borderedProminent)
                             .disabled(!strava.canConnect || connecting)
                     }
                 }
                 if let status = strava.status {
-                    Text(status).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                    Text(status).font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
                 }
             }
         }
@@ -230,14 +230,14 @@ struct GarminImportButton: View {
             NSWorkspace.shared.activateFileViewerSelecting([fit])
             openURL(Self.importPage)
         }
-        .buttonStyle(.m3Tonal)
+        .buttonStyle(.bordered)
         .help("Abre «Importar datos» de Garmin Connect y te enseña el .fit en el Finder: arrástralo a la página.")
         #else
         HStack {
             ShareLink(item: store.fitURL(activity)) { Label(".fit", systemImage: "square.and.arrow.up") }
-                .buttonStyle(.m3Tonal)
+                .buttonStyle(.bordered)
             Button("Garmin Connect", systemImage: "arrow.up.forward.app") { openURL(Self.importPage) }
-                .buttonStyle(.m3Tonal)
+                .buttonStyle(.bordered)
         }
         #endif
     }
@@ -246,14 +246,14 @@ struct GarminImportButton: View {
 /// Explica cómo llevar los entrenos a Garmin Connect.
 struct GarminCard: View {
     var body: some View {
-        M3Card(style: .outlined) {
+        Card(style: .outlined) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "applewatch.side.right").foregroundStyle(.white)
-                    .frame(width: 36, height: 36).background(Color(red: 0, green: 0.48, blue: 0.76), in: RoundedRectangle(cornerRadius: M3.Shape.small))
+                    .frame(width: 36, height: 36).background(Color(red: 0, green: 0.48, blue: 0.76), in: RoundedRectangle(cornerRadius: Theme.Radius.small))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Garmin Connect").font(M3.font(.titleLarge))
+                    Text("Garmin Connect").font(Theme.font(.titleLarge))
                     Text("Cada entreno se guarda como .fit. Con «Subir a Garmin Connect» se abre su página de importar y el fichero aparece seleccionado en el Finder: arrástralo a la página y listo. Si la página no reacciona, prueba con Chrome o Edge (Safari a veces falla al importar).")
-                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 }
             }
         }
@@ -269,14 +269,14 @@ struct ActivityCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(a.start.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute()))
-                    .font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    .font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                 Spacer()
                 if a.stravaActivityID != nil {
-                    Text("STRAVA").font(M3.font(.labelSmall)).foregroundStyle(.white)
-                        .padding(.horizontal, 6).padding(.vertical, 2).background(M3.strava, in: Capsule())
+                    Text("STRAVA").font(Theme.font(.labelSmall)).foregroundStyle(.white)
+                        .padding(.horizontal, 6).padding(.vertical, 2).background(Theme.strava, in: Capsule())
                 }
             }
-            Text(a.name).font(M3.font(.titleMedium)).foregroundStyle(M3.onSurface).lineLimit(1)
+            Text(a.name).font(Theme.font(.titleMedium)).foregroundStyle(Color.primary).lineLimit(1)
             PowerSparkline(activity: a).frame(height: 44)
             HStack(spacing: 14) {
                 Label(formatDuration(Int(a.timerSeconds)), systemImage: "clock")
@@ -285,12 +285,12 @@ struct ActivityCard: View {
                 if let t = a.tss { Label("TSS \(t)", systemImage: "flame") }
                 if let hr = a.averageHeartRate { Label("\(hr)", systemImage: "heart.fill") }
             }
-            .font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+            .font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
-        .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium).strokeBorder(Theme.separator))
     }
 }
 
@@ -323,9 +323,9 @@ private struct PowerSparkline: View {
         Chart {
             ForEach(points) { p in
                 AreaMark(x: .value("t", p.index), y: .value("W", p.value))
-                    .foregroundStyle(M3.primary.opacity(0.18))
+                    .foregroundStyle(Theme.accent.opacity(0.18))
                 LineMark(x: .value("t", p.index), y: .value("W", p.value))
-                    .foregroundStyle(M3.primary)
+                    .foregroundStyle(Theme.accent)
             }
         }
         .chartXAxis(.hidden)
@@ -345,7 +345,7 @@ struct ActivityDetailView: View {
         if let a = store.activities.first(where: { $0.id == activityID }) {
             content(a)
         } else {
-            Text("Entreno borrado.").foregroundStyle(M3.onSurfaceVariant)
+            Text("Entreno borrado.").foregroundStyle(Color.secondary)
         }
     }
 
@@ -354,13 +354,13 @@ struct ActivityDetailView: View {
         let fitURL = store.fitURL(a)
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                M3Card(style: .filled) {
+                Card(style: .filled) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(a.name).font(M3.font(.headlineSmall))
+                                Text(a.name).font(Theme.font(.headlineSmall))
                                 Text(a.start.formatted(date: .complete, time: .shortened))
-                                    .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                                    .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                             }
                             Spacer()
                             GarminImportButton(activity: a)
@@ -368,57 +368,57 @@ struct ActivityDetailView: View {
                             StravaBadge(activity: a)
                         }
                         HStack(spacing: 16) {
-                            M3Stat(title: "Tiempo", value: formatDuration(Int(a.timerSeconds)), size: .headlineSmall)
-                            M3Stat(title: "Distancia", value: (a.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1))), unit: "km", size: .headlineSmall)
-                            M3Stat(title: "Media", value: a.averagePower.map { "\($0)" } ?? "—", unit: "W", size: .headlineSmall)
-                            M3Stat(title: "NP", value: a.normalizedPower.map { "\($0)" } ?? "—", unit: "W", size: .headlineSmall)
-                            M3Stat(title: "TSS", value: a.tss.map { "\($0)" } ?? "—", size: .headlineSmall)
-                            M3Stat(title: "IF", value: a.intensityFactor.map { $0.formatted(.number.precision(.fractionLength(2))) } ?? "—", size: .headlineSmall)
-                            M3Stat(title: "Pulso", value: a.averageHeartRate.map { "\($0)" } ?? "—", unit: "ppm", size: .headlineSmall)
-                            M3Stat(title: "Desnivel", value: "\(Int(a.ascentMeters))", unit: "m", size: .headlineSmall)
+                            Stat(title: "Tiempo", value: formatDuration(Int(a.timerSeconds)), size: .headlineSmall)
+                            Stat(title: "Distancia", value: (a.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1))), unit: "km", size: .headlineSmall)
+                            Stat(title: "Media", value: a.averagePower.map { "\($0)" } ?? "—", unit: "W", size: .headlineSmall)
+                            Stat(title: "NP", value: a.normalizedPower.map { "\($0)" } ?? "—", unit: "W", size: .headlineSmall)
+                            Stat(title: "TSS", value: a.tss.map { "\($0)" } ?? "—", size: .headlineSmall)
+                            Stat(title: "IF", value: a.intensityFactor.map { $0.formatted(.number.precision(.fractionLength(2))) } ?? "—", size: .headlineSmall)
+                            Stat(title: "Pulso", value: a.averageHeartRate.map { "\($0)" } ?? "—", unit: "ppm", size: .headlineSmall)
+                            Stat(title: "Desnivel", value: "\(Int(a.ascentMeters))", unit: "m", size: .headlineSmall)
                         }
                     }
                 }
-                M3Card(style: .filled) {
+                Card(style: .filled) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("POTENCIA Y PULSO").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        Text("POTENCIA Y PULSO").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                         ActivityChart(activity: a).frame(height: 220)
                     }
                 }
-                M3Card(style: .filled) {
+                Card(style: .filled) {
                     HStack(spacing: 16) {
                         ForEach([5, 60, 300, 1_200, 3_600], id: \.self) { seconds in
                             let label = seconds < 60 ? "\(seconds)''" : "\(seconds / 60)'"
-                            M3Stat(title: "Mejor \(label)", value: history.bestAverage(seconds: seconds).map { "\(Int($0.rounded()))" } ?? "—",
+                            Stat(title: "Mejor \(label)", value: history.bestAverage(seconds: seconds).map { "\(Int($0.rounded()))" } ?? "—",
                                    unit: "W", size: .headlineSmall)
                         }
                     }
                 }
-                M3Card(style: .outlined) {
+                Card(style: .outlined) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("TIEMPO EN CADA ZONA (FTP \(a.ftp) W)").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        Text("TIEMPO EN CADA ZONA (FTP \(a.ftp) W)").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                         ZoneTimeBars(activity: a)
                     }
                 }
                 HStack(spacing: 12) {
                     ShareLink(item: fitURL) { Label("Exportar .fit", systemImage: "square.and.arrow.up") }
-                        .buttonStyle(.m3Tonal)
+                        .buttonStyle(.bordered)
                     #if os(macOS)
                     Button("Mostrar en Finder", systemImage: "folder") {
                         NSWorkspace.shared.activateFileViewerSelecting([fitURL])
                     }
-                    .buttonStyle(.m3Text)
+                    .buttonStyle(.borderless)
                     #endif
                     Spacer()
                     Button("Borrar", systemImage: "trash", role: .destructive) { confirmDelete = true }
-                        .buttonStyle(.m3Text)
+                        .buttonStyle(.borderless)
                 }
                 Text("El .fit se puede importar a mano en Garmin Connect, intervals.icu o TrainingPeaks.")
-                    .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                    .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
             }
             .padding(24)
         }
-        .background(M3.surface)
+        .background(Theme.background)
         .navigationTitle(a.name)
         .confirmationDialog("¿Borrar este entreno?", isPresented: $confirmDelete) {
             Button("Borrar", role: .destructive) {
@@ -441,9 +441,9 @@ private struct ActivityChart: View {
         Chart {
             ForEach(power) { p in
                 AreaMark(x: .value("min", Double(p.index) / 60), y: .value("valor", p.value), series: .value("serie", "Potencia (W)"))
-                    .foregroundStyle(M3.primary.opacity(0.2))
+                    .foregroundStyle(Theme.accent.opacity(0.2))
                 LineMark(x: .value("min", Double(p.index) / 60), y: .value("valor", p.value), series: .value("serie", "Potencia (W)"))
-                    .foregroundStyle(M3.primary)
+                    .foregroundStyle(Theme.accent)
             }
             ForEach(heart) { p in
                 LineMark(x: .value("min", Double(p.index) / 60), y: .value("valor", p.value), series: .value("serie", "Pulso (ppm)"))
@@ -466,13 +466,13 @@ private struct ZoneTimeBars: View {
             ForEach(PowerZone.allCases, id: \.self) { z in
                 let s = seconds[z] ?? 0
                 HStack(spacing: 10) {
-                    Text("Z\(z.rawValue) \(z.name)").font(M3.font(.bodyMedium)).frame(width: 150, alignment: .leading)
+                    Text("Z\(z.rawValue) \(z.name)").font(Theme.font(.bodyMedium)).frame(width: 150, alignment: .leading)
                     GeometryReader { geo in
                         RoundedRectangle(cornerRadius: 3).fill(z.color)
                             .frame(width: max(2, geo.size.width * Double(s) / Double(total)))
                     }
                     .frame(height: 12)
-                    Text(formatDuration(s)).font(M3.font(.bodySmall)).monospacedDigit().foregroundStyle(M3.onSurfaceVariant)
+                    Text(formatDuration(s)).font(Theme.font(.bodySmall)).monospacedDigit().foregroundStyle(Color.secondary)
                         .frame(width: 60, alignment: .trailing)
                 }
             }

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */; };
+		1D4AA0CF3E560F20C0D32728 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C86DA6C149571AE01FF604 /* Theme.swift */; };
 		1F7E58A93F3223F2E6AC08FC /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = EFA79C8CCB44F8868239749D /* CicloKit */; };
 		28B48B94B70446F8BE9CFA49 /* ActivityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CBA6D3C397E76000063ABFD /* ActivityStore.swift */; };
 		2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = 570D26A06E2F4B00568A69EC /* CicloKit */; };
@@ -17,7 +18,6 @@
 		3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */; };
 		3FF3272C7515184AAAEAD428 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4213815FF621063110F50F8B /* DevicesView.swift */; };
 		4494A2257C90AE51AA73A8C0 /* BridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */; };
-		4692DDE0E5330F853DC63AE7 /* M3.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E49C6D1076B55ADAEBFDCD /* M3.swift */; };
 		54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */; };
 		5BB8932B175C34562307D088 /* CicloBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 73886A525BAFEF0B64906260 /* CicloBluetooth */; };
 		5DA8CAC0930596C31F7F8DD3 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB996F07CD563F64B272A32 /* HistoryView.swift */; };
@@ -55,8 +55,8 @@
 		8E10DC2A8D445E089A9F7EB6 /* RideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideController.swift; sourceTree = "<group>"; };
 		9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9AE67EA9B3F5BDCB7270A503 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
-		A0E49C6D1076B55ADAEBFDCD /* M3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = M3.swift; sourceTree = "<group>"; };
 		A11E62F35D849BBC71788A1F /* FitnessCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessCard.swift; sourceTree = "<group>"; };
+		A7C86DA6C149571AE01FF604 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		AFB996F07CD563F64B272A32 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		B07644EFF6B1887C7FB084FE /* TaylorZwift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaylorZwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C242BF3F6159617EB38F4BBF /* TrainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerView.swift; sourceTree = "<group>"; };
@@ -142,7 +142,6 @@
 				499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */,
 				4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */,
 				75F12F33A425BD8EE3BA6369 /* LogView.swift */,
-				A0E49C6D1076B55ADAEBFDCD /* M3.swift */,
 				8E10DC2A8D445E089A9F7EB6 /* RideController.swift */,
 				9AE67EA9B3F5BDCB7270A503 /* RideView.swift */,
 				F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */,
@@ -150,6 +149,7 @@
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
 				FFC2B36F439B128659783D3B /* StravaService.swift */,
 				2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */,
+				A7C86DA6C149571AE01FF604 /* Theme.swift */,
 				C242BF3F6159617EB38F4BBF /* TrainerView.swift */,
 				8843EDCD9E67795BE65FB2CC /* WorkoutViews.swift */,
 			);
@@ -279,7 +279,6 @@
 				67AE0C9ADFBAC9E6472329B0 /* IntervalsService.swift in Sources */,
 				54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */,
 				7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */,
-				4692DDE0E5330F853DC63AE7 /* M3.swift in Sources */,
 				BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */,
 				9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */,
 				9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */,
@@ -287,6 +286,7 @@
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
 				C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */,
 				B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */,
+				1D4AA0CF3E560F20C0D32728 /* Theme.swift in Sources */,
 				2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */,
 				B51444BF768B9C535FC065E2 /* WorkoutViews.swift in Sources */,
 			);

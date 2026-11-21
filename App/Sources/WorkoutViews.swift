@@ -61,7 +61,7 @@ struct WorkoutsView: View {
 
                     if ride.mode == .workout, let w = ride.workout {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Entreno cargado").font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
+                            Text("Entreno cargado").font(Theme.font(.titleLarge)).foregroundStyle(Color.primary)
                             NavigationLink { WorkoutDetailView(workout: w) } label: {
                                 WorkoutCard(workout: w).frame(maxWidth: 380)
                             }
@@ -73,7 +73,7 @@ struct WorkoutsView: View {
                         let items = Workout.library.filter { $0.category == category }
                         if !items.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text(category.rawValue).font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
+                                Text(category.rawValue).font(Theme.font(.titleLarge)).foregroundStyle(Color.primary)
                                 LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                                     ForEach(items) { w in
                                         NavigationLink { WorkoutDetailView(workout: w) } label: { WorkoutCard(workout: w) }
@@ -86,10 +86,10 @@ struct WorkoutsView: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text(WorkoutCategory.imported.rawValue).font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
+                            Text(WorkoutCategory.imported.rawValue).font(Theme.font(.titleLarge)).foregroundStyle(Color.primary)
                             Spacer()
                             Button("Importar .zwo…", systemImage: "square.and.arrow.down") { importing = true }
-                                .buttonStyle(.m3Tonal)
+                                .buttonStyle(.bordered)
                         }
                         if ride.importedWorkouts.isEmpty {
                             Text("Ficheros .zwo (el formato de Zwift): los que hagas tú o descargues.")
@@ -108,7 +108,7 @@ struct WorkoutsView: View {
                 }
                 .padding(24)
             }
-            .background(M3.surface)
+            .background(Theme.background)
             .navigationTitle("Entrenar")
             .fileImporter(isPresented: $importing, allowedContentTypes: zwoTypes, allowsMultipleSelection: true) { result in
                 importFiles(result)
@@ -150,17 +150,17 @@ private struct FreeRideCard: View {
         HStack(spacing: 16) {
             Image(systemName: "bicycle.circle.fill").font(.system(size: 40)).foregroundStyle(Color.accentColor)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Entreno libre").font(M3.font(.titleLarge)).foregroundStyle(M3.onSurface)
+                Text("Entreno libre").font(Theme.font(.titleLarge)).foregroundStyle(Color.primary)
                 Text("Sin plan ni intervalos: eliges la pendiente y la marcha y ruedas a tu aire. Cuenta distancia, tiempo, potencia y pulso.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Spacer()
             Button("Rodar libre", systemImage: "play.fill") { ride.startFreeRide() }
-                .buttonStyle(.m3Filled)
+                .buttonStyle(.borderedProminent)
         }
         .padding(14)
-        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
-        .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium).strokeBorder(Theme.separator))
     }
 }
 
@@ -171,9 +171,9 @@ private struct ProfileBox: View {
 
     var body: some View {
         @Bindable var ride = ride
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             VStack(alignment: .leading, spacing: 12) {
-                M3SectionTitle(title: "Tu perfil", subtitle: "FTP, peso y frecuencia cardiaca máxima: de aquí salen tus zonas.")
+                SectionTitle(title: "Tu perfil", subtitle: "FTP, peso y frecuencia cardiaca máxima: de aquí salen tus zonas.")
                 HStack(spacing: 24) {
                     Stepper("FTP: **\(ride.ftp) W**", value: $ride.ftp, in: 50...600, step: 5)
                     Stepper("Peso: **\(ride.weightKg.formatted(.number.precision(.fractionLength(1)))) kg**",
@@ -186,8 +186,8 @@ private struct ProfileBox: View {
                     HStack(spacing: Space.m) {
                         Label("intervals.icu estima tu FTP en **\(eftp) W** con tus últimas salidas (eFTP).",
                               systemImage: "chart.line.uptrend.xyaxis")
-                            .font(M3.font(.bodyMedium))
-                        Button("Usar \(eftp) W") { ride.ftp = eftp }.buttonStyle(.m3Tonal)
+                            .font(Theme.font(.bodyMedium))
+                        Button("Usar \(eftp) W") { ride.ftp = eftp }.buttonStyle(.bordered)
                     }
                 }
                 HStack(alignment: .top, spacing: 32) {
@@ -247,10 +247,10 @@ private struct PlanBox: View {
 
     var body: some View {
         @Bindable var ride = ride
-        M3Card(style: .filled, padding: Space.xl) {
+        Card(style: .filled, padding: Space.xl) {
             VStack(alignment: .leading, spacing: Space.l) {
                 HStack(alignment: .top) {
-                    M3SectionTitle(title: ride.plan.name, subtitle: ride.plan.summary)
+                    SectionTitle(title: ride.plan.name, subtitle: ride.plan.summary)
                     Spacer()
                     DatePicker("Empieza el lunes", selection: $ride.planStart, displayedComponents: .date)
                         .fixedSize()
@@ -261,16 +261,16 @@ private struct PlanBox: View {
                         NextSessionBanner(session: next, week: week, status: statuses[next.id] ?? .upcoming)
                     } else {
                         Label("Semana completada. ¡Buen trabajo! Descansa hasta el lunes.", systemImage: "checkmark.seal.fill")
-                            .font(M3.font(.titleMedium)).foregroundStyle(M3.tertiary)
+                            .font(Theme.font(.titleMedium)).foregroundStyle(Theme.positive)
                     }
                     PlanWeekView(week: week, isCurrent: true)
                 } else if ride.planStart > Date() {
                     Text("Empieza el \(ride.planStart.formatted(date: .complete, time: .omitted)). Así será la primera semana:")
-                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                     PlanWeekView(week: ride.plan.weeks[0], isCurrent: false)
                 } else {
                     Text("Plan terminado. Pon una fecha nueva para repetirlo (con tu FTP nuevo).")
-                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 }
                 HStack(spacing: Space.m) {
                     NavigationLink {
@@ -278,7 +278,7 @@ private struct PlanBox: View {
                     } label: {
                         Label("Ver las 16 semanas", systemImage: "calendar")
                     }
-                    .buttonStyle(.m3Tonal)
+                    .buttonStyle(.bordered)
                     OutdoorSyncLine()
                 }
             }
@@ -302,7 +302,7 @@ private struct OutdoorSyncLine: View {
         if intervals.isConnected {
             HStack(spacing: Space.s) {
                 Button(pushTitle, systemImage: "calendar.badge.plus") { confirming = true }
-                    .buttonStyle(.m3Tonal)
+                    .buttonStyle(.bordered)
                     .disabled(intervals.isBusy)
                     .confirmationDialog("¿Mandar el plan a intervals.icu?", isPresented: $confirming) {
                         Button("Mandar \(ride.plan.weeks.reduce(0) { $0 + $1.sessions.count }) sesiones") {
@@ -311,18 +311,18 @@ private struct OutdoorSyncLine: View {
                     } message: {
                         Text("Se ponen en tu calendario desde el \(ride.planStart.formatted(date: .long, time: .omitted)). Si lo mandaste antes, se sustituye (no se duplica). Con la sincronización de Garmin activada, intervals.icu las pasa también a Garmin Connect y al reloj.")
                     }
-                Text(syncText).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                Text(syncText).font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
                 Button(intervals.isBusy ? "Sincronizando…" : "Actualizar", systemImage: "arrow.clockwise") {
                     Task { await ride.syncIntervals(force: true) }
                 }
-                .buttonStyle(.m3Text)
+                .buttonStyle(.borderless)
                 .disabled(intervals.isBusy)
             }
         } else {
             Button("Conecta intervals.icu para que tus salidas cuenten solas", systemImage: "link") {
                 ride.selectedTab = "historial"
             }
-            .buttonStyle(.m3Text)
+            .buttonStyle(.borderless)
         }
     }
 
@@ -351,12 +351,12 @@ private struct NextSessionBanner: View {
     var body: some View {
         HStack(spacing: Space.l) {
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text(title.uppercased()).font(M3.font(.labelMedium)).tracking(0.6)
-                    .foregroundStyle(M3.onPrimaryContainer.opacity(0.8))
-                Text(session.workout?.name ?? "Salida en exterior").font(M3.font(.titleLarge))
-                    .foregroundStyle(M3.onPrimaryContainer)
+                Text(title.uppercased()).font(Theme.font(.labelMedium)).tracking(0.6)
+                    .foregroundStyle(Theme.accent.opacity(0.8))
+                Text(session.workout?.name ?? "Salida en exterior").font(Theme.font(.titleLarge))
+                    .foregroundStyle(Theme.accent)
                 Text(session.workout.map { "\(formatDuration($0.durationSeconds)) · \($0.shortDescription)" } ?? session.note)
-                    .font(M3.font(.bodyMedium)).foregroundStyle(M3.onPrimaryContainer.opacity(0.8))
+                    .font(Theme.font(.bodyMedium)).foregroundStyle(Theme.accent.opacity(0.8))
                     .lineLimit(2)
             }
             Spacer(minLength: 0)
@@ -370,14 +370,14 @@ private struct NextSessionBanner: View {
                 } label: {
                     Label("Ir al entreno", systemImage: "play.fill")
                 }
-                .buttonStyle(.m3Filled)
+                .buttonStyle(.borderedProminent)
             } else {
                 Button("Marcar hecha", systemImage: "checkmark") { ride.toggleManualMark(session, week: week) }
-                    .buttonStyle(.m3Filled)
+                    .buttonStyle(.borderedProminent)
             }
         }
         .padding(Space.l)
-        .background(M3.primaryContainer, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
+        .background(Theme.accentFill, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
     }
 }
 
@@ -393,17 +393,17 @@ struct PlanWeekView: View {
         let done = week.sessions.filter { statuses[$0.id]?.isDone == true }.count
         VStack(alignment: .leading, spacing: Space.m) {
             HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                Text("Semana \(week.number)").font(M3.font(.titleMedium))
-                Text("\(week.block) · \(week.focus)").font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                Text("Semana \(week.number)").font(Theme.font(.titleMedium))
+                Text("\(week.block) · \(week.focus)").font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                     .lineLimit(1)
                 Spacer()
                 Text("\(done)/\(week.sessions.count)")
-                    .font(M3.font(.labelLarge, numeric: true))
-                    .foregroundStyle(done == week.sessions.count ? M3.tertiary : M3.onSurfaceVariant)
+                    .font(Theme.font(.labelLarge, numeric: true))
+                    .foregroundStyle(done == week.sessions.count ? Theme.positive : Color.secondary)
                 if isCurrent {
-                    Text("ESTA SEMANA").font(M3.font(.labelSmall))
+                    Text("ESTA SEMANA").font(Theme.font(.labelSmall))
                         .padding(.horizontal, Space.s).padding(.vertical, 2)
-                        .background(M3.secondaryContainer, in: Capsule())
+                        .background(Theme.neutralFill, in: Capsule())
                 }
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 220, maximum: 360), spacing: Space.m)],
@@ -427,7 +427,7 @@ private struct SessionCell: View {
         VStack(alignment: .leading, spacing: Space.s) {
             HStack(spacing: Space.s) {
                 Text(ride.date(of: session, in: week).formatted(.dateTime.weekday(.abbreviated).day()).uppercased())
-                    .font(M3.font(.labelMedium)).tracking(0.6).foregroundStyle(M3.onSurfaceVariant)
+                    .font(Theme.font(.labelMedium)).tracking(0.6).foregroundStyle(Color.secondary)
                 Spacer()
                 StatusBadge(status: status)
             }
@@ -441,7 +441,7 @@ private struct SessionCell: View {
             }
             .opacity(status.isDone || status == .skipped ? 0.6 : 1)
             if session.workout != nil, !session.note.isEmpty {
-                Text(session.note).font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                Text(session.note).font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
             }
         }
         .contextMenu {
@@ -458,15 +458,15 @@ private struct StatusBadge: View {
 
     var body: some View {
         let (text, icon, color): (String, String, Color) = switch status {
-        case .done: ("Hecha", "checkmark.circle.fill", M3.tertiary)
+        case .done: ("Hecha", "checkmark.circle.fill", Theme.positive)
         case .partial(let f, _): ("\(Int((f * 100).rounded())) %", "circle.lefthalf.filled", Color.orange)
-        case .today: ("Hoy", "circle.fill", M3.primary)
-        case .skipped: ("No hecha", "minus.circle", M3.outline)
+        case .today: ("Hoy", "circle.fill", Theme.accent)
+        case .skipped: ("No hecha", "minus.circle", Color.secondary)
         case .upcoming: ("", "", Color.clear)
         }
         if !text.isEmpty {
             Label(text, systemImage: icon)
-                .font(M3.font(.labelMedium))
+                .font(Theme.font(.labelMedium))
                 .foregroundStyle(color)
         }
     }
@@ -478,17 +478,17 @@ private struct OutdoorCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
             Image(systemName: "sun.max.fill").font(.title2).foregroundStyle(.orange)
-            Text("Salida en exterior").font(M3.font(.titleMedium))
-            Text(note).font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+            Text("Salida en exterior").font(Theme.font(.titleMedium))
+            Text(note).font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Cuenta sola con una salida de 1 h 30 min o más en intervals.icu · o clic derecho → «Marcar como hecha»")
-                .font(M3.font(.labelSmall)).foregroundStyle(M3.outline)
+                .font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(Space.m)
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
-        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
-        .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium).strokeBorder(Theme.separator))
     }
 }
 
@@ -515,7 +515,7 @@ struct PlanView: View {
             }
             .padding(24)
         }
-        .background(M3.surface)
+        .background(Theme.background)
         .navigationTitle(ride.plan.name)
     }
 }
@@ -530,7 +530,7 @@ struct WorkoutCard: View {
         VStack(alignment: .leading, spacing: 8) {
             WorkoutChart(workout: workout, height: compact ? 40 : 60, showAxes: false)
             HStack(alignment: .firstTextBaseline) {
-                Text(workout.name).font(M3.font(.titleMedium)).foregroundStyle(M3.onSurface).lineLimit(2)
+                Text(workout.name).font(Theme.font(.titleMedium)).foregroundStyle(Color.primary).lineLimit(2)
                 Spacer(minLength: 4)
                 if workout.ftpTest != nil {
                     Text("TEST").font(.caption2.bold())
@@ -559,8 +559,8 @@ struct WorkoutCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
-        .overlay(RoundedRectangle(cornerRadius: M3.Shape.medium).strokeBorder(M3.outlineVariant))
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium).strokeBorder(Theme.separator))
         .overlay(alignment: .top) {
             UnevenRoundedRectangle(topLeadingRadius: 14, topTrailingRadius: 14)
                 .fill(zone.color)
@@ -670,7 +670,7 @@ struct WorkoutChart: View {
             }
             ForEach(traceBuckets) { p in
                 LineMark(x: .value("min", p.minute), y: .value("%", p.percent), series: .value("serie", "real"))
-                    .foregroundStyle(M3.onSurface)
+                    .foregroundStyle(Color.primary)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                     .interpolationMethod(.monotone)
             }
@@ -681,18 +681,18 @@ struct WorkoutChart: View {
             }
             if let elapsed {
                 RuleMark(x: .value("min", elapsed / 60))
-                    .foregroundStyle(M3.primary)
+                    .foregroundStyle(Theme.accent)
                     .lineStyle(StrokeStyle(lineWidth: 2))
                 PointMark(x: .value("min", elapsed / 60), y: .value("%", targetPercent(at: elapsed) ?? 50))
                     .symbol(.circle)
                     .symbolSize(showAxes ? 160 : 70)
-                    .foregroundStyle(M3.primary)
+                    .foregroundStyle(Theme.accent)
                     .annotation(position: .top, spacing: 4) {
                         if showAxes {
                             Text("Estás aquí")
-                                .font(M3.font(.labelMedium)).foregroundStyle(M3.onPrimary)
+                                .font(Theme.font(.labelMedium)).foregroundStyle(Color.white)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(M3.primary, in: Capsule())
+                                .background(Theme.accent, in: Capsule())
                         }
                     }
             }
@@ -725,10 +725,10 @@ struct WorkoutDetailView: View {
                     compactHeader
                     if let summary = ride.summary { summaryCard(summary) }
                     intervalCard
-                    M3Card(style: .filled, padding: Space.xl) {
+                    Card(style: .filled, padding: Space.xl) {
                         VStack(alignment: .leading, spacing: Space.l) {
                             LiveHero(showsTarget: false)
-                            Divider().overlay(M3.outlineVariant)
+                            Divider().overlay(Theme.separator)
                             LiveStrip()
                         }
                     }
@@ -736,20 +736,20 @@ struct WorkoutDetailView: View {
                     DisclosureGroup(isExpanded: $showsSegments) {
                         segmentsList.padding(.top, Space.s)
                     } label: {
-                        Text("Tramos (\(workout.segments.count))").font(M3.font(.titleMedium))
+                        Text("Tramos (\(workout.segments.count))").font(Theme.font(.titleMedium))
                     }
                     .padding(Space.l)
-                    .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
+                    .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
                 } else {
                     header
-                    M3Card(style: .filled) {
+                    Card(style: .filled) {
                         VStack(alignment: .leading, spacing: Space.m) {
-                            Text("PERFIL").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                            Text("PERFIL").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                             WorkoutChart(workout: workout, height: 160)
                             ZoneBar(workout: workout)
                         }
                     }
-                    M3Card(style: .outlined) { segmentsList }
+                    Card(style: .outlined) { segmentsList }
                 }
             }
             .padding(Space.xl)
@@ -757,28 +757,28 @@ struct WorkoutDetailView: View {
             .frame(maxWidth: Space.contentWidth)
             .frame(maxWidth: .infinity)
         }
-        .background(M3.surface)
+        .background(Theme.background)
         .navigationTitle(workout.name)
         .overlay(alignment: .bottom) { actions.padding(Space.xl) }
     }
 
     private var header: some View {
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: Space.xs) {
-                        Text(workout.name).font(M3.font(.headlineSmall)).foregroundStyle(M3.onSurface)
-                        Text(workout.shortDescription).font(M3.font(.titleSmall)).foregroundStyle(M3.primary)
+                        Text(workout.name).font(Theme.font(.headlineSmall)).foregroundStyle(Color.primary)
+                        Text(workout.shortDescription).font(Theme.font(.titleSmall)).foregroundStyle(Theme.accent)
                     }
                     Spacer()
-                    M3Chip(title: "Z\(workout.mainZone.rawValue) \(workout.mainZone.name)", dot: workout.mainZone.color)
+                    Chip(title: "Z\(workout.mainZone.rawValue) \(workout.mainZone.name)", dot: workout.mainZone.color)
                 }
-                Text(workout.summary).font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                Text(workout.summary).font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 HStack(spacing: Space.l) {
-                    M3Stat(title: "Duración", value: formatDuration(workout.durationSeconds), size: .headlineSmall)
-                    M3Stat(title: "TSS", value: "\(Int(workout.tss.rounded()))", size: .headlineSmall)
-                    M3Stat(title: "IF", value: workout.intensityFactor.formatted(.number.precision(.fractionLength(2))), size: .headlineSmall)
-                    M3Stat(title: "Con tu FTP", value: "\(ride.ftp)", unit: "W", size: .headlineSmall)
+                    Stat(title: "Duración", value: formatDuration(workout.durationSeconds), size: .headlineSmall)
+                    Stat(title: "TSS", value: "\(Int(workout.tss.rounded()))", size: .headlineSmall)
+                    Stat(title: "IF", value: workout.intensityFactor.formatted(.number.precision(.fractionLength(2))), size: .headlineSmall)
+                    Stat(title: "Con tu FTP", value: "\(ride.ftp)", unit: "W", size: .headlineSmall)
                 }
             }
         }
@@ -788,15 +788,15 @@ struct WorkoutDetailView: View {
     private var compactHeader: some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.m) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(workout.name).font(M3.font(.headlineSmall)).foregroundStyle(M3.onSurface)
+                Text(workout.name).font(Theme.font(.headlineSmall)).foregroundStyle(Color.primary)
                 Text("\(formatDuration(workout.durationSeconds)) · TSS \(Int(workout.tss.rounded())) · FTP \(ride.ftp) W")
-                    .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
             }
             Spacer()
             if ride.isRunning {
-                Label("Grabando", systemImage: "record.circle").font(M3.font(.labelLarge)).foregroundStyle(M3.error)
+                Label("Grabando", systemImage: "record.circle").font(Theme.font(.labelLarge)).foregroundStyle(Color.red)
             }
-            M3Chip(title: "Z\(workout.mainZone.rawValue) \(workout.mainZone.name)", dot: workout.mainZone.color)
+            Chip(title: "Z\(workout.mainZone.rawValue) \(workout.mainZone.name)", dot: workout.mainZone.color)
         }
     }
 
@@ -805,52 +805,52 @@ struct WorkoutDetailView: View {
         let progress = ride.workoutProgress
         let watts = ride.targetWatts
         let zone = progress?.target.map { PowerZone(fractionOfFTP: $0 * ride.intensity) }
-        return M3Card(style: .filled, padding: Space.xl) {
+        return Card(style: .filled, padding: Space.xl) {
             VStack(alignment: .leading, spacing: Space.l) {
                 if let p = progress {
                     HStack(alignment: .top, spacing: Space.xl) {
                         VStack(alignment: .leading, spacing: Space.xs) {
                             Text("TRAMO \(p.segment.id + 1) DE \(workout.segments.count) · \(p.segment.summary.uppercased())")
-                                .font(M3.font(.labelMedium)).tracking(0.6).foregroundStyle(M3.onSurfaceVariant)
+                                .font(Theme.font(.labelMedium)).tracking(0.6).foregroundStyle(Color.secondary)
                                 .lineLimit(1)
                             Text(formatClock(p.secondsLeftInSegment))
-                                .font(M3.font(.displayLarge, numeric: true).weight(.semibold))
+                                .font(Theme.font(.displayLarge, numeric: true).weight(.semibold))
                                 .monospacedDigit()
-                                .foregroundStyle(M3.onSurface)
+                                .foregroundStyle(Color.primary)
                             Text(p.next.map { "Después: \($0.summary)" } ?? "Último tramo")
-                                .font(M3.font(.bodyLarge)).foregroundStyle(M3.onSurfaceVariant)
+                                .font(Theme.font(.bodyLarge)).foregroundStyle(Color.secondary)
                         }
                         Spacer(minLength: 0)
                         VStack(alignment: .trailing, spacing: Space.xs) {
-                            Text("OBJETIVO").font(M3.font(.labelMedium)).tracking(0.6).foregroundStyle(M3.onSurfaceVariant)
+                            Text("OBJETIVO").font(Theme.font(.labelMedium)).tracking(0.6).foregroundStyle(Color.secondary)
                             HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
                                 Text(watts.map { "\($0)" } ?? "Libre")
-                                    .font(M3.font(.displayLarge, numeric: true).weight(.semibold))
+                                    .font(Theme.font(.displayLarge, numeric: true).weight(.semibold))
                                     .monospacedDigit()
-                                    .foregroundStyle(zone?.color ?? M3.primary)
+                                    .foregroundStyle(zone?.color ?? Theme.accent)
                                 if watts != nil {
-                                    Text("W").font(M3.font(.titleMedium)).foregroundStyle(M3.onSurfaceVariant)
+                                    Text("W").font(Theme.font(.titleMedium)).foregroundStyle(Color.secondary)
                                 }
                             }
                             Text(zone.map { "Z\($0.rawValue) · \($0.name)" } ?? "Marcha \(ride.gearText) · ↑/↓ pendiente")
-                                .font(M3.font(.labelLarge)).foregroundStyle(M3.onSurfaceVariant)
+                                .font(Theme.font(.labelLarge)).foregroundStyle(Color.secondary)
                         }
                     }
                     ProgressView(value: 1 - p.secondsLeftInSegment / Double(max(p.segment.durationSeconds, 1)))
-                        .tint(zone?.color ?? M3.primary)
+                        .tint(zone?.color ?? Theme.accent)
                     if ride.heartRateAboveCap, let cap = ride.heartRateCap {
                         heartRateWarning(cap: cap)
                     }
                     intensityRow
                 } else if ride.summary == nil {
                     HStack(spacing: Space.m) {
-                        Image(systemName: "play.circle").font(.system(size: 28)).foregroundStyle(M3.primary)
+                        Image(systemName: "play.circle").font(.system(size: 28)).foregroundStyle(Theme.accent)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Listo para empezar").font(M3.font(.titleLarge))
+                            Text("Listo para empezar").font(Theme.font(.titleLarge))
                             Text(hub.trainerConnection == .connected
                                  ? "Pulsa «Empezar» cuando estés pedaleando."
                                  : "Conecta el rodillo para empezar.")
-                                .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                                .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                         }
                     }
                 }
@@ -863,31 +863,31 @@ struct WorkoutDetailView: View {
         HStack(spacing: Space.m) {
             Image(systemName: "heart.fill").foregroundStyle(Color.orange)
             Text("Pulso por encima de Z2 (más de \(cap) ppm). Afloja un poco: hoy toca base.")
-                .font(M3.font(.bodyMedium))
+                .font(Theme.font(.bodyMedium))
             Spacer(minLength: 0)
             Button("−2 %", systemImage: "minus") { ride.easier() }
-                .buttonStyle(.m3Tonal)
+                .buttonStyle(.bordered)
         }
         .padding(Space.m)
-        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: M3.Shape.small))
+        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: Theme.Radius.small))
     }
 
     @ViewBuilder
     private var intensityRow: some View {
         if ride.intensityLocked {
             Label("Test: intensidad fija al 100 %. Mantén 85–95 rpm hasta el final.", systemImage: "lock.fill")
-                .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
         } else if !ride.usesGears {
             HStack(spacing: Space.m) {
-                Text("Intensidad").font(M3.font(.labelLarge)).foregroundStyle(M3.onSurfaceVariant)
-                M3IconButton(systemImage: "minus", size: 36) { ride.easier() }
+                Text("Intensidad").font(Theme.font(.labelLarge)).foregroundStyle(Color.secondary)
+                IconButton(systemImage: "minus", size: 36) { ride.easier() }
                 Text("\(Int((ride.intensity * 100).rounded())) %")
-                    .font(M3.font(.titleLarge, numeric: true)).monospacedDigit()
+                    .font(Theme.font(.titleLarge, numeric: true)).monospacedDigit()
                     .frame(minWidth: 64)
-                M3IconButton(systemImage: "plus", size: 36) { ride.harder() }
+                IconButton(systemImage: "plus", size: 36) { ride.harder() }
                 Spacer(minLength: 0)
                 Text("Mando derecho: + / Z suben · Y bajan · A empieza/pausa · B dos veces termina")
-                    .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                    .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
             }
         }
     }
@@ -898,16 +898,16 @@ struct WorkoutDetailView: View {
         let total = Double(workout.durationSeconds) / 60
         let span = min(20, total)
         let lower = min(max(minutes - 5, 0), max(total - span, 0))
-        return M3Card(style: .filled) {
+        return Card(style: .filled) {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack {
                     Text(total > span ? "PRÓXIMOS MINUTOS" : "PERFIL")
-                        .font(M3.font(.labelMedium)).tracking(0.6).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.labelMedium)).tracking(0.6).foregroundStyle(Color.secondary)
                     Spacer()
-                    Label("Plan", systemImage: "square.fill").foregroundStyle(M3.onSurfaceVariant)
-                    Label("Tu potencia", systemImage: "line.diagonal").foregroundStyle(M3.onSurface)
+                    Label("Plan", systemImage: "square.fill").foregroundStyle(Color.secondary)
+                    Label("Tu potencia", systemImage: "line.diagonal").foregroundStyle(Color.primary)
                 }
-                .font(M3.font(.labelMedium))
+                .font(Theme.font(.labelMedium))
                 WorkoutChart(workout: workout, elapsed: ride.workoutSeconds, height: 180,
                              trace: ride.trace, ftp: ride.ftp,
                              window: total > span ? lower...(lower + span) : nil)
@@ -919,7 +919,7 @@ struct WorkoutDetailView: View {
                         Spacer()
                         Text(formatDuration(workout.durationSeconds))
                     }
-                    .font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    .font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                 }
             }
         }
@@ -930,19 +930,19 @@ struct WorkoutDetailView: View {
                 ForEach(workout.segments) { s in
                     let current = isLoaded && ride.workoutProgress?.segment.id == s.id
                     HStack(spacing: 10) {
-                        Text(formatClock(Double(s.startSeconds))).monospacedDigit().foregroundStyle(M3.onSurfaceVariant)
+                        Text(formatClock(Double(s.startSeconds))).monospacedDigit().foregroundStyle(Color.secondary)
                             .frame(width: 60, alignment: .leading)
                         RoundedRectangle(cornerRadius: 2)
                             .fill(s.startPower.map { PowerZone(fractionOfFTP: max($0, s.endPower ?? $0)).color } ?? Color.gray)
                             .frame(width: 6, height: 18)
                         Text(s.summary)
                         Spacer()
-                        Text(wattsText(s)).monospacedDigit().foregroundStyle(M3.onSurfaceVariant)
+                        Text(wattsText(s)).monospacedDigit().foregroundStyle(Color.secondary)
                     }
-                    .font(M3.font(current ? .titleSmall : .bodyMedium))
+                    .font(Theme.font(current ? .titleSmall : .bodyMedium))
                     .padding(.vertical, 3)
                     .padding(.horizontal, 6)
-                    .background(current ? M3.secondaryContainer : Color.clear, in: RoundedRectangle(cornerRadius: M3.Shape.small))
+                    .background(current ? Theme.neutralFill : Color.clear, in: RoundedRectangle(cornerRadius: Theme.Radius.small))
                 }
             }
     }
@@ -952,21 +952,21 @@ struct WorkoutDetailView: View {
             if isLoaded {
                 if hub.trainerConnection != .connected {
                     Button("Conectar", systemImage: "antenna.radiowaves.left.and.right") { hub.connectEverything() }
-                        .buttonStyle(.m3Tonal)
+                        .buttonStyle(.bordered)
                 }
                 Button("Terminar", systemImage: "flag.checkered") { ride.finish() }
-                    .buttonStyle(.m3Outlined)
+                    .buttonStyle(.bordered)
                     .disabled(ride.workoutSeconds == 0 || ride.summary != nil)
                 Button("A cero", systemImage: "arrow.counterclockwise") { ride.reset() }
-                    .buttonStyle(.m3Text)
+                    .buttonStyle(.borderless)
                 if ride.isRunning {
-                    M3FAB(title: "Pausa", systemImage: "pause.fill", tone: M3.secondaryContainer, onTone: M3.onSecondaryContainer) { ride.pause() }
+                    ActionButton(title: "Pausa", systemImage: "pause.fill", prominent: false) { ride.pause() }
                 } else {
-                    M3FAB(title: "Empezar", systemImage: "play.fill") { ride.start() }
+                    ActionButton(title: "Empezar", systemImage: "play.fill") { ride.start() }
                         .disabled(hub.trainerConnection != .connected || ride.summary != nil)
                 }
             } else {
-                M3FAB(title: "Cargar este entreno", systemImage: "square.and.arrow.down.on.square") { ride.load(workout) }
+                ActionButton(title: "Cargar este entreno", systemImage: "square.and.arrow.down.on.square") { ride.load(workout) }
             }
         }
         .padding(Space.s)
@@ -983,10 +983,10 @@ struct WorkoutDetailView: View {
 
     private func summaryCard(_ s: RideSummary) -> some View {
         func w(_ v: Double?) -> String { v.map { "\(Int($0.rounded()))" } ?? "—" }
-        return M3Card(style: .outlined) {
+        return Card(style: .outlined) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    M3SectionTitle(title: "Resumen", subtitle: ride.lastSaved.map { "Guardado en el historial: \($0.name)" })
+                    SectionTitle(title: "Resumen", subtitle: ride.lastSaved.map { "Guardado en el historial: \($0.name)" })
                     Spacer()
                     if let saved = ride.lastSaved {
                         GarminImportButton(activity: saved)
@@ -995,26 +995,26 @@ struct WorkoutDetailView: View {
                     }
                 }
                 HStack(spacing: 16) {
-                    M3Stat(title: "Mejor 1'", value: w(s.best1Min), unit: "W", size: .headlineSmall)
-                    M3Stat(title: "Mejor 5'", value: w(s.best5Min), unit: "W", size: .headlineSmall)
-                    M3Stat(title: "Mejor 20'", value: w(s.best20Min), unit: "W", size: .headlineSmall)
-                    M3Stat(title: "TSS", value: ride.lastSaved?.tss.map { "\($0)" } ?? "—", size: .headlineSmall)
+                    Stat(title: "Mejor 1'", value: w(s.best1Min), unit: "W", size: .headlineSmall)
+                    Stat(title: "Mejor 5'", value: w(s.best5Min), unit: "W", size: .headlineSmall)
+                    Stat(title: "Mejor 20'", value: w(s.best20Min), unit: "W", size: .headlineSmall)
+                    Stat(title: "TSS", value: ride.lastSaved?.tss.map { "\($0)" } ?? "—", size: .headlineSmall)
                 }
                 if let ftp = s.suggestedFTP {
                     HStack {
-                        Text("FTP estimado: **\(ftp) W** (ahora tienes \(ride.ftp) W)").font(M3.font(.bodyLarge))
+                        Text("FTP estimado: **\(ftp) W** (ahora tienes \(ride.ftp) W)").font(Theme.font(.bodyLarge))
                         Spacer()
                         Button("Usar \(ftp) W", systemImage: "checkmark") { ride.acceptSuggestedFTP() }
-                            .buttonStyle(.m3Filled)
+                            .buttonStyle(.borderedProminent)
                             .disabled(ftp == ride.ftp)
                     }
                 } else if s.ftpTest != nil {
                     Text("No hay datos suficientes para estimar el FTP (la rampa necesita al menos 1 minuto; el test de 20', los 20 minutos).")
-                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 }
                 if let v = s.vo2max {
                     Text("VO2max estimado ≈ \(Int(v.rounded())) ml/kg/min con tu mejor 5' y \(ride.weightKg.formatted()) kg. Solo vale si esos 5' fueron a tope.")
-                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 }
             }
         }

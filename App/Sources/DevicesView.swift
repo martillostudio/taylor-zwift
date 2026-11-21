@@ -9,12 +9,12 @@ struct DevicesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Equipo").font(M3.font(.headlineMedium)).foregroundStyle(M3.onSurface)
+                Text("Equipo").font(Theme.font(.headlineMedium)).foregroundStyle(Color.primary)
                 Spacer()
                 Button("Conectar todo", systemImage: "antenna.radiowaves.left.and.right") { hub.connectEverything() }
-                    .buttonStyle(.m3Tonal)
+                    .buttonStyle(.bordered)
             }
-            M3SegmentedButtons(options: [
+            SegmentedPicker(options: [
                 ("rodillo", "Rodillo", "bicycle"),
                 ("mandos", "Mandos", "gamecontroller"),
                 ("pulso", "Pulsómetro", "heart"),
@@ -27,7 +27,7 @@ struct DevicesView: View {
             }
         }
         .padding(24)
-        .background(M3.surface)
+        .background(Theme.background)
     }
 }
 

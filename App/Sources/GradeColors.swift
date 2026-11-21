@@ -69,10 +69,10 @@ struct GradeProfileChart: View {
                         .foregroundStyle(Color.primary)
                         .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit, y: .fit)) {
                             Text(markerLabel)
-                                .font(M3.font(.labelMedium))
-                                .foregroundStyle(M3.onPrimary)
+                                .font(Theme.font(.labelMedium))
+                                .foregroundStyle(Color.white)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(M3.primary, in: Capsule())
+                                .background(Theme.accent, in: Capsule())
                         }
                 }
             }

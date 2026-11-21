@@ -46,7 +46,7 @@ struct RoutePicker: View {
 
         VStack(alignment: .leading, spacing: Space.l) {
             HStack(alignment: .center, spacing: Space.m) {
-                M3SectionTitle(title: "Tus rutas",
+                SectionTitle(title: "Tus rutas",
                                subtitle: routes.isEmpty ? "Importa un GPX para empezar"
                                    : "\(routes.count) rutas · toca una para rodarla")
                 Spacer()
@@ -59,7 +59,7 @@ struct RoutePicker: View {
                     .fixedSize()
                 }
                 Button("Importar GPX", systemImage: "square.and.arrow.down", action: onImport)
-                    .buttonStyle(.m3Tonal)
+                    .buttonStyle(.bordered)
                     .help("Importar una ruta GPX (de Garmin Connect, Strava, Komoot…)")
             }
 
@@ -97,13 +97,13 @@ struct RoutePicker: View {
     private func pager(current: Int, pages: Int) -> some View {
         HStack(spacing: Space.m) {
             Spacer()
-            M3IconButton(systemImage: "chevron.left") { page = max(current - 1, 0) }
+            IconButton(systemImage: "chevron.left") { page = max(current - 1, 0) }
                 .disabled(current == 0)
                 .opacity(current == 0 ? 0.4 : 1)
                 .accessibilityLabel("Página anterior")
             Text("Página \(current + 1) de \(pages)")
-                .font(M3.font(.labelLarge, numeric: true)).foregroundStyle(M3.onSurfaceVariant)
-            M3IconButton(systemImage: "chevron.right") { page = min(current + 1, pages - 1) }
+                .font(Theme.font(.labelLarge, numeric: true)).foregroundStyle(Color.secondary)
+            IconButton(systemImage: "chevron.right") { page = min(current + 1, pages - 1) }
                 .disabled(current == pages - 1)
                 .opacity(current == pages - 1 ? 0.4 : 1)
                 .accessibilityLabel("Página siguiente")
@@ -113,14 +113,14 @@ struct RoutePicker: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            Image(systemName: "map").font(.title).foregroundStyle(M3.primary)
-            Text("Aún no tienes rutas").font(M3.font(.titleMedium))
+            Image(systemName: "map").font(.title).foregroundStyle(Theme.accent)
+            Text("Aún no tienes rutas").font(Theme.font(.titleMedium))
             Text("Importa un GPX con altura: un recorrido de Garmin Connect, Strava, Komoot o Wikiloc. Lo rodarás con su pendiente real.")
-                .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
         }
         .padding(Space.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(M3.surfaceContainerLow, in: RoundedRectangle(cornerRadius: M3.Shape.medium))
+        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
     }
 }
 
@@ -135,7 +135,7 @@ struct RouteTile: View {
                 if let track = route.track {
                     RouteMapPreview(track: track)
                 } else {
-                    Rectangle().fill(M3.surfaceContainerHighest)
+                    Rectangle().fill(Theme.cardBackground)
                 }
             }
             .frame(height: 140)
@@ -143,18 +143,18 @@ struct RouteTile: View {
             .overlay(alignment: .topTrailing) {
                 if selected {
                     Label("Elegida", systemImage: "checkmark")
-                        .font(M3.font(.labelMedium))
-                        .foregroundStyle(M3.onPrimaryContainer)
+                        .font(Theme.font(.labelMedium))
+                        .foregroundStyle(Theme.accent)
                         .padding(.horizontal, Space.s).padding(.vertical, Space.xs)
-                        .background(M3.primaryContainer, in: Capsule())
+                        .background(Theme.accentFill, in: Capsule())
                         .padding(Space.s)
                 }
             }
 
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(route.name)
-                    .font(M3.font(.titleSmall))
-                    .foregroundStyle(M3.onSurface)
+                    .font(Theme.font(.titleSmall))
+                    .foregroundStyle(Color.primary)
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
                 HStack(spacing: Space.m) {
@@ -167,13 +167,13 @@ struct RouteTile: View {
             }
             .padding(Space.m)
         }
-        .background(M3.surfaceContainerLow)
-        .clipShape(RoundedRectangle(cornerRadius: M3.Shape.medium))
+        .background(Theme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
         .overlay(
-            RoundedRectangle(cornerRadius: M3.Shape.medium)
-                .strokeBorder(selected ? M3.primary : M3.outlineVariant, lineWidth: selected ? 2 : 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                .strokeBorder(selected ? Theme.accent : Theme.separator, lineWidth: selected ? 2 : 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: M3.Shape.medium))
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
@@ -181,8 +181,8 @@ struct RouteTile: View {
     private func stat(_ icon: String, _ text: String) -> some View {
         Label(text, systemImage: icon)
             .labelStyle(.titleAndIcon)
-            .font(M3.font(.labelLarge, numeric: true))
-            .foregroundStyle(M3.onSurfaceVariant)
+            .font(Theme.font(.labelLarge, numeric: true))
+            .foregroundStyle(Color.secondary)
             .lineLimit(1)
     }
 
@@ -198,7 +198,7 @@ struct RouteMapPreview: View {
     var body: some View {
         Map(initialPosition: .rect(boundingRect), interactionModes: []) {
             MapPolyline(coordinates: track.points.map(\.coordinate))
-                .stroke(M3.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .stroke(Theme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
         }
         .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .allowsHitTesting(false)

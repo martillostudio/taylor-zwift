@@ -40,59 +40,74 @@ struct ContentView: View {
     @Environment(RideController.self) private var ride
 
     private let destinations = [
-        M3Destination(id: "rodar", title: "Rodar", systemImage: "figure.outdoor.cycle"),
-        M3Destination(id: "entrenar", title: "Entrenar", systemImage: "figure.indoor.cycle"),
-        M3Destination(id: "historial", title: "Historial", systemImage: "clock.arrow.circlepath"),
-        M3Destination(id: "equipo", title: "Equipo", systemImage: "sensor.tag.radiowaves.forward"),
-        M3Destination(id: "log", title: "Log", systemImage: "list.bullet.rectangle"),
+        Destination(id: "rodar", title: "Rodar", systemImage: "figure.outdoor.cycle"),
+        Destination(id: "entrenar", title: "Entrenar", systemImage: "figure.indoor.cycle"),
+        Destination(id: "historial", title: "Historial", systemImage: "clock.arrow.circlepath"),
+        Destination(id: "equipo", title: "Equipo", systemImage: "sensor.tag.radiowaves.forward"),
+        Destination(id: "log", title: "Log", systemImage: "list.bullet.rectangle"),
     ]
 
     var body: some View {
-        @Bindable var ride = ride
-        Group {
-            #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                VStack(spacing: 0) {
-                    screen
-                    M3NavigationBar(destinations: destinations, selection: $ride.selectedTab)
+        navigation
+            .tint(Theme.accent)
+            .overlay(alignment: .top) {
+                if let notice = ride.notice {
+                    Text(notice)
+                        .font(Theme.font(.titleMedium))
+                        .foregroundStyle(Color.primary)
+                        .padding(.horizontal, 20).padding(.vertical, 12)
+                        .background(.regularMaterial, in: Capsule())
+                        .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+                        .padding(.top, 16)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .accessibilityAddTraits(.isStaticText)
                 }
-            } else {
-                rail
             }
-            #else
-            rail
-            #endif
-        }
-        .background(M3.surface)
-        .tint(M3.primary)
-        .overlay(alignment: .top) {
-            if let notice = ride.notice {
-                Text(notice)
-                    .font(M3.font(.titleMedium))
-                    .foregroundStyle(M3.onSurface)
-                    .padding(.horizontal, 20).padding(.vertical, 12)
-                    .background(.regularMaterial, in: Capsule())
-                    .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
-                    .padding(.top, 16)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .accessibilityAddTraits(.isStaticText)
-            }
-        }
-        .animation(.spring(duration: 0.3), value: ride.notice)
+            .animation(.spring(duration: 0.3), value: ride.notice)
     }
 
-    private var rail: some View {
+    /// Mac e iPad: barra lateral del sistema. iPhone: pestañas abajo.
+    @ViewBuilder
+    private var navigation: some View {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone { tabs } else { sidebar }
+        #else
+        sidebar
+        #endif
+    }
+
+    private var sidebar: some View {
         @Bindable var ride = ride
-        return HStack(spacing: 0) {
-            M3NavigationRail(destinations: destinations, selection: $ride.selectedTab)
-            Divider()
-            screen.frame(maxWidth: .infinity, maxHeight: .infinity)
+        return NavigationSplitView {
+            List(selection: Binding<String?>(get: { ride.selectedTab }, set: { if let id = $0 { ride.selectedTab = id } })) {
+                ForEach(destinations) { d in
+                    Label(d.title, systemImage: d.systemImage).tag(d.id)
+                }
+            }
+            .navigationTitle("Taylor Zwift")
+            .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
+        } detail: {
+            screen(ride.selectedTab)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
+
+    #if os(iOS)
+    private var tabs: some View {
+        @Bindable var ride = ride
+        return TabView(selection: $ride.selectedTab) {
+            ForEach(destinations) { d in
+                screen(d.id)
+                    .tabItem { Label(d.title, systemImage: d.systemImage) }
+                    .tag(d.id)
+            }
+        }
+    }
+    #endif
 
     @ViewBuilder
-    private var screen: some View {
-        switch ride.selectedTab {
+    private func screen(_ id: String) -> some View {
+        switch id {
         case "entrenar": WorkoutsView()
         case "historial": HistoryView()
         case "equipo": DevicesView()

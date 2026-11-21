@@ -18,36 +18,36 @@ struct RouteMapCard: View {
 
     var body: some View {
         let here = route.mapPosition(atDistance: distance)
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("MAPA").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    Text("MAPA").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                     Spacer()
                     Button(following ? "Siguiéndote" : "Seguirme",
                            systemImage: following ? "location.fill" : "location") {
                         following.toggle()
                         if following { follow(here?.point) } else { camera = .automatic }
                     }
-                    .buttonStyle(.m3Text)
+                    .buttonStyle(.borderless)
                     .help("Centrar el mapa en tu posición mientras ruedas")
                 }
                 Map(position: $camera, interactionModes: [.pan, .zoom]) {
                     MapPolyline(coordinates: track.points.map(\.coordinate))
-                        .stroke(M3.primary, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                        .stroke(Theme.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                     if let here, here.trackMeters > 0 {
                         MapPolyline(coordinates: track.points(upTo: here.trackMeters).map(\.coordinate))
-                            .stroke(M3.outline, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                            .stroke(Color.secondary, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                     }
                     Annotation("Salida", coordinate: track.points[0].coordinate, anchor: .center) {
-                        endpoint("flag.fill", M3.tertiary)
+                        endpoint("flag.fill", Theme.positive)
                     }
                     Annotation("Llegada", coordinate: track.points[track.points.count - 1].coordinate, anchor: .center) {
-                        endpoint("flag.checkered", M3.onSurface)
+                        endpoint("flag.checkered", Color.primary)
                     }
                     if let here {
                         Annotation("Tú", coordinate: here.point.coordinate, anchor: .center) {
                             Circle()
-                                .fill(M3.primary)
+                                .fill(Theme.accent)
                                 .frame(width: 16, height: 16)
                                 .overlay(Circle().strokeBorder(.white, lineWidth: 3))
                                 .shadow(color: .black.opacity(0.3), radius: 3)
@@ -58,7 +58,7 @@ struct RouteMapCard: View {
                 .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
                 .mapControls { MapScaleView() }
                 .frame(minHeight: mapHeight ?? 200, maxHeight: mapHeight ?? .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: M3.Shape.medium))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
                 .onMapCameraChange(frequency: .onEnd) { context in
                     // Si lo mueves tú (y no estamos siguiéndote a ti), se deja de seguir.
                     if following, let here, !isNear(context.region.center, here.point) { following = false }

@@ -3,7 +3,7 @@ import CicloKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Pestaña «Rodar»: el entrenamiento en vivo, con Material 3 y vista 2D tipo Garmin / Wahoo.
+/// Pestaña «Rodar»: el entrenamiento en vivo, con controles del sistema y vista 2D tipo Garmin / Wahoo.
 struct RideView: View {
     @Environment(BluetoothHub.self) private var hub
     @Environment(RideController.self) private var ride
@@ -19,7 +19,7 @@ struct RideView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.l) {
                 header
-                M3SegmentedButtons(options: [
+                SegmentedPicker(options: [
                     (RideController.Mode.free, "Libre", "bicycle"),
                     (.route, "Ruta", "map"),
                     (.erg, "ERG", "bolt"),
@@ -28,14 +28,14 @@ struct RideView: View {
 
                 if let summary = ride.summary, ride.mode != .workout { summaryCard(summary) }
 
-                M3Card(style: .filled, padding: Space.xl) {
+                Card(style: .filled, padding: Space.xl) {
                     VStack(alignment: .leading, spacing: Space.l) {
                         LiveHero()
-                        Divider().overlay(M3.outlineVariant)
+                        Divider().overlay(Theme.separator)
                         LiveStrip()
                         // En ruta la marcha va aquí, con los datos: todo en una pantalla.
                         if gearsInHero {
-                            Divider().overlay(M3.outlineVariant)
+                            Divider().overlay(Theme.separator)
                             GearControl(compact: true)
                         }
                     }
@@ -55,7 +55,7 @@ struct RideView: View {
             .frame(maxWidth: Space.contentWidth)
             .frame(maxWidth: .infinity)
         }
-        .background(M3.surface)
+        .background(Theme.background)
         .overlay(alignment: .bottom) { actionBar.padding(Space.xl) }
         .fileImporter(isPresented: $importingGPX,
                       allowedContentTypes: [UTType(filenameExtension: "gpx") ?? .xml, .xml]) { result in
@@ -88,21 +88,21 @@ struct RideView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Rodar").font(M3.font(.headlineMedium)).foregroundStyle(M3.onSurface)
+                Text("Rodar").font(Theme.font(.headlineMedium)).foregroundStyle(Color.primary)
                 Text(ride.isRunning ? "Grabando · \(ride.activityName)" : "Listo para rodar")
-                    .font(M3.font(.bodyMedium)).foregroundStyle(ride.isRunning ? M3.primary : M3.onSurfaceVariant)
+                    .font(Theme.font(.bodyMedium)).foregroundStyle(ride.isRunning ? Theme.accent : Color.secondary)
             }
             Spacer()
-            M3Chip(title: hub.trainerName ?? "Rodillo", systemImage: "bicycle", dot: color(hub.trainerConnection))
+            Chip(title: hub.trainerName ?? "Rodillo", systemImage: "bicycle", dot: color(hub.trainerConnection))
             let clicks = hub.clicks.filter { $0.connection == .connected }.count
             let asleep = hub.clicks.filter { $0.asleep && $0.connection != .connected }.count
-            M3Chip(title: "\(clicks) \(clicks == 1 ? "mando" : "mandos")" + (asleep > 0 ? " · \(asleep) 💤" : ""),
-                   systemImage: "gamecontroller", dot: clicks > 0 ? Color.green : (asleep > 0 ? Color.orange : M3.outline))
+            Chip(title: "\(clicks) \(clicks == 1 ? "mando" : "mandos")" + (asleep > 0 ? " · \(asleep) 💤" : ""),
+                   systemImage: "gamecontroller", dot: clicks > 0 ? Color.green : (asleep > 0 ? Color.orange : Color.secondary))
                 .help(asleep > 0 ? "Un mando se ha dormido por no usarlo. Púlsalo una vez para despertarlo (esa pulsación no cuenta)." : "")
-            M3Chip(title: hub.heartRateBpm.map { "\($0) ppm" } ?? "Pulso", systemImage: "heart", dot: color(hub.heartRateConnection))
+            Chip(title: hub.heartRateBpm.map { "\($0) ppm" } ?? "Pulso", systemImage: "heart", dot: color(hub.heartRateConnection))
             if hub.trainerConnection != .connected || hub.heartRateConnection != .connected || clicks + asleep == 0 {
                 Button("Conectar", systemImage: "antenna.radiowaves.left.and.right") { hub.connectEverything() }
-                    .buttonStyle(.m3Tonal)
+                    .buttonStyle(.bordered)
             }
         }
     }
@@ -111,28 +111,28 @@ struct RideView: View {
         switch state {
         case .connected: .green
         case .connecting: .orange
-        case .disconnected: M3.outline
+        case .disconnected: Color.secondary
         }
     }
 
     // MARK: Modo libre
 
     private var freeCard: some View {
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             VStack(alignment: .leading, spacing: 14) {
-                M3SectionTitle(title: "Entreno libre", subtitle: "Tú eliges la pendiente (o con la cruceta ↑/↓ del mando izquierdo) y la marcha.")
+                SectionTitle(title: "Entreno libre", subtitle: "Tú eliges la pendiente (o con la cruceta ↑/↓ del mando izquierdo) y la marcha.")
                 HStack(spacing: 16) {
                     GradeTile(grade: ride.freeGrade)
-                    M3IconButton(systemImage: "minus") { ride.setFreeGrade(ride.freeGrade - RideController.freeGradeStep) }
+                    IconButton(systemImage: "minus") { ride.setFreeGrade(ride.freeGrade - RideController.freeGradeStep) }
                     Slider(value: Binding(get: { ride.freeGrade }, set: { ride.setFreeGrade($0) }),
                            in: -10...20, step: RideController.freeGradeStep)
                         .tint(GradeBand(gradePercent: ride.freeGrade).color)
-                    M3IconButton(systemImage: "plus") { ride.setFreeGrade(ride.freeGrade + RideController.freeGradeStep) }
+                    IconButton(systemImage: "plus") { ride.setFreeGrade(ride.freeGrade + RideController.freeGradeStep) }
                 }
                 HStack(spacing: 8) {
                     ForEach([-2.0, 0, 3, 6, 8, 10, 12], id: \.self) { g in
                         Button { ride.setFreeGrade(g) } label: {
-                            M3Chip(title: "\(Int(g)) %", selected: ride.freeGrade == g, dot: GradeBand(gradePercent: g).color)
+                            Chip(title: "\(Int(g)) %", selected: ride.freeGrade == g, dot: GradeBand(gradePercent: g).color)
                         }
                         .buttonStyle(.plain)
                     }
@@ -174,24 +174,24 @@ struct RideView: View {
         let absStart = status.isOnClimb ? d - (ride.route.positionInLap(d) - c.startMeters) : d + status.distanceToStart
         let chunks = ride.route.chunks(from: absStart, to: absStart + c.lengthMeters, size: max(c.lengthMeters / 40, 25))
         let band = c.category.band
-        return M3Card(style: .outlined) {
+        return Card(style: .outlined) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: "mountain.2.fill").foregroundStyle(band.color)
-                    Text(status.isOnClimb ? "Subida en curso" : "Subida a la vista").font(M3.font(.titleMedium))
+                    Text(status.isOnClimb ? "Subida en curso" : "Subida a la vista").font(Theme.font(.titleMedium))
                     Spacer()
-                    M3Chip(title: c.category.label, dot: band.color)
+                    Chip(title: c.category.label, dot: band.color)
                 }
                 HStack(spacing: 16) {
                     if status.isOnClimb {
-                        M3Stat(title: "Quedan", value: km(status.remainingMeters), unit: "km", size: .headlineMedium)
-                        M3Stat(title: "Desnivel", value: "+\(Int(status.remainingAscentMeters.rounded()))", unit: "m", size: .headlineMedium)
-                        M3Stat(title: "Media restante", value: status.remainingAverageGradePercent.formatted(.number.precision(.fractionLength(1))),
+                        Stat(title: "Quedan", value: km(status.remainingMeters), unit: "km", size: .headlineMedium)
+                        Stat(title: "Desnivel", value: "+\(Int(status.remainingAscentMeters.rounded()))", unit: "m", size: .headlineMedium)
+                        Stat(title: "Media restante", value: status.remainingAverageGradePercent.formatted(.number.precision(.fractionLength(1))),
                                unit: "%", size: .headlineMedium)
                     } else {
-                        M3Stat(title: "Empieza en", value: km(status.distanceToStart), unit: "km", size: .headlineMedium)
-                        M3Stat(title: "Longitud", value: km(c.lengthMeters), unit: "km", size: .headlineMedium)
-                        M3Stat(title: "Media", value: c.averageGradePercent.formatted(.number.precision(.fractionLength(1))),
+                        Stat(title: "Empieza en", value: km(status.distanceToStart), unit: "km", size: .headlineMedium)
+                        Stat(title: "Longitud", value: km(c.lengthMeters), unit: "km", size: .headlineMedium)
+                        Stat(title: "Media", value: c.averageGradePercent.formatted(.number.precision(.fractionLength(1))),
                                unit: "%", size: .headlineMedium)
                     }
                 }
@@ -209,17 +209,17 @@ struct RideView: View {
         let left = max(route.lengthMeters - position, 0)
         let climbLeft = route.chunks(from: position, to: route.lengthMeters, size: 25)
             .reduce(0) { $0 + max($1.endElevation - $1.startElevation, 0) }
-        return M3Card(style: .filled) {
+        return Card(style: .filled) {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(route.name).font(M3.font(.titleMedium)).lineLimit(1)
+                        Text(route.name).font(Theme.font(.titleMedium)).lineLimit(1)
                         Text("km \(km(position)) de \(km(route.lengthMeters)) · quedan \(km(left)) km y +\(Int(climbLeft.rounded())) m")
-                            .font(M3.font(.bodyMedium, numeric: true)).foregroundStyle(M3.onSurfaceVariant)
+                            .font(Theme.font(.bodyMedium, numeric: true)).foregroundStyle(Color.secondary)
                     }
                     Spacer()
                     Text("\(Int(route.elevation(atDistance: d).rounded())) m")
-                        .font(M3.font(.titleMedium, numeric: true)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.titleMedium, numeric: true)).foregroundStyle(Color.secondary)
                         .help("Altura donde estás")
                 }
                 GradeProfileChart(chunks: route.chunks(from: 0, to: route.lengthMeters, size: max(route.lengthMeters / 150, 25)),
@@ -227,14 +227,14 @@ struct RideView: View {
                 HStack(alignment: .center, spacing: Space.l) {
                     GradeTile(grade: ride.currentGrade)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("PRÓXIMOS 2 KM").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        Text("PRÓXIMOS 2 KM").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                         GradeProfileChart(chunks: route.chunks(from: d, to: d + previewMeters, size: 25),
                                           xOffset: d, height: 70)
                     }
                 }
                 if route.isFinished(atDistance: d) {
                     Label("¡Ruta terminada! Sigues en llano.", systemImage: "flag.checkered")
-                        .font(M3.font(.titleMedium)).foregroundStyle(M3.tertiary)
+                        .font(Theme.font(.titleMedium)).foregroundStyle(Theme.positive)
                 }
             }
             .frame(maxHeight: .infinity, alignment: .top)
@@ -242,10 +242,10 @@ struct RideView: View {
     }
 
     private var climbListCard: some View {
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("SUBIDAS DE LA RUTA").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                    Text("SUBIDAS DE LA RUTA").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                     Spacer()
                     GradeLegend()
                 }
@@ -253,11 +253,11 @@ struct RideView: View {
                     let done = c.endMeters <= ride.route.positionInLap(ride.session.distanceMeters)
                     HStack {
                         Image(systemName: done ? "checkmark.circle.fill" : "mountain.2.fill")
-                            .foregroundStyle(done ? M3.outline : c.category.band.color)
-                        Text("km \(km(c.startMeters))–\(km(c.endMeters))").font(M3.font(.bodyMedium))
+                            .foregroundStyle(done ? Color.secondary : c.category.band.color)
+                        Text("km \(km(c.startMeters))–\(km(c.endMeters))").font(Theme.font(.bodyMedium))
                         Spacer()
                         Text("\(km(c.lengthMeters)) km al \(c.averageGradePercent.formatted(.number.precision(.fractionLength(1)))) % · \(c.category.label)")
-                            .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                            .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                     }
                     .opacity(done ? 0.6 : 1)
                 }
@@ -268,26 +268,26 @@ struct RideView: View {
     // MARK: ERG y entreno
 
     private var ergCard: some View {
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             HStack(spacing: 16) {
-                M3SectionTitle(title: "ERG", subtitle: "El rodillo mantiene la potencia aunque cambies la cadencia. Mantén más de ~70 rpm.")
+                SectionTitle(title: "ERG", subtitle: "El rodillo mantiene la potencia aunque cambies la cadencia. Mantén más de ~70 rpm.")
                 Spacer()
-                M3IconButton(systemImage: "minus") { ride.easier() }
-                Text("\(ride.ergWatts) W").font(M3.font(.displaySmall, numeric: true).weight(.semibold)).monospacedDigit()
-                M3IconButton(systemImage: "plus") { ride.harder() }
+                IconButton(systemImage: "minus") { ride.easier() }
+                Text("\(ride.ergWatts) W").font(Theme.font(.displaySmall, numeric: true).weight(.semibold)).monospacedDigit()
+                IconButton(systemImage: "plus") { ride.harder() }
             }
         }
     }
 
     private var workoutCard: some View {
-        M3Card(style: .filled) {
+        Card(style: .filled) {
             HStack(spacing: 16) {
-                M3SectionTitle(title: ride.workout?.name ?? "Ningún entreno cargado",
+                SectionTitle(title: ride.workout?.name ?? "Ningún entreno cargado",
                                subtitle: ride.workoutProgress.map { "Tramo: \($0.segment.summary) · quedan \(formatClock($0.secondsLeftInSegment))" }
                                    ?? "Elige uno en «Entrenar»: allí ves los intervalos en grande.")
                 Spacer()
                 Button("Ir a Entrenar", systemImage: "list.bullet.rectangle") { ride.selectedTab = "entrenar" }
-                    .buttonStyle(.m3Tonal)
+                    .buttonStyle(.bordered)
             }
         }
     }
@@ -295,7 +295,7 @@ struct RideView: View {
     // MARK: Marchas
 
     private var gearCard: some View {
-        M3Card(style: .filled) { GearControl() }
+        Card(style: .filled) { GearControl() }
     }
 
     // MARK: Acciones y resumen
@@ -304,15 +304,15 @@ struct RideView: View {
         HStack(spacing: 12) {
             if ride.mode != .workout {
                 Button("Terminar", systemImage: "flag.checkered") { ride.finish() }
-                    .buttonStyle(.m3Outlined)
+                    .buttonStyle(.bordered)
                     .disabled(ride.session.movingSeconds == 0)
             }
             Button("A cero", systemImage: "arrow.counterclockwise") { ride.reset() }
-                .buttonStyle(.m3Text)
+                .buttonStyle(.borderless)
             if ride.isRunning {
-                M3FAB(title: "Pausa", systemImage: "pause.fill", tone: M3.secondaryContainer, onTone: M3.onSecondaryContainer) { ride.pause() }
+                ActionButton(title: "Pausa", systemImage: "pause.fill", prominent: false) { ride.pause() }
             } else {
-                M3FAB(title: "Empezar", systemImage: "play.fill") { ride.start() }
+                ActionButton(title: "Empezar", systemImage: "play.fill") { ride.start() }
                     .disabled(hub.trainerConnection != .connected)
             }
         }
@@ -322,10 +322,10 @@ struct RideView: View {
     }
 
     private func summaryCard(_ s: RideSummary) -> some View {
-        M3Card(style: .outlined) {
+        Card(style: .outlined) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    M3SectionTitle(title: "Resumen", subtitle: ride.lastSaved.map { "Guardado en el historial: \($0.name)" })
+                    SectionTitle(title: "Resumen", subtitle: ride.lastSaved.map { "Guardado en el historial: \($0.name)" })
                     Spacer()
                     if let saved = ride.lastSaved {
                         GarminImportButton(activity: saved)
@@ -334,14 +334,14 @@ struct RideView: View {
                     }
                 }
                 HStack(spacing: 16) {
-                    M3Stat(title: "Mejor 1'", value: watts(s.best1Min), unit: "W", size: .headlineSmall)
-                    M3Stat(title: "Mejor 5'", value: watts(s.best5Min), unit: "W", size: .headlineSmall)
-                    M3Stat(title: "Mejor 20'", value: watts(s.best20Min), unit: "W", size: .headlineSmall)
-                    M3Stat(title: "Pulso medio", value: ride.session.averageHeartRateBpm.map { "\($0)" } ?? "—", unit: "ppm", size: .headlineSmall)
+                    Stat(title: "Mejor 1'", value: watts(s.best1Min), unit: "W", size: .headlineSmall)
+                    Stat(title: "Mejor 5'", value: watts(s.best5Min), unit: "W", size: .headlineSmall)
+                    Stat(title: "Mejor 20'", value: watts(s.best20Min), unit: "W", size: .headlineSmall)
+                    Stat(title: "Pulso medio", value: ride.session.averageHeartRateBpm.map { "\($0)" } ?? "—", unit: "ppm", size: .headlineSmall)
                 }
                 if let v = s.vo2max {
                     Text("VO2max estimado ≈ \(Int(v.rounded())) ml/kg/min (solo vale si hiciste 5' a tope).")
-                        .font(M3.font(.bodyMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 }
             }
         }
@@ -365,7 +365,7 @@ private struct GearStrip: View {
         HStack(alignment: .bottom, spacing: 3) {
             ForEach(0..<count, id: \.self) { i in
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(i == current ? M3.primary : (i < current ? M3.primary.opacity(0.35) : M3.outlineVariant))
+                    .fill(i == current ? Theme.accent : (i < current ? Theme.accent.opacity(0.35) : Theme.separator))
                     .frame(width: 6, height: 14 + CGFloat(i) / CGFloat(max(count - 1, 1)) * 26)
             }
         }
@@ -383,13 +383,13 @@ struct StravaBadge: View {
         if let id = activity.stravaActivityID, let url = URL(string: "https://www.strava.com/activities/\(id)") {
             Link(destination: url) {
                 Label("Ver en Strava", systemImage: "arrow.up.right.square")
-                    .font(M3.font(.labelLarge)).foregroundStyle(M3.strava)
+                    .font(Theme.font(.labelLarge)).foregroundStyle(Theme.strava)
             }
         } else if strava.isConnected {
             Button(strava.isUploading ? "Subiendo…" : "Subir a Strava", systemImage: "arrow.up.circle") {
                 ride.uploadToStrava(activity)
             }
-            .buttonStyle(.m3Tonal)
+            .buttonStyle(.bordered)
             .disabled(strava.isUploading)
         }
     }
@@ -405,28 +405,28 @@ struct GearControl: View {
         @Bindable var ride = ride
         HStack(spacing: compact ? Space.l : 20) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("MARCHA").font(M3.font(.labelMedium)).foregroundStyle(M3.onSurfaceVariant)
+                Text("MARCHA").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(ride.gears.number)")
-                        .font(M3.font(compact ? .headlineMedium : .displayMedium, numeric: true).weight(.semibold))
-                    Text("/ \(ride.gears.count)").font(M3.font(.titleMedium)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(compact ? .headlineMedium : .displayMedium, numeric: true).weight(.semibold))
+                    Text("/ \(ride.gears.count)").font(Theme.font(.titleMedium)).foregroundStyle(Color.secondary)
                     if compact {
-                        Text("\(ride.gears.gear.label) · \(meters) m").font(M3.font(.titleSmall))
-                            .foregroundStyle(M3.onSurfaceVariant)
+                        Text("\(ride.gears.gear.label) · \(meters) m").font(Theme.font(.titleSmall))
+                            .foregroundStyle(Color.secondary)
                     }
                 }
                 if !compact {
                     Text("\(ride.gears.gear.label) · \(meters) m por pedalada")
-                        .font(M3.font(.bodySmall)).foregroundStyle(M3.onSurfaceVariant)
+                        .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
                 }
             }
             .fixedSize()
             GearStrip(count: ride.gears.count, current: ride.gears.index)
                 .layoutPriority(-1)
             Spacer(minLength: 0)
-            M3IconButton(systemImage: "minus", size: compact ? 48 : 56) { ride.easier() }
+            IconButton(systemImage: "minus", size: compact ? 48 : 56) { ride.easier() }
                 .help("Marcha más blanda")
-            M3IconButton(systemImage: "plus", size: compact ? 48 : 56) { ride.harder() }
+            IconButton(systemImage: "plus", size: compact ? 48 : 56) { ride.harder() }
                 .help("Marcha más dura")
             Picker("Desarrollo", selection: $ride.drivetrain) {
                 ForEach(Drivetrain.all) { Text($0.name).tag($0) }
