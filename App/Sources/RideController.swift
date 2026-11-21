@@ -70,6 +70,8 @@ final class RideController {
     private(set) var ergWatts = 150
     private(set) var session = RideSession()
     private(set) var isRunning = false
+    /// El simulador 2D a toda la ventana (modo Ruta).
+    var showScene = false
     /// Pendiente real de la ruta donde estás (sin el efecto de las marchas).
     private(set) var currentGrade = 0.0
     /// Velocidad «de carretera»: la del rodillo × la relación de la marcha (en ERG, la del rodillo).
@@ -418,6 +420,7 @@ final class RideController {
                 let saved = UserDefaults.standard.string(forKey: "rutaElegida")
                 if let r = importedRoutes.first(where: { $0.id == saved }) ?? importedRoutes.first { route = r }
             }
+            if UserDefaults.standard.bool(forKey: "simulador"), hub.isDemo, !isRunning { start() }
         }
         hub.onButtonPress = { [weak self] pressed in self?.handleButtons(pressed) }
         // Al despertar un mando dormido, la pulsación que lo despertó se pierde: avisamos de que ya vale.
@@ -425,7 +428,8 @@ final class RideController {
             if awake { self?.show("🎮 Mando listo: ya puedes usar los botones") }
         }
         // Para desarrollar: `open TaylorZwift.app --args -modoPrueba 30 -entreno test-rampa` arranca
-        // el modo prueba con el tiempo ×30 y, si se indica, empieza ese entreno solo.
+        // el modo prueba con el tiempo ×30 y, si se indica, empieza ese entreno solo
+        // (`-modoPrueba 1 -simulador YES`: el simulador 2D en la ruta elegida).
         let demoScale = UserDefaults.standard.double(forKey: "modoPrueba")
         if demoScale > 0 {
             startDemo()
@@ -433,6 +437,11 @@ final class RideController {
             if let w = UserDefaults.standard.string(forKey: "entreno").flatMap(workout(id:)) {
                 load(w)
                 start()
+            }
+            // `-simulador YES`: la ruta elegida en el simulador 2D, rodando.
+            if UserDefaults.standard.bool(forKey: "simulador") {
+                mode = .route
+                showScene = true // empieza a rodar cuando se hayan leído las rutas GPX (abajo)
             }
         }
         ticker = Task { [weak self] in

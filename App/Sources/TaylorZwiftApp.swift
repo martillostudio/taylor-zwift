@@ -51,7 +51,12 @@ struct ContentView: View {
     ]
 
     var body: some View {
-        navigation
+        // El simulador 2D ocupa toda la ventana (también la barra lateral) y sustituye a las
+        // pantallas: así el mapa y las gráficas de Rodar no se repintan detrás.
+        Group {
+            if ride.showScene { RideScene().transition(.opacity) } else { navigation }
+        }
+            .animation(.easeInOut(duration: 0.25), value: ride.showScene)
             .tint(Theme.accent)
             .overlay(alignment: .top) {
                 if let notice = ride.notice {

@@ -34,6 +34,7 @@
 		B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */; };
 		BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E10DC2A8D445E089A9F7EB6 /* RideController.swift */; };
 		C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC2B36F439B128659783D3B /* StravaService.swift */; };
+		CEBDCD17E3E6FB7DC4981590 /* RideScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00F138BCCA37643B77254B7 /* RideScene.swift */; };
 		DEA7734381A5BE871013E9D5 /* GradeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABB43D303D77746CDB2C94E /* GradeColors.swift */; };
 		E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E4515ABF42AF0C84D91FE /* ScanSection.swift */; };
 		EB447ED12A5E35725FBF231F /* KeyboardSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3015E8E5C438A95BD7D6E73C /* KeyboardSender.swift */; };
@@ -66,6 +67,7 @@
 		C242BF3F6159617EB38F4BBF /* TrainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerView.swift; sourceTree = "<group>"; };
 		CABB43D303D77746CDB2C94E /* GradeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradeColors.swift; sourceTree = "<group>"; };
 		DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
+		E00F138BCCA37643B77254B7 /* RideScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideScene.swift; sourceTree = "<group>"; };
 		EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorMandosApp.swift; sourceTree = "<group>"; };
 		F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapCard.swift; sourceTree = "<group>"; };
 		FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeView.swift; sourceTree = "<group>"; };
@@ -149,6 +151,7 @@
 				75F12F33A425BD8EE3BA6369 /* LogView.swift */,
 				0464B20E69550416FCED48A4 /* ProgressViews.swift */,
 				8E10DC2A8D445E089A9F7EB6 /* RideController.swift */,
+				E00F138BCCA37643B77254B7 /* RideScene.swift */,
 				9AE67EA9B3F5BDCB7270A503 /* RideView.swift */,
 				F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */,
 				DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */,
@@ -288,6 +291,7 @@
 				7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */,
 				5063173ED488E4E607D836B6 /* ProgressViews.swift in Sources */,
 				BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */,
+				CEBDCD17E3E6FB7DC4981590 /* RideScene.swift in Sources */,
 				9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */,
 				9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */,
 				14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */,

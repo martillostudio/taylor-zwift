@@ -103,3 +103,17 @@ import Testing
         #expect(abs(Route.climb.climbPerKm - 48) < 0.5) // 480 m en 10 km
     }
 }
+
+@Suite struct RouteElevationTableTests {
+    @Test func matchesRouteEverywhere() {
+        for route in Route.builtIn {
+            let table = RouteElevationTable(route)
+            var d = -300.0
+            while d < route.lengthMeters * 2.3 {
+                #expect(abs(table.elevation(atDistance: d) - route.elevation(atDistance: d)) < 1e-6)
+                #expect(abs(table.grade(atDistance: d) - route.grade(atDistance: d)) < 0.11)
+                d += 7.3
+            }
+        }
+    }
+}

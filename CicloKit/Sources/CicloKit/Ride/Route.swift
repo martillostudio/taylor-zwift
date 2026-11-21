@@ -202,3 +202,58 @@ extension Route {
 
     public static let builtIn: [Route] = [.flat, .rolling, .punchy, .climb]
 }
+
+/// Altura y pendiente de una ruta con búsqueda binaria: lo mismo que `Route.elevation` y
+/// `Route.grade`, pero para pedirlas miles de veces por segundo (el simulador 2D).
+public struct RouteElevationTable: Sendable {
+    public let routeID: String
+    private let starts: [Double]
+    private let elevations: [Double]
+    private let grades: [Double]
+    public let lengthMeters: Double
+    private let lapGain: Double
+    private let isLoop: Bool
+
+    public init(_ route: Route) {
+        routeID = route.id
+        var s: [Double] = [], e: [Double] = [], g: [Double] = []
+        var start = 0.0, elevation = 0.0
+        for seg in route.segments {
+            s.append(start); e.append(elevation); g.append(seg.gradePercent)
+            start += seg.lengthMeters
+            elevation += seg.lengthMeters * seg.gradePercent / 100
+        }
+        starts = s; elevations = e; grades = g
+        lengthMeters = start
+        lapGain = elevation
+        isLoop = route.isLoop
+    }
+
+    private func inLap(_ d: Double) -> Double {
+        guard !starts.isEmpty else { return 0 }
+        if d >= lengthMeters { return lapGain }
+        // Último tramo que empieza antes de `d` (Route.elevationInLap usa `d <= fin del tramo`).
+        var lo = 0, hi = starts.count - 1
+        while lo < hi {
+            let mid = (lo + hi + 1) / 2
+            if starts[mid] < d { lo = mid } else { hi = mid - 1 }
+        }
+        return elevations[lo] + max(d - starts[lo], 0) * grades[lo] / 100
+    }
+
+    public func elevation(atDistance d: Double) -> Double {
+        guard lengthMeters > 0 else { return 0 }
+        if isLoop {
+            let laps = (d / lengthMeters).rounded(.down)
+            return laps * lapGain + inLap(d - laps * lengthMeters)
+        }
+        if d <= 0 { return d * grades[0] / 100 }
+        return inLap(d)
+    }
+
+    public func grade(atDistance d: Double) -> Double {
+        let h = Route.smoothingMeters / 2
+        let g = (elevation(atDistance: d + h) - elevation(atDistance: d - h)) / Route.smoothingMeters * 100
+        return (g * 10).rounded() / 10
+    }
+}
