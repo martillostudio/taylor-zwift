@@ -5,6 +5,7 @@ import SwiftUI
 /// Prueba A: conectar al Kickr, ver datos en vivo, cambiar pendiente (SIM) y potencia (ERG).
 struct TrainerView: View {
     @Environment(BluetoothHub.self) private var hub
+    @Environment(RideController.self) private var ride
     @State private var grade = 0.0
     @State private var ergWatts = 150
 
@@ -14,6 +15,12 @@ struct TrainerView: View {
         Form {
             if hub.trainerConnection == .disconnected {
                 ScanSection(kind: .trainer, title: "Buscar rodillo")
+                Section {
+                    Button("Probar sin rodillo", systemImage: "testtube.2") { ride.startDemo() }
+                        .disabled(hub.heartRateConnection != .disconnected)
+                } footer: {
+                    Text("Rodillo, pulsómetro y mandos de mentira para probar entrenos y rutas sin el Kickr. No se guarda ni se sube nada.")
+                }
             }
 
             Section("Rodillo") {

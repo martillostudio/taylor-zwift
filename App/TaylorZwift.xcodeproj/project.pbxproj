@@ -26,6 +26,7 @@
 		79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDA2488F1654582F648AE11 /* ControllersView.swift */; };
 		7A79021544CDD0DC2162DBBE /* BridgeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863663EEE45FBB2051721FB9 /* BridgeModel.swift */; };
 		7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F12F33A425BD8EE3BA6369 /* LogView.swift */; };
+		88A3CB40F5F98CC7FC9F051F /* DemoPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBF2A669AD1089602E50C21 /* DemoPanel.swift */; };
 		9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AE67EA9B3F5BDCB7270A503 /* RideView.swift */; };
 		9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */; };
 		ADC16D87744078AA0851B2EA /* CicloNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = 63F04261BFB7770CF70BCBA9 /* CicloNetwork */; };
@@ -54,6 +55,7 @@
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
 		863663EEE45FBB2051721FB9 /* BridgeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeModel.swift; sourceTree = "<group>"; };
 		8843EDCD9E67795BE65FB2CC /* WorkoutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutViews.swift; sourceTree = "<group>"; };
+		8CBF2A669AD1089602E50C21 /* DemoPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPanel.swift; sourceTree = "<group>"; };
 		8E10DC2A8D445E089A9F7EB6 /* RideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideController.swift; sourceTree = "<group>"; };
 		9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9AE67EA9B3F5BDCB7270A503 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 			children = (
 				0CBA6D3C397E76000063ABFD /* ActivityStore.swift */,
 				7BDA2488F1654582F648AE11 /* ControllersView.swift */,
+				8CBF2A669AD1089602E50C21 /* DemoPanel.swift */,
 				4213815FF621063110F50F8B /* DevicesView.swift */,
 				A11E62F35D849BBC71788A1F /* FitnessCard.swift */,
 				CABB43D303D77746CDB2C94E /* GradeColors.swift */,
@@ -275,6 +278,7 @@
 			files = (
 				28B48B94B70446F8BE9CFA49 /* ActivityStore.swift in Sources */,
 				79BFE7582ED75F29B0E93CC9 /* ControllersView.swift in Sources */,
+				88A3CB40F5F98CC7FC9F051F /* DemoPanel.swift in Sources */,
 				3FF3272C7515184AAAEAD428 /* DevicesView.swift in Sources */,
 				390CEB0D5EB53A2E689D709C /* FitnessCard.swift in Sources */,
 				DEA7734381A5BE871013E9D5 /* GradeColors.swift in Sources */,

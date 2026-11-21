@@ -97,6 +97,22 @@ public final class BluetoothHub: NSObject {
 
     public private(set) var log: [LogEntry] = []
 
+    // MARK: Modo prueba (rodillo, pulsómetro y mandos de mentira)
+
+    /// Todo lo conectado es de mentira: `DemoRider` hace de ciclista y de rodillo.
+    public private(set) var isDemo = false
+    /// Esfuerzo del ciclista de prueba en modo SIM (fracción del FTP).
+    public var demoEffort = 0.65 {
+        didSet { demoRider.effort = demoEffort }
+    }
+    @ObservationIgnored private var demoRider = DemoRider(ftp: 200)
+    @ObservationIgnored private var demoTimer: Timer?
+    @ObservationIgnored private var demoLastStep: Double?
+    private static let demoClickIDs = [
+        UUID(uuidString: "DE300000-0000-0000-0000-000000000001")!,
+        UUID(uuidString: "DE300000-0000-0000-0000-000000000002")!,
+    ]
+
     // MARK: Modo puente (app «Taylor Mandos»)
 
     /// Busca y conecta solos los mandos, y los reconecta si se caen. Ver `startBridgeMode()`.
@@ -152,6 +168,83 @@ public final class BluetoothHub: NSObject {
         super.init()
         central = CBCentralManager(delegate: self, queue: .main)
         addLog("App iniciada")
+    }
+
+    // MARK: Modo prueba
+
+    /// Conecta un rodillo, un pulsómetro y dos mandos de mentira (sin Bluetooth).
+    /// Solo si no hay un rodillo de verdad conectado.
+    public func startDemo(ftp: Int, maxHeartRate: Int) {
+        guard !isDemo else { return }
+        guard trainerConnection == .disconnected, heartRateConnection == .disconnected else {
+            addLog("🧪 Modo prueba: desconecta antes el rodillo y el pulsómetro de verdad")
+            return
+        }
+        isDemo = true
+        demoRider = DemoRider(ftp: Double(ftp), effort: demoEffort)
+        demoRider.maxHeartRate = Double(maxHeartRate)
+        demoLastStep = nil
+        trainerName = "Rodillo de prueba"
+        trainerConnection = .connected
+        hasControl = true
+        trainerMode = "—"
+        trainerTarget = nil
+        bikeData = IndoorBikeData()
+        heartRateName = "Pulsómetro de prueba"
+        heartRateConnection = .connected
+        heartRateBpm = demoRider.heartRateBpm
+        clicks = zip(Self.demoClickIDs, ["Click izq. de prueba", "Click dcha. de prueba"]).map { id, name in
+            var c = ClickState(id: id, name: name)
+            c.connection = .connected
+            c.handshakeDone = true
+            c.batteryPercent = 80
+            return c
+        }
+        demoTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.demoStep() }
+        }
+        addLog("🧪 Modo prueba: rodillo, pulsómetro y mandos de mentira (FTP \(ftp) W). No se guarda ni se sube nada.")
+    }
+
+    public func stopDemo() {
+        guard isDemo else { return }
+        demoTimer?.invalidate()
+        demoTimer = nil
+        isDemo = false
+        trainerName = nil
+        trainerConnection = .disconnected
+        hasControl = false
+        trainerMode = "—"
+        trainerTarget = nil
+        bikeData = IndoorBikeData()
+        heartRateName = nil
+        heartRateConnection = .disconnected
+        heartRateBpm = nil
+        clicks.removeAll { Self.demoClickIDs.contains($0.id) }
+        addLog("🧪 Modo prueba terminado")
+    }
+
+    /// El FTP del ciclista de prueba (p. ej. si cambias el tuyo).
+    public func setDemoFTP(_ ftp: Int) {
+        demoRider.ftp = Double(ftp)
+    }
+
+    /// Una pulsación de mentira, como si viniera de los Click.
+    public func demoPress(_ button: ZwiftButton) {
+        guard isDemo else { return }
+        lastButtonNames = button.names
+        buttonPressCount += 1
+        addLog("🔘 \(button.names.joined(separator: " + ")) — mando de prueba")
+        onButtonPress?(button)
+    }
+
+    private func demoStep() {
+        let now = ProcessInfo.processInfo.systemUptime
+        let dt = demoLastStep.map { min(now - $0, 2) } ?? 0.5
+        demoLastStep = now
+        bikeData = demoRider.step(target: trainerTarget, dt: dt)
+        heartRateBpm = demoRider.heartRateBpm
+        logBikeDataIfNeeded()
     }
 
     // MARK: Acciones
@@ -212,11 +305,13 @@ public final class BluetoothHub: NSObject {
     }
 
     public func disconnectHeartRate() {
+        if isDemo { stopDemo(); return }
         heartRateWanted = false
         if let heartRateMonitor { central.cancelPeripheralConnection(heartRateMonitor) }
     }
 
     public func disconnectTrainer() {
+        if isDemo { stopDemo(); return }
         trainerWanted = false
         autoConnectTrainer = false
         if let trainer { central.cancelPeripheralConnection(trainer) }
@@ -241,11 +336,16 @@ public final class BluetoothHub: NSObject {
     public func apply(_ target: TrainerTarget) {
         trainerTarget = target
         trainerMode = target.description
+        if isDemo {
+            addLog("→ Rodillo de prueba: \(target.description)")
+            return
+        }
         sendWithControl(target.command)
     }
 
     /// Conecta solo el rodillo y los mandos que encuentre, y los reconecta si se caen.
     public func connectEverything() {
+        guard !isDemo else { return }
         autoConnectTrainer = true
         if !autoConnectClicks {
             startAutoConnectClicks(log: "Conexión automática: rodillo y mandos (y reconexión si se caen)")

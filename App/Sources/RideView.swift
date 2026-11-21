@@ -19,6 +19,7 @@ struct RideView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.l) {
                 header
+                if hub.isDemo { DemoPanel() }
                 SegmentedPicker(options: [
                     (RideController.Mode.workout, "Entreno", "list.bullet.rectangle"),
                     (.route, "Ruta", "map"),
@@ -100,6 +101,11 @@ struct RideView: View {
             if hub.trainerConnection != .connected || hub.heartRateConnection != .connected || clicks + asleep == 0 {
                 Button("Conectar", systemImage: "antenna.radiowaves.left.and.right") { hub.connectEverything() }
                     .buttonStyle(.bordered)
+                if hub.trainerConnection == .disconnected, hub.heartRateConnection == .disconnected {
+                    Button("Probar sin rodillo", systemImage: "testtube.2") { ride.startDemo() }
+                        .buttonStyle(.bordered)
+                        .help("Rodillo, pulsómetro y mandos de mentira para probar la app. No se guarda nada.")
+                }
             }
         }
     }

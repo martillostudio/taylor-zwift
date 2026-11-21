@@ -79,6 +79,7 @@ final class RideController {
     var ftp: Int {
         didSet {
             UserDefaults.standard.set(ftp, forKey: Self.ftpKey)
+            hub.setDemoFTP(ftp)
             applyTarget(force: true)
             scheduleFTPSync()
         }
@@ -436,6 +437,11 @@ final class RideController {
 
     // MARK: Acciones
 
+    /// Rodillo, pulsómetro y mandos de mentira para probar sin el Kickr (ver `DemoRider`).
+    func startDemo() {
+        hub.startDemo(ftp: ftp, maxHeartRate: maxHeartRate)
+    }
+
     func start() {
         guard !isRunning else { return }
         isRunning = true
@@ -521,7 +527,7 @@ final class RideController {
         )
         summary = s
         // El test a tope (pulso ≥ 92 % de tu FC máx.) cambia el FTP solo; si no, se pregunta.
-        if let new = s.suggestedFTP, new != ftp,
+        if let new = s.suggestedFTP, new != ftp, !hub.isDemo,
            FTPUpdate.testIsMaximal(maxHeartRate: session.maxHeartRateBpm, athleteMaxHeartRate: maxHeartRate) {
             hub.appendLog("💪 FTP actualizado con el test: \(ftp) → \(new) W")
             show("💪 FTP actualizado a \(new) W", seconds: 5)
@@ -552,6 +558,10 @@ final class RideController {
 
     func acceptSuggestedFTP() {
         guard let new = summary?.suggestedFTP else { return }
+        guard !hub.isDemo else {
+            show("🧪 Modo prueba: el FTP no cambia")
+            return
+        }
         hub.appendLog("💪 FTP actualizado: \(ftp) → \(new) W")
         ftp = new
     }
@@ -626,6 +636,10 @@ final class RideController {
     private func saveRecording() {
         guard let rec = recording else { return }
         recording = nil
+        guard !hub.isDemo else {
+            hub.appendLog("🧪 Modo prueba: no se guarda ni se sube")
+            return
+        }
         guard rec.samples.count >= Self.minimumSecondsToSave else {
             if !rec.samples.isEmpty { hub.appendLog("🗑 No se guarda: menos de 1 minuto grabado") }
             return
