@@ -6,6 +6,19 @@ import UniformTypeIdentifiers
 
 /// Colores de las zonas de potencia (los habituales en Zwift, TrainingPeaks…).
 extension PowerZone {
+    /// Para la leyenda: «Z2 fondo», «Z4 umbral»…
+    var legendName: String {
+        switch self {
+        case .z1: "Z1 recuperación"
+        case .z2: "Z2 fondo"
+        case .z3: "Z3 tempo"
+        case .z4: "Z4 umbral"
+        case .z5: "Z5 VO2max"
+        case .z6: "Z6 anaeróbico"
+        case .z7: "Z7 sprint"
+        }
+    }
+
     var color: Color {
         switch self {
         case .z1: Color(red: 0.55, green: 0.55, blue: 0.58)
@@ -41,6 +54,8 @@ func formatDuration(_ seconds: Int) -> String {
 }
 
 struct WorkoutsView: View {
+    /// Para desarrollar: `--args -abrirPlan YES` abre directamente el plan entero.
+    @State private var showPlan = UserDefaults.standard.bool(forKey: "abrirPlan")
     @Environment(RideController.self) private var ride
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -128,6 +143,7 @@ struct WorkoutsView: View {
             }
             .background(Theme.background)
             .navigationTitle("Entrenar")
+            .navigationDestination(isPresented: $showPlan) { PlanView() }
             .fileImporter(isPresented: $importing, allowedContentTypes: zwoTypes, allowsMultipleSelection: true) { result in
                 importFiles(result)
             }
@@ -457,8 +473,27 @@ struct PlanView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 Text(ride.plan.summary).foregroundStyle(.secondary)
-                Text("Cómo funciona: 3 semanas de carga y 1 de descarga. La mayor parte del tiempo suave (Z2) y 2 días de calidad por semana: fuerza a cadencia baja, sweet spot/umbral y VO2max. Test de FTP al empezar y en las descargas para ajustar los vatios. Si un día no puedes, no lo recuperes: sigue con el siguiente.")
+                Text("Cómo funciona: 3 semanas de carga y 1 de descarga. La mayor parte del tiempo suave (Z2) y 2 días de calidad por semana: fuerza a cadencia baja, sweet spot/umbral y VO2max. Test de FTP al empezar y en las descargas para ajustar los vatios. Si te saltas una sesión dura, la app te propondrá otro día de esa semana; las suaves, no se recuperan.")
                     .font(.callout)
+                Card(style: .filled) {
+                    VStack(alignment: .leading, spacing: Space.m) {
+                        Text("DE UN VISTAZO").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
+                        PlanOverview()
+                        HStack(spacing: Space.l) {
+                            ForEach([PowerZone.z2, .z3, .z4, .z5, .z6], id: \.self) { z in
+                                HStack(spacing: 4) {
+                                    RoundedRectangle(cornerRadius: 2).fill(z.color).frame(width: 10, height: 8)
+                                    Text(z.legendName)
+                                }
+                            }
+                            HStack(spacing: 4) { Image(systemName: "arrow.triangle.swap"); Text("cambiada por ti") }
+                            Spacer()
+                            Text("Recuadro naranja: esta semana · verde: descarga")
+                        }
+                        .font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
+                    }
+                }
+                Text("Semana a semana").font(Theme.font(.titleLarge))
                 ForEach(ride.plan.weeks) { week in
                     let current = ride.currentPlanWeek?.number == week.number
                     VStack(alignment: .leading, spacing: 4) {
@@ -1126,4 +1161,156 @@ private struct IntervalRow: View {
 /// Verde si clavado (≥ 97 %), naranja si casi (≥ 90 %), rojo si por debajo.
 private func color(_ compliance: Double) -> Color {
     compliance >= 0.97 ? Theme.positive : compliance >= 0.90 ? Color.orange : Color.red
+}
+
+// MARK: - Plan de un vistazo
+
+/// Las 16 semanas en una tabla (semana × día): cada sesión con el color de su zona y su estado,
+/// la carga prevista de la semana y cuántas sesiones llevas. Clic en una sesión: su entreno.
+struct PlanOverview: View {
+    @Environment(RideController.self) private var ride
+
+    private static let days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+    var body: some View {
+        let plan = ride.plan
+        let current = ride.currentPlanWeek?.number
+        let maxLoad = plan.weeks.map { plan.plannedLoad(of: $0) }.max() ?? 1
+        Grid(alignment: .leading, horizontalSpacing: 4, verticalSpacing: 4) {
+            GridRow {
+                Text("")
+                ForEach(Self.days, id: \.self) { d in
+                    Text(d.uppercased()).font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+                Text("CARGA").font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
+            }
+            ForEach(plan.weeks) { week in
+                let statuses = ride.planStatus(week)
+                let isCurrent = week.number == current
+                let isPast = current.map { week.number < $0 } ?? false
+                GridRow {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("S\(week.number)").font(Theme.font(.titleSmall, numeric: true))
+                        Text(week.block).font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary).lineLimit(1)
+                    }
+                    .frame(width: 92, alignment: .leading)
+                    ForEach(0..<7, id: \.self) { d in
+                        if let s = week.sessions.first(where: { $0.weekdayOffset == d }) {
+                            OverviewCell(session: s, status: statuses[s.id] ?? .upcoming)
+                        } else {
+                            Color.clear.frame(maxWidth: .infinity, minHeight: 40)
+                        }
+                    }
+                    LoadCell(load: plan.plannedLoad(of: week), maxLoad: maxLoad,
+                             done: week.sessions.filter { statuses[$0.id]?.isDone == true }.count,
+                             total: week.sessions.count)
+                }
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.Radius.small)
+                        .fill(week.isRecovery ? Color.green.opacity(0.07) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.small)
+                        .strokeBorder(isCurrent ? Theme.accent : Color.clear, lineWidth: 1.5)
+                )
+                .opacity(isPast ? 0.65 : 1)
+            }
+        }
+    }
+}
+
+private struct OverviewCell: View {
+    let session: PlanSession
+    let status: PlanSessionStatus
+
+    var body: some View {
+        if let w = session.workout {
+            NavigationLink { WorkoutDetailView(workout: w) } label: { content(title: shortName(w), color: w.mainZone.color) }
+                .buttonStyle(.plain)
+                .help("\(w.name) · \(w.durationSeconds / 60)' · TSS \(Int(w.tss.rounded()))"
+                      + (w.tagline.map { "\n\($0)" } ?? "")
+                      + (session.originalKey != nil ? "\nCambiada por ti (día o entreno)" : ""))
+        } else {
+            content(title: "Exterior \(hours(session.outdoorHours))", color: .orange, icon: "sun.max.fill")
+                .help("Salida en exterior en Z2" + (session.note.isEmpty ? "" : "\n\(session.note)"))
+        }
+    }
+
+    private func content(title: String, color: Color, icon: String? = nil) -> some View {
+        HStack(alignment: .top, spacing: 3) {
+            if let icon { Image(systemName: icon).foregroundStyle(color).font(.caption2) }
+            Text(title).font(Theme.font(.labelSmall)).lineLimit(2).multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+            VStack(spacing: 2) {
+                statusIcon
+                if session.originalKey != nil {
+                    Image(systemName: "arrow.triangle.swap").font(.system(size: 8)).foregroundStyle(Color.secondary)
+                }
+            }
+        }
+        .padding(5)
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+        .background(color.opacity(status.isDone ? 0.32 : 0.15), in: RoundedRectangle(cornerRadius: Theme.Radius.small))
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 1.5).fill(color).frame(width: 3).padding(.vertical, 4)
+        }
+        .opacity(status == .skipped ? 0.5 : 1)
+    }
+
+    @ViewBuilder
+    private var statusIcon: some View {
+        switch status {
+        case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.positive).font(.caption2)
+        case .partial: Image(systemName: "circle.lefthalf.filled").foregroundStyle(Color.orange).font(.caption2)
+        case .today: Image(systemName: "circle.fill").foregroundStyle(Theme.accent).font(.caption2)
+        case .skipped: Image(systemName: "minus.circle").foregroundStyle(Color.secondary).font(.caption2)
+        case .upcoming: EmptyView()
+        }
+    }
+
+    /// Nombre corto para la celda: «Z2 60'», «SS 2×20'», «VO2 4×4'», «Test rampa»…
+    private func shortName(_ w: Workout) -> String {
+        var n = w.name
+        let replacements = [
+            ("Resistencia 2 h (Z2)", "Z2 2 h"), ("Resistencia ", "Z2 "), (" (Z2)", ""),
+            ("Recuperación activa", "Recup."), ("Test de FTP de 20 minutos", "Test 20'"),
+            ("Test de rampa", "Test rampa"), ("Sweet spot", "SS"), ("VO2max", "VO2"),
+            (" (Rønnestad)", ""), (" (Billat)", ""), ("Anaeróbico", "Anaer."),
+        ]
+        for (a, b) in replacements { n = n.replacingOccurrences(of: a, with: b) }
+        return n
+    }
+
+    private func hours(_ h: Double) -> String {
+        h == h.rounded() ? "\(Int(h)) h" : String(format: "%.1f h", h).replacingOccurrences(of: ".", with: ",")
+    }
+}
+
+private struct LoadCell: View {
+    let load: Double
+    let maxLoad: Double
+    let done: Int
+    let total: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.neutralFill)
+                    Capsule().fill(Theme.accent.opacity(0.7)).frame(width: g.size.width * load / max(maxLoad, 1))
+                }
+            }
+            .frame(height: 6)
+            HStack(spacing: 4) {
+                Text("\(Int(load.rounded()))").font(Theme.font(.labelSmall, numeric: true))
+                Spacer(minLength: 0)
+                Text("\(done)/\(total)").font(Theme.font(.labelSmall, numeric: true))
+                    .foregroundStyle(done == total ? Theme.positive : Color.secondary)
+            }
+        }
+        .frame(width: 84)
+        .help("Carga prevista ≈ \(Int(load.rounded())) (salidas en exterior estimadas) · \(done) de \(total) sesiones hechas")
+    }
 }
