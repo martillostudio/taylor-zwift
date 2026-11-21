@@ -233,3 +233,45 @@ extension Workout {
         segments.compactMap { s in [s.startPower, s.endPower].compactMap { $0 }.max() }.max() ?? 0
     }
 }
+
+// MARK: - Sesiones movidas de día
+
+extension TrainingPlan {
+    /// El plan con algunas sesiones cambiadas de día. `moves` va de la clave original de la
+    /// sesión (`session.key(week:)`, p. ej. «s1-Sáb-z2-90») al día nuevo («Dom»), siempre
+    /// dentro de la misma semana.
+    public func moving(_ moves: [String: String]) -> TrainingPlan {
+        guard !moves.isEmpty else { return self }
+        var copy = self
+        copy.weeks = weeks.map { week in
+            var w = week
+            w.sessions = week.sessions.map { s in
+                guard let day = moves[s.key(week: week.number)] else { return s }
+                var moved = s
+                moved.day = day
+                return moved
+            }
+            .sorted { $0.weekdayOffset < $1.weekdayOffset }
+            return w
+        }
+        return copy
+    }
+}
+
+// MARK: - FTP automático
+
+public enum FTPUpdate {
+    /// El resultado de un test se aplica solo si fuiste a tope: el pulso llegó al 92 % de tu
+    /// FC máxima. Un test cortado antes de tiempo daría un FTP demasiado bajo.
+    public static func testIsMaximal(maxHeartRate: Int?, athleteMaxHeartRate: Int) -> Bool {
+        guard let hr = maxHeartRate else { return false }
+        return Double(hr) >= 0.92 * Double(athleteMaxHeartRate)
+    }
+
+    /// El eFTP de intervals.icu solo sube el FTP (bajarlo, con un test): sale de tus mejores
+    /// esfuerzos y baja solo si no haces nada duro, no porque estés peor.
+    public static func raise(current: Int, estimated: Int?) -> Int? {
+        guard let e = estimated, e >= current + 5 else { return nil }
+        return e
+    }
+}

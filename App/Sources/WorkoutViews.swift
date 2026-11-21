@@ -395,8 +395,18 @@ private struct SessionCell: View {
                    systemImage: "checkmark.circle") {
                 ride.toggleManualMark(session, week: week)
             }
+            if !status.isDone {
+                Menu("Cambiar de día", systemImage: "calendar") {
+                    ForEach(Self.days, id: \.self) { day in
+                        Button(day) { ride.moveSession(session, week: week, to: day) }
+                            .disabled(day == session.day)
+                    }
+                }
+            }
         }
     }
+
+    static let days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 }
 
 private struct StatusBadge: View {
@@ -985,7 +995,12 @@ struct WorkoutDetailView: View {
                     Stat(title: "Mejor 20'", value: w(s.best20Min), unit: "W", size: .headlineSmall)
                     Stat(title: "TSS", value: ride.lastSaved?.tss.map { "\($0)" } ?? "—", size: .headlineSmall)
                 }
-                if let ftp = s.suggestedFTP {
+                if let ftp = s.suggestedFTP, let before = s.previousFTP {
+                    Label("FTP actualizado: **\(before) → \(ftp) W**. Tus zonas y el plan ya van con él.", systemImage: "checkmark.seal.fill")
+                        .font(Theme.font(.bodyLarge)).foregroundStyle(Theme.positive)
+                } else if let ftp = s.suggestedFTP {
+                    Text("Tu pulso no llegó al 92 % de tu FC máxima: si no fuiste a tope, este FTP saldrá bajo.")
+                        .font(Theme.font(.bodyMedium)).foregroundStyle(Color.orange)
                     HStack {
                         Text("FTP estimado: **\(ftp) W** (ahora tienes \(ride.ftp) W)").font(Theme.font(.bodyLarge))
                         Spacer()

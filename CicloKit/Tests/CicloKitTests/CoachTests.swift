@@ -121,3 +121,43 @@ struct CoachTests {
         #expect(hard.efficiencyFactor == nil)
     }
 }
+
+@Suite("Sesiones movidas y FTP automático")
+struct PlanMovesTests {
+    @Test func moveSaturdayToSunday() throws {
+        let plan = TrainingPlan.winter
+        let sat = try #require(plan.weeks[0].sessions.first { $0.workoutID == "z2-90" })
+        let moved = plan.moving([sat.key(week: 1): "Dom"])
+        let s = try #require(moved.weeks[0].sessions.first { $0.workoutID == "z2-90" })
+        #expect(s.weekdayOffset == 6)
+        #expect(moved.weeks[1] == plan.weeks[1])
+        #expect(moved.weeks[0].sessions.map(\.weekdayOffset) == [1, 3, 6])
+    }
+
+    @Test func movedSessionCountsOnSunday() throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Madrid")!
+        let start = try #require(cal.date(from: DateComponents(year: 2026, month: 11, day: 16)))
+        let sunday = cal.date(byAdding: .day, value: 6, to: start)!.addingTimeInterval(10 * 3600)
+        let plan = TrainingPlan.winter.moving(["s1-Sáb-z2-90": "Dom"])
+        let week = plan.weeks[0]
+        let s = try #require(week.sessions.first { $0.workoutID == "z2-90" })
+        let st = plan.status(of: week, start: start, completed: [], now: sunday, calendar: cal)
+        #expect(st[s.id] == .today)
+        let events = plan.calendarEvents(start: start, calendar: cal)
+        let e = try #require(events.first { $0.externalID.contains("z2-90") && $0.externalID.contains("-s1-") })
+        #expect(cal.component(.weekday, from: e.date) == 1) // domingo
+    }
+
+    @Test func onlyMaximalTestsApplyThemselves() {
+        #expect(FTPUpdate.testIsMaximal(maxHeartRate: 184, athleteMaxHeartRate: 185))
+        #expect(!FTPUpdate.testIsMaximal(maxHeartRate: 150, athleteMaxHeartRate: 185))
+        #expect(!FTPUpdate.testIsMaximal(maxHeartRate: nil, athleteMaxHeartRate: 185))
+    }
+
+    @Test func eftpOnlyRaises() {
+        #expect(FTPUpdate.raise(current: 185, estimated: 181) == nil)
+        #expect(FTPUpdate.raise(current: 185, estimated: 190) == 190)
+        #expect(FTPUpdate.raise(current: 185, estimated: nil) == nil)
+    }
+}

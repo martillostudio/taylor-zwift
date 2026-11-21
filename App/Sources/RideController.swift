@@ -11,6 +11,8 @@ struct RideSummary: Equatable {
     var best20Min: Double?
     var ftpTest: FTPTest?
     var suggestedFTP: Int?
+    /// FTP que tenías antes, si el test lo cambió solo.
+    var previousFTP: Int?
     /// ml/kg/min, estimado con la mejor potencia de 5 minutos.
     var vo2max: Double?
 }
@@ -98,7 +100,32 @@ final class RideController {
             UserDefaults.standard.set(planStart.timeIntervalSince1970, forKey: Self.planStartKey)
         }
     }
-    let plan = TrainingPlan.winter
+    /// El plan, con las sesiones que hayas cambiado de día.
+    var plan: TrainingPlan { TrainingPlan.winter.moving(planMoves) }
+
+    /// Sesiones cambiadas de día: clave original («s1-Sáb-z2-90») → día nuevo («Dom»).
+    private(set) var planMoves: [String: String] =
+        UserDefaults.standard.dictionary(forKey: "sesionesMovidas") as? [String: String] ?? [:]
+
+    /// Cambia una sesión de día (dentro de su semana) y, si el plan ya está en intervals.icu,
+    /// lo actualiza allí.
+    func moveSession(_ session: PlanSession, week: PlanWeek, to day: String) {
+        guard let original = TrainingPlan.winter.weeks.first(where: { $0.number == week.number })?.sessions
+            .first(where: { $0.workoutID == session.workoutID && $0.note == session.note }) else { return }
+        let key = original.key(week: week.number)
+        if day == original.day { planMoves[key] = nil } else { planMoves[key] = day }
+        UserDefaults.standard.set(planMoves, forKey: "sesionesMovidas")
+        hub.appendLog("📅 \(session.workout?.name ?? "Salida") de la semana \(week.number) pasa al \(day)")
+        if planPushedStart != nil { Task { await pushPlanToIntervals() } }
+    }
+
+    /// Lo que se mandó a intervals.icu la última vez (sesiones y fechas), para saber si hay que
+    /// volver a mandarlo.
+    private var planSignature: String {
+        plan.calendarEvents(start: planStart)
+            .map { "\($0.externalID)@\(Int($0.date.timeIntervalSince1970))" }
+            .joined(separator: ",")
+    }
 
     /// Semana del plan que toca hoy (`nil` si aún no ha empezado o ya terminó).
     var currentPlanWeek: PlanWeek? {
@@ -124,7 +151,18 @@ final class RideController {
         let now = Date()
         let from = min(max(planStart, now.addingTimeInterval(-112 * 86_400)), now.addingTimeInterval(-42 * 86_400))
         let planEnd = plan.startOfWeek(plan.weeks.count + 1, start: planStart)
+        // Si el plan cambió desde que se mandó (sesiones movidas, otra fecha), se actualiza solo.
+        if planPushedStart != nil, UserDefaults.standard.string(forKey: "planEnIntervalsFirma") != planSignature {
+            await pushPlanToIntervals()
+            return
+        }
         await intervals.sync(since: from, fitnessUntil: planEnd, force: force)
+        // El eFTP de intervals.icu solo sube el FTP (bajarlo, con un test a tope).
+        if let new = FTPUpdate.raise(current: ftp, estimated: intervals.estimatedFTP) {
+            hub.appendLog("💪 FTP actualizado con el eFTP de intervals.icu: \(ftp) → \(new) W")
+            show("💪 FTP actualizado a \(new) W (has mejorado)", seconds: 5)
+            ftp = new
+        }
     }
 
     /// Cuando cambias el FTP (a mano o tras un test), se copia a intervals.icu a los 3 s
@@ -146,6 +184,7 @@ final class RideController {
             let n = try await intervals.pushPlan(plan.calendarEvents(start: planStart), planID: plan.id)
             hub.appendLog("🔵 Plan en intervals.icu: \(n) sesiones")
             UserDefaults.standard.set(planStart.timeIntervalSince1970, forKey: "planEnIntervals")
+            UserDefaults.standard.set(planSignature, forKey: "planEnIntervalsFirma")
             planPushedStart = planStart
             await syncIntervals(force: true) // la proyección de la forma cambia con el plan
         } catch {
@@ -481,6 +520,14 @@ final class RideController {
             vo2max: best5.flatMap { Physiology.vo2maxEstimate(best5MinWatts: $0, weightKg: weightKg) }
         )
         summary = s
+        // El test a tope (pulso ≥ 92 % de tu FC máx.) cambia el FTP solo; si no, se pregunta.
+        if let new = s.suggestedFTP, new != ftp,
+           FTPUpdate.testIsMaximal(maxHeartRate: session.maxHeartRateBpm, athleteMaxHeartRate: maxHeartRate) {
+            hub.appendLog("💪 FTP actualizado con el test: \(ftp) → \(new) W")
+            show("💪 FTP actualizado a \(new) W", seconds: 5)
+            summary?.previousFTP = ftp
+            ftp = new
+        }
         saveRecording()
         func w(_ v: Double?) -> String { v.map { "\(Int($0.rounded())) W" } ?? "—" }
         var line = "🏁 \(s.title): mejor 1' \(w(s.best1Min)) · 5' \(w(s.best5Min)) · 20' \(w(s.best20Min))"
