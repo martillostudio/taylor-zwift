@@ -35,6 +35,7 @@ Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8
 - **Tu perfil:** FTP, peso y zonas. El FTP se actualiza solo: con un test hecho a tope (pulso ≥ 92 % de la FC máx.) o cuando el eFTP de intervals.icu sube 5 W o más.
 - **Plan «Invierno en el rodillo»** (16 semanas, 3 sesiones/semana): «Hoy toca» con botón para ir al entreno; las sesiones se marcan solas al hacerlas (también las salidas en exterior, vía intervals.icu). Clic derecho para marcar a mano o **cambiar de día** dentro de la semana.
 - **Tu progreso y Tu forma:** qué conviene hoy, fases del plan, carga semanal hecha vs prevista, eFTP y mejores marcas, y forma/cansancio/frescura con su previsión.
+- **Al terminar un entreno:** cómo fue cada intervalo frente a lo previsto, la cadencia en los de fuerza, si el pulso derivó en los rodajes de Z2 y si pasaste el tope de pulso, y un consejo para la próxima vez.
 - **Biblioteca:** Z2, sweet spot, umbral, VO2max 4×4, 30/15, fuerza a baja cadencia, tests de rampa y 20'… o importa un `.zwo`. «Cargar este entreno» → «Empezar».
 
 ## Historial, intervals.icu, Garmin Connect y Strava

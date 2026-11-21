@@ -1012,6 +1012,7 @@ struct WorkoutDetailView: View {
                     Text("No hay datos suficientes para estimar el FTP (la rampa necesita al menos 1 minuto; el test de 20', los 20 minutos).")
                         .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 }
+                if let r = s.review { ReviewView(review: r) }
                 if let v = s.vo2max {
                     Text("VO2max estimado ≈ \(Int(v.rounded())) ml/kg/min con tu mejor 5' y \(ride.weightKg.formatted()) kg. Solo vale si esos 5' fueron a tope.")
                         .font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
@@ -1034,4 +1035,93 @@ private struct Info: View {
                 .monospacedDigit()
         }
     }
+}
+
+/// Análisis del entreno: cómo fueron los intervalos, notas y qué hacer la próxima vez.
+struct ReviewView: View {
+    let review: WorkoutReview
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.m) {
+            Divider().overlay(Theme.separator)
+            if !review.intervals.isEmpty {
+                Text("Intervalos").font(Theme.font(.titleSmall))
+                if review.intervals.count <= 8 {
+                    VStack(alignment: .leading, spacing: Space.xs) {
+                        ForEach(review.intervals) { IntervalRow(interval: $0) }
+                    }
+                } else {
+                    // Muchos intervalos cortos (30/15, over-unders…): una barra por intervalo.
+                    HStack(alignment: .bottom, spacing: 2) {
+                        ForEach(review.intervals) { i in
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(color(i.compliance))
+                                .frame(height: 36 * min(max(i.compliance, 0.3), 1.1) / 1.1)
+                                .help("Nº \(i.number): \(i.averageWatts)/\(i.targetWatts) W")
+                        }
+                    }
+                    .frame(height: 36, alignment: .bottom)
+                }
+            }
+            ForEach(review.notes) { n in
+                Label(n.text, systemImage: icon(n.tone))
+                    .font(Theme.font(.bodyMedium))
+                    .foregroundStyle(n.tone == .warning ? Color.orange : n.tone == .good ? Theme.positive : Color.secondary)
+            }
+            Label {
+                Text("**Próxima vez:** \(review.nextTime)")
+            } icon: {
+                Image(systemName: "arrow.forward.circle.fill").foregroundStyle(Theme.accent)
+            }
+            .font(Theme.font(.bodyLarge))
+            .padding(Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.accentFill, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
+        }
+    }
+
+    private func icon(_ tone: WorkoutReview.Tone) -> String {
+        switch tone {
+        case .good: "checkmark.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .info: "info.circle.fill"
+        }
+    }
+}
+
+private struct IntervalRow: View {
+    let interval: WorkoutReview.Interval
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            Text("\(interval.number)").font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
+                .frame(width: 18, alignment: .trailing)
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.neutralFill)
+                    Capsule().fill(color(interval.compliance))
+                        .frame(width: g.size.width * min(interval.compliance, 1))
+                }
+            }
+            .frame(height: 8)
+            Text("\(interval.averageWatts)/\(interval.targetWatts) W")
+                .font(Theme.font(.bodyMedium)).monospacedDigit()
+                .frame(width: 92, alignment: .trailing)
+            if let target = interval.targetCadence {
+                Text("\(interval.averageCadence ?? 0)/\(target) rpm")
+                    .font(Theme.font(.bodyMedium)).monospacedDigit()
+                    .foregroundStyle(abs((interval.averageCadence ?? 0) - target) > 5 ? Color.orange : Color.secondary)
+                    .frame(width: 84, alignment: .trailing)
+            }
+            if let hr = interval.averageHeartRate {
+                Text("\(hr) ppm").font(Theme.font(.bodyMedium)).monospacedDigit().foregroundStyle(Color.secondary)
+                    .frame(width: 64, alignment: .trailing)
+            }
+        }
+    }
+}
+
+/// Verde si clavado (≥ 97 %), naranja si casi (≥ 90 %), rojo si por debajo.
+private func color(_ compliance: Double) -> Color {
+    compliance >= 0.97 ? Theme.positive : compliance >= 0.90 ? Color.orange : Color.red
 }

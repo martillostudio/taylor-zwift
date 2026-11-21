@@ -15,6 +15,8 @@ struct RideSummary: Equatable {
     var previousFTP: Int?
     /// ml/kg/min, estimado con la mejor potencia de 5 minutos.
     var vo2max: Double?
+    /// Análisis del entreno estructurado (intervalos, desacople, tope de pulso, próxima vez).
+    var review: WorkoutReview?
 }
 
 /// El entrenamiento en marcha: junta la ruta, las marchas virtuales, el modo ERG,
@@ -279,6 +281,7 @@ final class RideController {
         let t: Double
         let power: Int
         let heartRate: Int?
+        var cadence: Int? = nil
     }
     private(set) var trace: [TracePoint] = []
     /// Desnivel positivo virtual (ruta, libre o pendiente equivalente en ERG).
@@ -540,7 +543,12 @@ final class RideController {
             best20Min: powerHistory.bestAverage(seconds: 1_200),
             ftpTest: mode == .workout ? workout?.ftpTest : nil,
             suggestedFTP: mode == .workout ? workout?.ftpTest?.estimate(from: powerHistory) : nil,
-            vo2max: best5.flatMap { Physiology.vo2maxEstimate(best5MinWatts: $0, weightKg: weightKg) }
+            vo2max: best5.flatMap { Physiology.vo2maxEstimate(best5MinWatts: $0, weightKg: weightKg) },
+            review: mode == .workout ? workout.map { w in
+                WorkoutReview(workout: w, ftp: ftp,
+                              samples: trace.map { ReviewSample(t: $0.t, power: $0.power, heartRate: $0.heartRate, cadence: $0.cadence) },
+                              heartRateCap: heartRateCap)
+            } : nil
         )
         summary = s
         // El test a tope (pulso ≥ 92 % de tu FC máx.) cambia el FTP solo; si no, se pregunta.
@@ -557,6 +565,14 @@ final class RideController {
         if let ftp = s.suggestedFTP { line += " · FTP estimado \(ftp) W" }
         if let v = s.vo2max { line += " · VO2max ≈ \(Int(v.rounded()))" }
         hub.appendLog(line)
+        if let r = s.review {
+            for i in r.intervals {
+                let cad = i.targetCadence.map { " · \(i.averageCadence ?? 0)/\($0) rpm" } ?? ""
+                hub.appendLog("   Intervalo \(i.number): \(i.averageWatts)/\(i.targetWatts) W\(cad)")
+            }
+            for n in r.notes { hub.appendLog("   \(n.tone == .good ? "✅" : n.tone == .warning ? "⚠️" : "ℹ️") \(n.text)") }
+            hub.appendLog("   ➡️ Próxima vez: \(r.nextTime)")
+        }
     }
 
     var freeGradeText: String {
@@ -910,7 +926,8 @@ final class RideController {
     /// Lo que se acumula una vez por segundo: traza del perfil, zonas de pulso, cadencia media.
     private func accumulateStats(_ data: IndoorBikeData) {
         if mode == .workout {
-            trace.append(TracePoint(t: workoutSeconds, power: data.powerWatts ?? 0, heartRate: hub.heartRateBpm))
+            trace.append(TracePoint(t: workoutSeconds, power: data.powerWatts ?? 0, heartRate: hub.heartRateBpm,
+                                    cadence: data.cadenceRpm.map { Int($0.rounded()) }))
         }
         if let bpm = hub.heartRateBpm, bpm > 0 {
             heartRateZoneSeconds[HeartRateZone(bpm: bpm, max: maxHeartRate), default: 0] += 1
