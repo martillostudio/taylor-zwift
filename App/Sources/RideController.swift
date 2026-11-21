@@ -279,7 +279,12 @@ final class RideController {
         let savedStart = defaults.double(forKey: Self.planStartKey)
         planStart = savedStart > 0 ? Date(timeIntervalSince1970: savedStart) : TrainingPlan.monday(onOrAfter: Date())
         importedWorkouts = Self.loadImported()
-        importedRoutes = Self.loadRoutes()
+        // Las rutas GPX se leen en segundo plano: con muchas, tardaría en abrir la ventana.
+        Task { [weak self] in
+            let routes = await Task.detached(priority: .userInitiated) { Self.loadRoutes() }.value
+            self?.importedRoutes = (self?.importedRoutes ?? []).filter { r in !routes.contains { $0.id == r.id } } + routes
+            self?.importedRoutes.sort { $0.name < $1.name }
+        }
         hub.onButtonPress = { [weak self] pressed in self?.handleButtons(pressed) }
         ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -643,7 +648,7 @@ final class RideController {
 
     var allRoutes: [Route] { Route.builtIn + importedRoutes }
 
-    private static var routesFolder: URL {
+    nonisolated private static var routesFolder: URL {
         let base = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                                  appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
@@ -672,7 +677,7 @@ final class RideController {
         if route.id == r.id { route = .rolling }
     }
 
-    private static func loadRoutes() -> [Route] {
+    nonisolated private static func loadRoutes() -> [Route] {
         let files = (try? FileManager.default.contentsOfDirectory(at: routesFolder, includingPropertiesForKeys: nil)) ?? []
         return files.filter { $0.pathExtension.lowercased() == "gpx" }
             .compactMap { url in
