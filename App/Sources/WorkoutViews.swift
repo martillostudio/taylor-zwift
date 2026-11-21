@@ -1176,25 +1176,29 @@ struct PlanOverview: View {
         let plan = ride.plan
         let current = ride.currentPlanWeek?.number
         let maxLoad = plan.weeks.map { plan.plannedLoad(of: $0) }.max() ?? 1
-        Grid(alignment: .leading, horizontalSpacing: 4, verticalSpacing: 4) {
-            GridRow {
-                Text("")
+        // Filas normales (no `Grid`): así el recuadro de la semana actual y el fondo de las
+        // descargas cubren la fila entera y no cada celda por separado.
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Color.clear.frame(width: Self.labelWidth, height: 1)
                 ForEach(Self.days, id: \.self) { d in
                     Text(d.uppercased()).font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
                         .frame(maxWidth: .infinity)
                 }
                 Text("CARGA").font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
+                    .frame(width: Self.loadWidth, alignment: .leading)
             }
+            .padding(.horizontal, 4)
             ForEach(plan.weeks) { week in
                 let statuses = ride.planStatus(week)
                 let isCurrent = week.number == current
                 let isPast = current.map { week.number < $0 } ?? false
-                GridRow {
+                HStack(spacing: 4) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("S\(week.number)").font(Theme.font(.titleSmall, numeric: true))
                         Text(week.block).font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary).lineLimit(1)
                     }
-                    .frame(width: 92, alignment: .leading)
+                    .frame(width: Self.labelWidth, alignment: .leading)
                     ForEach(0..<7, id: \.self) { d in
                         if let s = week.sessions.first(where: { $0.weekdayOffset == d }) {
                             OverviewCell(session: s, status: statuses[s.id] ?? .upcoming)
@@ -1205,11 +1209,12 @@ struct PlanOverview: View {
                     LoadCell(load: plan.plannedLoad(of: week), maxLoad: maxLoad,
                              done: week.sessions.filter { statuses[$0.id]?.isDone == true }.count,
                              total: week.sessions.count)
+                        .frame(width: Self.loadWidth)
                 }
-                .padding(.vertical, 2)
+                .padding(4)
                 .background(
                     RoundedRectangle(cornerRadius: Theme.Radius.small)
-                        .fill(week.isRecovery ? Color.green.opacity(0.07) : Color.clear)
+                        .fill(week.isRecovery ? Color.green.opacity(0.08) : Color.clear)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.small)
@@ -1219,6 +1224,9 @@ struct PlanOverview: View {
             }
         }
     }
+
+    private static let labelWidth: CGFloat = 92
+    private static let loadWidth: CGFloat = 84
 }
 
 private struct OverviewCell: View {
@@ -1310,7 +1318,6 @@ private struct LoadCell: View {
                     .foregroundStyle(done == total ? Theme.positive : Color.secondary)
             }
         }
-        .frame(width: 84)
         .help("Carga prevista ≈ \(Int(load.rounded())) (salidas en exterior estimadas) · \(done) de \(total) sesiones hechas")
     }
 }
