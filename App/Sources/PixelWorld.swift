@@ -79,11 +79,91 @@ final class PixelWorldScene: SKScene {
     private var groundColors = (top: RGB(0.45, 0.65, 0.3), body: RGB(0.3, 0.5, 0.22), path: RGB(0.75, 0.66, 0.5))
     /// Fila (desde abajo) donde empieza el suelo de la capa delantera del pack.
     private var packGroundFromBottom: CGFloat = 40
-    /// Píxeles de la capa delantera: el suelo se pinta con ella, columna a columna, subiendo y
+    /// Tamaño de la capa delantera: el suelo (shader) la pinta columna a columna, subiendo y
     /// bajando con el relieve de la ruta (así conserva la hierba, flores y árboles del pack).
-    private var front: (pixels: [UInt32], w: Int, h: Int)?
+    private var front: (w: Int, h: Int)?
     private var riderCache: [String: SKTexture] = [:]
+
+    // MARK: Suelo en la tarjeta gráfica
+
+    /// El suelo se pinta en la GPU: cada fotograma solo se manda la altura de cada columna
+    /// (`u_offsets`, una fila de píxeles); el shader coloca la capa delantera del pack a esa altura,
+    /// rellena por debajo con la hierba y sus motas, pinta el camino (solo sobre hierba, no sobre
+    /// arbustos ni rocas del pack) y suma la luz del faro de noche.
+    private static let groundShaderSource = """
+    void main() {
+        vec2 p = floor(v_tex_coord * u_size);
+        vec4 o = texture2D(u_offsets, vec2((p.x + 0.5) / u_size.x, 0.5));
+        float off = floor(o.r * 255.0 + 0.5) + floor(o.g * 255.0 + 0.5) * 256.0 - 1024.0;
+        float gy = u_base + off;
+        float src = p.y - off;
+        float sx = mod(p.x + u_shift, u_front_size.x);
+        vec4 c = vec4(0.0);
+        if (src >= 0.0 && src < u_front_size.y) {
+            c = texture2D(u_front, vec2((sx + 0.5) / u_front_size.x, (src + 0.5) / u_front_size.y));
+        } else if (src < 0.0) {
+            float h = fract(sin((p.x + u_shift) * 3.1 + p.y * 7.7) * 43758.5453);
+            c = h > 0.93 ? u_speck : u_body;
+        }
+        if (p.y < gy && p.y >= gy - 2.0 && c.a > 0.9 && distance(c.rgb, u_grass.rgb) < 0.32) {
+            float h = fract(sin((p.x + u_shift) * 1.7) * 43758.5453);
+            c = (p.y >= gy - 1.0 && h > 0.8) ? u_path_dark : u_path;
+        }
+        c.rgb = c.rgb * mix(vec3(1.0), u_tint.rgb, u_tint.a);
+        vec2 d = (p - u_light.xy) / vec2(u_light.z, u_light.z * 0.45);
+        float glow = max(0.0, 1.0 - dot(d, d)) * u_light.w;
+        c.rgb += vec3(1.0, 0.93, 0.7) * glow * c.a;
+        gl_FragColor = c;
+    }
+    """
+    private lazy var groundShader: SKShader = {
+        let shader = SKShader(source: Self.groundShaderSource)
+        shader.uniforms = [
+            SKUniform(name: "u_front", texture: frontTexture),
+            SKUniform(name: "u_offsets", texture: SKTexture()),
+            SKUniform(name: "u_size", vectorFloat2: .zero),
+            SKUniform(name: "u_front_size", vectorFloat2: .zero),
+            SKUniform(name: "u_shift", float: 0),
+            SKUniform(name: "u_base", float: 0),
+            SKUniform(name: "u_body", vectorFloat4: .zero),
+            SKUniform(name: "u_speck", vectorFloat4: .zero),
+            SKUniform(name: "u_grass", vectorFloat4: .zero),
+            SKUniform(name: "u_path", vectorFloat4: .zero),
+            SKUniform(name: "u_path_dark", vectorFloat4: .zero),
+            SKUniform(name: "u_tint", vectorFloat4: .zero),
+            SKUniform(name: "u_light", vectorFloat4: .zero),
+        ]
+        return shader
+    }()
+    private var frontTexture = SKTexture()
+
+    private func setUniform(_ name: String, _ v: SIMD4<Float>) { groundShader.uniformNamed(name)?.vectorFloat4Value = v }
+    private func setUniform(_ name: String, _ v: SIMD2<Float>) { groundShader.uniformNamed(name)?.vectorFloat2Value = v }
+    private func setUniform(_ name: String, _ v: Float) { groundShader.uniformNamed(name)?.floatValue = v }
+    private static func vec(_ c: RGB, _ a: Float = 1) -> SIMD4<Float> { SIMD4(Float(c.r), Float(c.g), Float(c.b), a) }
+    /// Pedalada dibujada a mano (App/Escenarios/ciclista/pedalada.png: fotogramas cuadrados en
+    /// fila, el primero con la biela de este lado hacia delante; el suelo bajo el pedalier en
+    /// (37, 64) de cada fotograma de 76×72, como la plantilla de docs/plantilla-ciclista.png).
+    private lazy var handFrames: [SKTexture]? = {
+        guard let url = PixelZone.folder?.appendingPathComponent("ciclista/pedalada.png"),
+              let image = Self.cgImage(url) else { return nil }
+        let frameW = image.height * 76 / 72
+        let n = max(image.width / max(frameW, 1), 1)
+        let sheet = SKTexture(cgImage: image)
+        sheet.filteringMode = .nearest
+        return (0..<n).map { k in
+            let t = SKTexture(rect: CGRect(x: CGFloat(k) / CGFloat(n), y: 0, width: 1 / CGFloat(n), height: 1), in: sheet)
+            t.filteringMode = .nearest
+            return t
+        }
+    }()
     private var built = false
+    /// Todo va dentro de un nodo de efectos: de noche, un resplandor suave (luna, estrellas, faro).
+    private let post = SKEffectNode()
+    private let bloom = CIFilter(name: "CIBloom")
+    /// Rocas, vallas y postes de km a lo largo del camino (se reutilizan los nodos).
+    private var propPool: [SKSpriteNode] = []
+    private lazy var propTextures = PixelProps(snow: zone.snow)
 
     /// Metros a lo ancho y exageración del relieve.
     private let metersWide = 380.0
@@ -124,6 +204,9 @@ final class PixelWorldScene: SKScene {
 
     private func build() {
         built = true
+        addChild(post)
+        post.shouldRasterize = false
+        post.filter = bloom
         let images = zone.layerURLs.compactMap(Self.cgImage)
         // El «suelo» es la capa más cercana con una fila entera de terreno; las que van delante
         // (un árbol suelto, por ejemplo) se pintan por encima del suelo.
@@ -134,7 +217,7 @@ final class PixelWorldScene: SKScene {
             texture.filteringMode = .nearest
             let node = SKNode()
             node.zPosition = i > groundIndex ? 52 + CGFloat(i) : CGFloat(i)
-            addChild(node)
+            post.addChild(node)
             var sprites: [SKSpriteNode] = []
             for _ in 0..<4 {
                 let s = SKSpriteNode(texture: texture)
@@ -145,19 +228,18 @@ final class PixelWorldScene: SKScene {
             layers.append((node, sprites, zone.parallax[min(i, zone.parallax.count - 1)], CGFloat(image.width)))
             if i == groundIndex {
                 analyzeFrontLayer(image)
-                if let px = Self.pixels(image) {
-                    front = (px, image.width, image.height)
-                    node.isHidden = true // la pinta el suelo, con el relieve
-                }
+                front = (image.width, image.height)
+                frontTexture = texture
+                node.isHidden = true // la pinta el suelo (shader), con el relieve
             }
         }
         size = nativeSize
 
         nightSky.anchorPoint = .zero
         nightSky.zPosition = 0.5
-        addChild(nightSky)
+        post.addChild(nightSky)
         stars.zPosition = 0.6
-        addChild(stars)
+        post.addChild(stars)
         for i in 0..<60 {
             let star = SKSpriteNode(color: .white, size: CGSize(width: 1, height: 1))
             star.position = CGPoint(x: hash01(Double(i)) * 2000, y: 0)
@@ -165,18 +247,18 @@ final class PixelWorldScene: SKScene {
             stars.addChild(star)
         }
         moon.zPosition = 0.7
-        addChild(moon)
+        post.addChild(moon)
 
         terrain.anchorPoint = .zero
         terrain.zPosition = 50
-        addChild(terrain)
+        post.addChild(terrain)
         rider.zPosition = 60
-        addChild(rider)
+        post.addChild(rider)
         beam.zPosition = 59
         beam.blendMode = .add
         beam.texture = Self.beamTexture()
         beam.anchorPoint = CGPoint(x: 0, y: 0.5)
-        addChild(beam)
+        post.addChild(beam)
 
         if zone.snow || zone.fireflies {
             let e = SKEmitterNode()
@@ -207,7 +289,7 @@ final class PixelWorldScene: SKScene {
                 e.particleColorBlendFactor = 1
                 e.particleBlendMode = .add
             }
-            addChild(e)
+            post.addChild(e)
             particles = e
         }
         layoutLayers()
@@ -292,7 +374,31 @@ final class PixelWorldScene: SKScene {
         }
     }
 
+    /// Para desarrollar: `--args -exportarCiclista YES` guarda la pedalada actual (12 fotogramas de
+    /// 76×72 en fila, en llano) como plantilla-ciclista.png en la carpeta temporal de la app.
+    private var exported = false
+    private func exportRiderIfAsked() {
+        guard !exported, UserDefaults.standard.bool(forKey: "exportarCiclista") else { return }
+        exported = true
+        let n = 12
+        let w = 76, h = 72
+        guard let ctx = CGContext(data: nil, width: w * n, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return }
+        for k in 0..<n {
+            let (t, _) = riderTexture(crank: Double(k) / Double(n) * 2 * .pi, distance: 0, slope: 0)
+            ctx.draw(t.cgImage(), in: CGRect(x: k * w, y: 0, width: w, height: h))
+        }
+        guard let image = ctx.makeImage() else { return }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("plantilla-ciclista.png")
+        if let dest = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) {
+            CGImageDestinationAddImage(dest, image, nil)
+            CGImageDestinationFinalize(dest)
+        }
+    }
+
     override func update(_ currentTime: TimeInterval) {
+        exportRiderIfAsked()
         captureIfAsked(currentTime)
         guard let feed = MainActor.assumeIsolated({ self.feed?() }) else { return }
         if let view { fitToView(view.bounds.size) }
@@ -335,15 +441,22 @@ final class PixelWorldScene: SKScene {
         moon.alpha = zone.ownLight ? 0 : (p.isMoon ? CGFloat(night) : 0.9)
 
         // Primer plano: el relieve de tu ruta con la hierba del pack.
-        terrain.texture = drawGround(groundY: groundY, world: world, pxPerM: pxPerM, distance: feed.distance)
-        terrain.size = size
-        terrain.position = .zero
-        terrain.color = tint.skColor
-        terrain.colorBlendFactor = factor
+        updateGround(groundY: groundY, world: world, pxPerM: pxPerM, distance: feed.distance, tint: tint,
+                     factor: Float(factor), night: Float(night), riderX: riderX, riderY: groundY(feed.distance))
 
         // Ciclista.
         let slope = atan2(Double(groundY(feed.distance + 3) - groundY(feed.distance - 3)), 6 * Double(pxPerM))
-        let (texture, anchor) = riderTexture(crank: feed.crank, distance: feed.distance, slope: slope)
+        let texture: SKTexture, anchor: CGPoint
+        if let frames = handFrames {
+            // Fotogramas a mano: el que toca según la biela, girado con la pendiente.
+            let k = ((Int((feed.crank / (2 * .pi) * Double(frames.count)).rounded()) % frames.count) + frames.count) % frames.count
+            texture = frames[k]
+            anchor = CGPoint(x: 37.0 / 76, y: 1 - 64.0 / 72)
+            rider.zRotation = CGFloat(slope)
+        } else {
+            (texture, anchor) = riderTexture(crank: feed.crank, distance: feed.distance, slope: slope)
+            rider.zRotation = 0
+        }
         rider.color = tint.skColor
         rider.colorBlendFactor = factor * 0.4
         rider.texture = texture
@@ -357,53 +470,95 @@ final class PixelWorldScene: SKScene {
         beam.position = CGPoint(x: riderX + 17 * CGFloat(cos(slope)), y: rider.position.y + 22)
 
         particles?.particleBirthRate = zone.snow ? 40 : (night > 0.5 ? 3 : 0)
+
+        // Resplandor de noche (Core Image en la GPU).
+        post.shouldEnableEffects = night > 0.3
+        bloom?.setValue(2.5, forKey: kCIInputRadiusKey)
+        bloom?.setValue(0.45 * night, forKey: kCIInputIntensityKey)
+
+        placeProps(distance: feed.distance, pxPerM: pxPerM, riderX: riderX, groundY: groundY, tint: tint, factor: factor)
     }
 
-    /// El suelo: la capa delantera del pack desplazada, columna a columna, a la altura de la ruta;
-    /// debajo, el color de su hierba con motas; arriba, un camino de dos píxeles.
-    private func drawGround(groundY: (Double) -> CGFloat, world: (CGFloat) -> Double, pxPerM: CGFloat, distance: Double) -> SKTexture {
-        let w = Int(size.width), h = Int(size.height)
-        var buffer = [UInt32](repeating: 0, count: w * h)
-        func pack(_ c: RGB) -> UInt32 {
-            0xFF00_0000 | UInt32(min(max(c.b, 0), 1) * 255) << 16 | UInt32(min(max(c.g, 0), 1) * 255) << 8 | UInt32(min(max(c.r, 0), 1) * 255)
-        }
-        let body = pack(groundColors.body), speck = pack(groundColors.body.mix(RGB(0, 0, 0), 0.18))
-        let path = pack(groundColors.path), pathDark = pack(groundColors.path.mix(RGB(0, 0, 0), 0.22))
+    /// Manda al shader del suelo la altura de cada columna y los colores de este fotograma.
+    private func updateGround(groundY: (Double) -> CGFloat, world: (CGFloat) -> Double, pxPerM: CGFloat,
+                              distance: Double, tint: RGB, factor: Float, night: Float, riderX: CGFloat, riderY: CGFloat) {
+        let w = Int(size.width)
+        guard w > 0, let f = front else { return }
         let base = Int(packGroundFromBottom)
-        let frontShift = Int((CGFloat(distance) * pxPerM).rounded())
-        buffer.withUnsafeMutableBufferPointer { out in
-            for x in 0..<w {
-                let d = world(CGFloat(x) + 0.5)
-                let gy = Int(groundY(d).rounded())          // fila del suelo, desde abajo
-                let off = gy - base                          // cuánto sube o baja la columna del pack
-                if let f = front {
-                    let sx = ((x + frontShift) % f.w + f.w) % f.w
-                    f.pixels.withUnsafeBufferPointer { src in
-                        for r in 0..<f.h {
-                            let v = src[r * f.w + sx]
-                            guard v >> 24 != 0 else { continue }
-                            let y = (f.h - 1 - r) + off      // desde abajo
-                            if y >= 0, y < h { out[(h - 1 - y) * w + x] = v }
-                        }
-                    }
-                }
-                // Debajo de la capa (si la columna ha subido): hierba con motas.
-                if off > 0 {
-                    let col = Double(x + frontShift)
-                    for y in 0..<min(off, h) {
-                        out[(h - 1 - y) * w + x] = hash01(col * 3.1 + Double(y) * 7.7) > 0.93 ? speck : body
-                    }
-                }
-                // Camino.
-                for k in 1...2 {
-                    let y = gy - k
-                    if y >= 0, y < h { out[(h - 1 - y) * w + x] = k == 1 && hash01(Double(x + frontShift) * 1.7) > 0.8 ? pathDark : path }
-                }
-            }
+        var bytes = [UInt8](repeating: 0, count: w * 4)
+        for x in 0..<w {
+            let gy = Int(groundY(world(CGFloat(x) + 0.5)).rounded())
+            let v = min(max(gy - base + 1024, 0), 65_535)
+            bytes[x * 4] = UInt8(v & 0xFF)
+            bytes[x * 4 + 1] = UInt8(v >> 8)
+            bytes[x * 4 + 3] = 255
         }
-        let texture = SKTexture(cgImage: Self.image(buffer, w, h))
-        texture.filteringMode = .nearest
-        return texture
+        let offsets = SKTexture(data: Data(bytes), size: CGSize(width: w, height: 1))
+        offsets.filteringMode = .nearest
+        groundShader.uniformNamed("u_offsets")?.textureValue = offsets
+        if terrain.shader == nil {
+            terrain.texture = SKTexture(cgImage: Self.image([0xFFFF_FFFF], 1, 1))
+            terrain.shader = groundShader
+        }
+        terrain.size = size
+        terrain.position = .zero
+        setUniform("u_size", SIMD2(Float(size.width), Float(size.height)))
+        setUniform("u_front_size", SIMD2(Float(f.w), Float(f.h)))
+        setUniform("u_shift", Float((CGFloat(distance) * pxPerM).rounded()))
+        setUniform("u_base", Float(base))
+        setUniform("u_body", Self.vec(groundColors.body))
+        setUniform("u_speck", Self.vec(groundColors.body.mix(RGB(0, 0, 0), 0.18)))
+        setUniform("u_grass", Self.vec(groundColors.top))
+        setUniform("u_path", Self.vec(groundColors.path))
+        setUniform("u_path_dark", Self.vec(groundColors.path.mix(RGB(0, 0, 0), 0.22)))
+        setUniform("u_tint", Self.vec(tint, factor))
+        // Faro: un óvalo de luz en el suelo, por delante de la rueda.
+        setUniform("u_light", SIMD4(Float(riderX + 46), Float(riderY), 40, night * 0.22))
+    }
+
+    // MARK: Elementos del camino
+
+    /// Postes de km en cada kilómetro, vallas a tramos y rocas sueltas, siempre en los mismos sitios
+    /// de la ruta. Van delante del suelo y detrás del ciclista.
+    private func placeProps(distance: Double, pxPerM: CGFloat, riderX: CGFloat, groundY: (Double) -> CGFloat,
+                            tint: RGB, factor: CGFloat) {
+        var items: [(SKTexture, Double)] = []
+        let left = distance - Double(riderX / pxPerM) - 20
+        let right = distance + Double((size.width - riderX) / pxPerM) + 20
+        // Km.
+        var d = max((left / 1000).rounded(.up), 1) * 1000
+        while d <= right { items.append((propTextures.kmSign(Int(d / 1000)), d)); d += 1000 }
+        // Vallas: tramos donde una onda lenta lo permite, un trozo cada «largo de valla».
+        let fenceMeters = Double(propTextures.fence.size().width / pxPerM)
+        d = (left / fenceMeters).rounded(.down) * fenceMeters
+        while d <= right {
+            if sin(d / 140 + 0.7) + 0.5 * sin(d / 47) > 0.85 { items.append((propTextures.fence, d)) }
+            d += fenceMeters
+        }
+        // Rocas.
+        d = (left / 13).rounded(.down) * 13
+        while d <= right {
+            let r = hash01(d * 0.37 + 5)
+            if r > 0.86 { items.append((r > 0.95 ? propTextures.bigRock : propTextures.rock, d + r * 6)) }
+            d += 13
+        }
+        while propPool.count < items.count {
+            let node = SKSpriteNode()
+            node.anchorPoint = CGPoint(x: 0.5, y: 0)
+            node.zPosition = 51
+            post.addChild(node)
+            propPool.append(node)
+        }
+        for (i, node) in propPool.enumerated() {
+            guard i < items.count else { node.isHidden = true; continue }
+            let (texture, at) = items[i]
+            node.isHidden = false
+            node.texture = texture
+            node.size = texture.size()
+            node.color = tint.skColor
+            node.colorBlendFactor = factor
+            node.position = CGPoint(x: (riderX + CGFloat(at - distance) * pxPerM).rounded(), y: groundY(at).rounded() - 2)
+        }
     }
 
     // MARK: Texturas
@@ -440,11 +595,18 @@ final class PixelWorldScene: SKScene {
         }
         var buffer = [UInt32](repeating: 0, count: w * h)
         let outline: UInt32 = 0xFF18_1010
+        func cell(_ i: Int, _ j: Int) -> Int { i >= 0 && i < w && j >= 0 && j < h ? cells[j * w + i] : -1 }
         for j in 0..<h {
             for i in 0..<w {
                 let k = cells[j * w + i]
                 if k >= 0 {
-                    let col = parts[k].color
+                    // Sombreado de pixel art con la luz arriba a la izquierda: borde de arriba más
+                    // claro, borde de abajo y de la derecha más oscuro (solo en las piezas grandes).
+                    var col = parts[k].color
+                    if parts[k].outlined {
+                        if cell(i, j + 1) != k || cell(i + 1, j) != k { col = col.mix(RGB(0.05, 0.05, 0.12), 0.28) }
+                        else if cell(i, j - 1) != k || cell(i - 1, j) != k { col = col.mix(RGB(1, 1, 0.95), 0.22) }
+                    }
                     buffer[j * w + i] = 0xFF00_0000 | UInt32(col.b * 255) << 16 | UInt32(col.g * 255) << 8 | UInt32(col.r * 255)
                 } else if (i > 0 && cells[j * w + i - 1] >= 0) || (i < w - 1 && cells[j * w + i + 1] >= 0)
                             || (j > 0 && cells[(j - 1) * w + i] >= 0) || (j < h - 1 && cells[(j + 1) * w + i] >= 0) {

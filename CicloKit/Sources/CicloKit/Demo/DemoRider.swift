@@ -66,8 +66,14 @@ public struct DemoRider: Sendable {
                 let wanted = simPower(gradePercent: p.gradePercent)
                 let smooth = approach(powerWatts, wanted, tau: 1.5, dt: dt)
                 (powerWatts, cadenceRpm) = solveCadence(power: smooth, params: p)
-                powerWatts += noise(3)
-                cadenceRpm += noise(1)
+                if cadenceRpm >= 115, powerWatts < wanted * 0.15 {
+                    // Bajada en la que ni a 115 rpm haces fuerza: deja de pedalear (rueda libre).
+                    powerWatts = 0
+                    cadenceRpm = 0
+                } else {
+                    powerWatts += noise(3)
+                    cadenceRpm += noise(1)
+                }
             case nil:
                 // Sin órdenes, el rodillo está en «libre»: pedalea suave.
                 powerWatts = approach(powerWatts, 0.5 * ftp, tau: 2, dt: dt) + noise(3)

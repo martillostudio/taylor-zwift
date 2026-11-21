@@ -25,6 +25,13 @@ import Testing
         #expect(b.cadenceRpm < a.cadenceRpm)
     }
 
+    @Test func coastsOnSteepDescent() {
+        var r = DemoRider(ftp: 185)
+        ride(&r, .simulation(SimulationParameters(gradePercent: -9)), seconds: 20)
+        #expect(r.cadenceRpm == 0)
+        #expect(r.powerWatts == 0)
+    }
+
     @Test func pushesMoreUphill() {
         let r = DemoRider(ftp: 200, effort: 0.6)
         #expect(r.simPower(gradePercent: 6) > r.simPower(gradePercent: 0))
