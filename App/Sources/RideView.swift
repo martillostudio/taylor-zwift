@@ -184,6 +184,9 @@ struct RideView: View {
             }
         }
         if let status = ride.climbStatus { climbCard(status) }
+        if let track = ride.route.track {
+            RouteMapCard(route: ride.route, track: track, distance: ride.session.distanceMeters)
+        }
         routeProfileCard
     }
 

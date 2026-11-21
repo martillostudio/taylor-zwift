@@ -60,4 +60,27 @@ import Testing
             try GPXParser.parse(gpx(points: 20) { Double($0) }, id: "t")
         }
     }
+
+    @Test func trackForTheMap() throws {
+        let r = try GPXParser.parse(gpx(points: 300) { _ in 100 }, id: "t")
+        let track = try #require(r.track)
+        #expect(abs(track.lengthMeters - r.lengthMeters) < 30)
+        #expect(track.points.count < 300) // reducido a un punto cada ~20 m
+        #expect(track.points.first == GeoPoint(latitude: 41.0, longitude: 2.0))
+        // A mitad de ruta, a mitad de latitud.
+        let mid = try #require(r.mapPosition(atDistance: r.lengthMeters / 2))
+        #expect(abs(mid.point.latitude - (41.0 + 299 * 0.0001 / 2)) < 0.0002)
+        // Después del final, en el último punto.
+        let end = try #require(r.mapPosition(atDistance: r.lengthMeters + 500))
+        #expect(abs(end.point.latitude - track.points.last!.latitude) < 1e-9)
+        // Lo recorrido acaba donde estás.
+        let done = track.points(upTo: 1_000)
+        #expect(done.last == track.point(atDistance: 1_000))
+        #expect(track.points(upTo: 0).count == 1)
+    }
+
+    @Test func builtInRoutesHaveNoMap() {
+        #expect(Route.rolling.track == nil)
+        #expect(Route.rolling.mapPosition(atDistance: 100) == nil)
+    }
 }

@@ -193,6 +193,7 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
 
 - [x] **Rutas GPX** (21-nov): «⋯ → Importar GPX…» en el modo Ruta. Vale cualquier GPX con altura (recorridos de Garmin Connect, Strava, Komoot, Wikiloc). La altura se remuestrea cada 25 m, se suaviza con una media de 200 m (el GPS baila) y se trocea en tramos de 50 m con la pendiente limitada a ±20 %. Se guardan en Application Support/Rutas; perfil por colores, subidas tipo ClimbPro y adelanto de 2 km como las rutas incluidas.
+- [x] **Mapa de las rutas GPX** (21-nov): tarjeta «Mapa» (MapKit) en el modo Ruta con el recorrido, lo ya hecho en gris, salida, llegada y tu posición. «Seguirme» centra el mapa en ti cada 20 m; si lo mueves, deja de seguirte. La traza (`RouteTrack`) se guarda con un punto cada 20 m como mínimo y la posición se escala por si el perfil (remuestreado) y la traza difieren un poco. Probado con una salida real de Garmin (48,6 km, 2.077 puntos, 83 ms).
 
 ## 7. Decisiones de la Fase 0 (resueltas)
 

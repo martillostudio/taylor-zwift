@@ -17,6 +17,66 @@ public struct RoutePoint: Hashable, Sendable {
     public var elevationMeters: Double
 }
 
+/// Un punto en el mapa.
+public struct GeoPoint: Hashable, Sendable {
+    public var latitude: Double
+    public var longitude: Double
+
+    public init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+}
+
+/// El recorrido de una ruta en el mapa (solo las importadas de GPX), con la distancia
+/// acumulada en cada punto para saber dónde estás.
+public struct RouteTrack: Hashable, Sendable {
+    public let points: [GeoPoint]
+    /// Metros desde la salida en cada punto (el primero, 0).
+    public let distances: [Double]
+
+    public init(points: [GeoPoint], distances: [Double]) {
+        precondition(points.count == distances.count && points.count >= 2)
+        self.points = points
+        self.distances = distances
+    }
+
+    public var lengthMeters: Double { distances[distances.count - 1] }
+
+    /// Punto a `d` metros de la salida (interpolado entre los dos más cercanos).
+    public func point(atDistance d: Double) -> GeoPoint {
+        let x = min(max(d, 0), lengthMeters)
+        var lo = 0, hi = distances.count - 1
+        while hi - lo > 1 {
+            let mid = (lo + hi) / 2
+            if distances[mid] <= x { lo = mid } else { hi = mid }
+        }
+        let span = distances[hi] - distances[lo]
+        let t = span > 0 ? (x - distances[lo]) / span : 0
+        let a = points[lo], b = points[hi]
+        return GeoPoint(latitude: a.latitude + (b.latitude - a.latitude) * t,
+                        longitude: a.longitude + (b.longitude - a.longitude) * t)
+    }
+
+    /// Los puntos hasta `d` metros (lo ya recorrido), terminando justo donde estás.
+    public func points(upTo d: Double) -> [GeoPoint] {
+        guard d > 0 else { return [points[0]] }
+        let n = distances.firstIndex { $0 > d } ?? points.count
+        return Array(points.prefix(n)) + [point(atDistance: d)]
+    }
+
+    // Comparar y «hashear» miles de puntos en cada repintado sale caro: basta con lo esencial.
+    public static func == (a: RouteTrack, b: RouteTrack) -> Bool {
+        a.points.count == b.points.count && a.lengthMeters == b.lengthMeters
+            && a.points.first == b.points.first && a.points.last == b.points.last
+    }
+
+    public func hash(into h: inout Hasher) {
+        h.combine(points.count)
+        h.combine(lengthMeters)
+    }
+}
+
 /// Ruta sencilla: una lista de tramos con pendiente. Puede ser circular (se repite).
 public struct Route: Identifiable, Hashable, Sendable {
     public let id: String
@@ -24,16 +84,27 @@ public struct Route: Identifiable, Hashable, Sendable {
     public var segments: [RouteSegment]
     /// Si es circular, al acabar se vuelve a empezar; si no, después del final es llano.
     public var isLoop: Bool
+    /// Recorrido en el mapa (rutas GPX); `nil` en las rutas inventadas.
+    public var track: RouteTrack?
 
     /// Distancia sobre la que se suaviza un cambio de pendiente (para que no dé tirones).
     public static let smoothingMeters = 50.0
 
-    public init(id: String, name: String, isLoop: Bool, segments: [RouteSegment]) {
+    public init(id: String, name: String, isLoop: Bool, segments: [RouteSegment], track: RouteTrack? = nil) {
         precondition(!segments.isEmpty)
         self.id = id
         self.name = name
         self.isLoop = isLoop
         self.segments = segments
+        self.track = track
+    }
+
+    /// Dónde estás en el mapa tras `d` metros (escalado por si el perfil y la traza difieren
+    /// un poco en longitud). `nil` si la ruta no tiene mapa.
+    public func mapPosition(atDistance d: Double) -> (point: GeoPoint, trackMeters: Double)? {
+        guard let track else { return nil }
+        let meters = positionInLap(d) / lengthMeters * track.lengthMeters
+        return (track.point(atDistance: meters), meters)
     }
 
     public var lengthMeters: Double { segments.reduce(0) { $0 + $1.lengthMeters } }

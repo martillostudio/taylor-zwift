@@ -111,7 +111,29 @@ public enum GPXParser {
             segments.append(RouteSegment(length, min(max(g, -maxGrade), maxGrade)))
             k = e
         }
-        return Route(id: id, name: name, isLoop: false, segments: segments)
+        return Route(id: id, name: name, isLoop: false, segments: segments, track: track(from: points))
+    }
+
+    /// La traza para el mapa: un punto cada 20 m como mínimo (de sobra para dibujarla).
+    static func track(from points: [TrackPoint]) -> RouteTrack? {
+        guard var last = points.first else { return nil }
+        var kept = [GeoPoint(latitude: last.latitude, longitude: last.longitude)]
+        var distances = [0.0]
+        var pending = 0.0
+        for p in points.dropFirst() {
+            pending += distance(last, p)
+            last = p
+            if pending >= 20 {
+                kept.append(GeoPoint(latitude: p.latitude, longitude: p.longitude))
+                distances.append(distances[distances.count - 1] + pending)
+                pending = 0
+            }
+        }
+        if pending > 0 {
+            kept.append(GeoPoint(latitude: last.latitude, longitude: last.longitude))
+            distances.append(distances[distances.count - 1] + pending)
+        }
+        return kept.count >= 2 ? RouteTrack(points: kept, distances: distances) : nil
     }
 
     private final class Delegate: NSObject, XMLParserDelegate {
