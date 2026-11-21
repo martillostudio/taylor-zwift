@@ -156,7 +156,7 @@ struct ScenePalette: Equatable {
         } else {
             isMoon = true
             lightX = 0.85
-            lightY = 0.38
+            lightY = 0.27
             light = RGB(0.92, 0.94, 1.0)
         }
     }
@@ -755,7 +755,10 @@ private struct GradeProfile: View {
                 slice.addLine(to: CGPoint(x: CGFloat(i + 1) * w + 0.5, y: y(i + 1)))
                 slice.addLine(to: CGPoint(x: CGFloat(i + 1) * w + 0.5, y: size.height))
                 slice.closeSubpath()
-                let grade = (heights[i + 1] - heights[i]) / (length / Double(n)) * 100
+                // Pendiente media de unos 400 m alrededor (el GPS mete ruido en tramos cortos).
+                let half = max(Int((200 / (length / Double(n))).rounded()), 1)
+                let a = max(i - half + 1, 0), b = min(i + half, n)
+                let grade = (heights[b] - heights[a]) / (Double(b - a) * length / Double(n)) * 100
                 c.fill(slice, with: .color(GradeBand(gradePercent: grade).color))
             }
             // Lo hecho, apagado.
