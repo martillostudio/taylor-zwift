@@ -19,12 +19,13 @@ struct RideView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.l) {
                 header
+                // Sin «Libre»: el entreno libre se empieza desde Entrenar y aquí cuenta como «Entreno».
                 SegmentedPicker(options: [
-                    (RideController.Mode.free, "Libre", "bicycle"),
+                    (RideController.Mode.workout, "Entreno", "list.bullet.rectangle"),
                     (.route, "Ruta", "map"),
                     (.erg, "ERG", "bolt"),
-                    (.workout, "Entreno", "list.bullet.rectangle"),
-                ], selection: $ride.mode)
+                ], selection: Binding(get: { ride.mode == .free ? .workout : ride.mode },
+                                      set: { ride.mode = $0 }))
 
                 if let summary = ride.summary, ride.mode != .workout { summaryCard(summary) }
 
