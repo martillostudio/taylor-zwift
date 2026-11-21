@@ -39,6 +39,8 @@ public struct Activity: Codable, Identifiable, Equatable, Sendable {
     public var samples: [ActivitySample]
     /// Id de la actividad en Strava, cuando se ha subido.
     public var stravaActivityID: Int64?
+    /// Id de la actividad en intervals.icu («i12345678»), cuando se ha subido.
+    public var intervalsActivityID: String?
 
     public init(id: UUID = UUID(), start: Date, name: String, kind: String, workoutID: String? = nil,
                 ftp: Int, samples: [ActivitySample] = [], stravaActivityID: Int64? = nil) {

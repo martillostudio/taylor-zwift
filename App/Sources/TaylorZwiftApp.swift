@@ -6,16 +6,19 @@ struct TaylorZwiftApp: App {
     @State private var hub: BluetoothHub
     @State private var store: ActivityStore
     @State private var strava: StravaService
+    @State private var intervals: IntervalsService
     @State private var ride: RideController
 
     init() {
         let hub = BluetoothHub()
         let store = ActivityStore()
         let strava = StravaService()
+        let intervals = IntervalsService()
+        _intervals = State(initialValue: intervals)
         _hub = State(initialValue: hub)
         _store = State(initialValue: store)
         _strava = State(initialValue: strava)
-        _ride = State(initialValue: RideController(hub: hub, store: store, strava: strava))
+        _ride = State(initialValue: RideController(hub: hub, store: store, strava: strava, intervals: intervals))
     }
 
     var body: some Scene {
@@ -24,6 +27,7 @@ struct TaylorZwiftApp: App {
                 .environment(hub)
                 .environment(store)
                 .environment(strava)
+                .environment(intervals)
                 .environment(ride)
         }
         #if os(macOS)

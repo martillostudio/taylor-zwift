@@ -35,6 +35,7 @@ final class RideController {
     let hub: BluetoothHub
     let store: ActivityStore
     let strava: StravaService
+    let intervals: IntervalsService
 
     /// Entreno que se está grabando (se guarda al terminar).
     private(set) var recording: Activity?
@@ -214,10 +215,11 @@ final class RideController {
     @ObservationIgnored private var lastSegmentID: Int?
     @ObservationIgnored private var ticker: Task<Void, Never>?
 
-    init(hub: BluetoothHub, store: ActivityStore, strava: StravaService) {
+    init(hub: BluetoothHub, store: ActivityStore, strava: StravaService, intervals: IntervalsService) {
         self.hub = hub
         self.store = store
         self.strava = strava
+        self.intervals = intervals
         let defaults = UserDefaults.standard
         let savedFTP = defaults.integer(forKey: Self.ftpKey)
         ftp = savedFTP > 0 ? savedFTP : 200
@@ -527,9 +529,27 @@ final class RideController {
             try store.save(rec)
             lastSaved = rec
             hub.appendLog("💾 Guardado: \(rec.name) · \(Int(rec.timerSeconds / 60))' · \(rec.tss.map { "TSS \($0)" } ?? "")")
+            if intervals.autoUpload, intervals.isConnected { uploadToIntervals(rec) }
             if strava.autoUpload, strava.isConnected { uploadToStrava(rec) }
         } catch {
             hub.appendLog("⚠️ No se pudo guardar el entreno: \(error.localizedDescription)")
+        }
+    }
+
+    /// Sube un entreno guardado a intervals.icu y apunta el id de la actividad.
+    func uploadToIntervals(_ a: Activity) {
+        Task {
+            do {
+                let id = try await intervals.upload(a, fit: store.fitData(a))
+                // Releemos del historial por si Strava lo ha actualizado mientras tanto.
+                var updated = store.activities.first { $0.id == a.id } ?? a
+                updated.intervalsActivityID = id
+                try? store.save(updated)
+                if lastSaved?.id == a.id { lastSaved = updated }
+                hub.appendLog("🔵 Subido a intervals.icu: \(a.name) (\(id))")
+            } catch {
+                hub.appendLog("⚠️ intervals.icu: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -538,7 +558,7 @@ final class RideController {
         Task {
             do {
                 let id = try await strava.upload(a, fit: store.fitData(a))
-                var updated = a
+                var updated = store.activities.first { $0.id == a.id } ?? a
                 updated.stravaActivityID = id
                 try? store.save(updated)
                 if lastSaved?.id == a.id { lastSaved = updated }

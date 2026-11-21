@@ -182,6 +182,7 @@ Prioridad del usuario: más un **entrenador** (FTP, VO2max, planes) que un simul
 - [x] **Strava:** OAuth (WebAuthenticationSession, `taylorzwift://localhost`), subida del `.fit` a `/api/v3/uploads` (permiso `activity:write`) con `trainer=1`, seguimiento hasta que Strava la procesa, subida automática opcional. Hace falta crear una «app» en strava.com/settings/api con *Authorization Callback Domain* = `localhost`.
 - [x] **Garmin Connect** (vía oficial): su API personal solo permite *descargar*, así que el botón «Subir a Garmin Connect» abre su página «Importar datos» y selecciona el `.fit` en el Finder para arrastrarlo (Safari a veces falla al importar: mejor Chrome o Edge).
 - Nota (19-nov): **Strava exige suscripción para crear una app de la API**; sin ella la subida a Strava no se puede usar (queda como opción).
+- [x] **intervals.icu** (21-nov): gratis, clave de API (Settings → Developer Settings), autenticación básica `API_KEY:<clave>`, `POST /api/v1/athlete/0/activities` con el `.fit` (no duplica: comprueba el hash). Subida automática al terminar; la clave va al llavero. intervals.icu puede traer también las salidas de Garmin Connect: junta rodillo y calle.
 
 ### Fase 3 — Extras
 Entrenos `.zwo`, exportar `.fit`, Strava/intervals.icu, rutas GPX, pulido de iPad/iPhone, mapa/visual.
@@ -248,3 +249,4 @@ Notas:
 | 2026-11-19 | UI: solo lo esencial. Fila principal de 3–4 datos según el modo (objetivo/potencia/cadencia/pulso con vatios fijos; potencia/velocidad/cadencia/pulso con marchas) y fila secundaria de 4 acumulados. Entreno: tarjeta del tramo (cuenta atrás + objetivo + siguiente), perfil con zoom, tramos plegados. En ERG la velocidad vuelve a ser la de llano para esa potencia y no se inventa desnivel. |
 | 2026-11-21 | Seguimiento del plan cruzando historial y sesiones (`PlanProgress.swift`, con tests) y botones A (empezar/pausar) y B×2 (terminar) del mando derecho. |
 | 2026-11-21 | Rutas GPX importadas (`GPXParser.swift`, con tests): rodar tus recorridos de siempre con su pendiente real. |
+| 2026-11-21 | intervals.icu como destino principal de los entrenos (gratis, con API); Garmin Connect por importación manual; Strava opcional. |
