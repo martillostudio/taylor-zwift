@@ -421,8 +421,24 @@ final class RideController {
     /// Pulso máximo recomendado en los entrenos de base (Z1–Z2): el 70 % de tu FC máxima.
     /// Si lo pasas, estás en la «zona gris» y conviene bajar la intensidad.
     var heartRateCap: Int? {
-        guard mode == .workout, let w = workout, w.ftpTest == nil, w.mainZone <= .z2 else { return nil }
+        guard mode == .workout, let w = workout else { return nil }
+        return heartRateCap(for: w)
+    }
+
+    func heartRateCap(for w: Workout) -> Int? {
+        guard w.ftpTest == nil, w.mainZone <= .z2 else { return nil }
         return Int((Double(maxHeartRate) * HeartRateZone.z2.highFraction).rounded())
+    }
+
+    /// Análisis de un entreno guardado (si fue un entreno de la biblioteca o importado).
+    /// Hay una muestra por segundo pedaleado, así que su posición es el segundo del entreno.
+    func review(of a: Activity) -> WorkoutReview? {
+        guard let id = a.workoutID,
+              let w = (Workout.library + importedWorkouts).first(where: { $0.id == id }) else { return nil }
+        let samples = a.samples.enumerated().map { i, s in
+            ReviewSample(t: Double(i), power: s.power ?? 0, heartRate: s.heartRate, cadence: s.cadence)
+        }
+        return WorkoutReview(workout: w, ftp: a.ftp, samples: samples, heartRateCap: heartRateCap(for: w))
     }
 
     var heartRateAboveCap: Bool {

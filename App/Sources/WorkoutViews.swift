@@ -1040,10 +1040,11 @@ private struct Info: View {
 /// Análisis del entreno: cómo fueron los intervalos, notas y qué hacer la próxima vez.
 struct ReviewView: View {
     let review: WorkoutReview
+    var showsDivider = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.m) {
-            Divider().overlay(Theme.separator)
+            if showsDivider { Divider().overlay(Theme.separator) }
             if !review.intervals.isEmpty {
                 Text("Intervalos").font(Theme.font(.titleSmall))
                 if review.intervals.count <= 8 {

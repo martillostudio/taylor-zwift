@@ -410,6 +410,14 @@ struct ActivityDetailView: View {
                         }
                     }
                 }
+                if let review = ride.review(of: a) {
+                    Card(style: .outlined) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("ANÁLISIS DEL ENTRENO").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
+                            ReviewView(review: review, showsDivider: false)
+                        }
+                    }
+                }
                 Card(style: .filled) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("POTENCIA Y PULSO").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
