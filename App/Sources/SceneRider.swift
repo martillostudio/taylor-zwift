@@ -2,7 +2,7 @@ import SwiftUI
 
 /// El ciclista y su bici (la Grizl) como lista de formas de color, en coordenadas locales:
 /// origen en el suelo bajo el eje del pedalier, x hacia delante, y hacia abajo, 1 m ≈ 48 px.
-/// Lo usan los estilos de color: el grabado lo pinta con contorno y el pixel art lo rasteriza.
+/// El pixel art lo rasteriza (con contorno de 1 píxel).
 struct RiderModel {
     enum Shape {
         /// Segmento con extremos redondos (miembros, tubos).
@@ -186,32 +186,9 @@ extension RiderModel.Shape {
             return abs(d - r) <= w / 2
         }
     }
-
-    /// El trazo para dibujarla en vector, engordada `grow` (para el contorno).
-    func draw(in g: inout GraphicsContext, color: Color, grow: CGFloat = 0) {
-        switch self {
-        case .capsule(let a, let b, let r):
-            var path = Path()
-            path.move(to: a)
-            path.addLine(to: b)
-            g.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: (r + grow) * 2, lineCap: .round))
-        case .disc(let c, let r):
-            let rr = r + grow
-            g.fill(Path(ellipseIn: CGRect(x: c.x - rr, y: c.y - rr, width: rr * 2, height: rr * 2)), with: .color(color))
-        case .ring(let c, let r, let w):
-            g.stroke(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
-                     with: .color(color), lineWidth: w + grow * 2)
-        }
-    }
 }
 
 extension RiderModel {
-    /// Dibujo en vector, con contorno de tinta (estilo grabado) y luces de noche.
-    static func drawVector(_ g: inout GraphicsContext, parts: [Part], ink: Color, outline: CGFloat, tint: (RGB) -> RGB) {
-        for p in parts where p.outlined { p.shape.draw(in: &g, color: ink, grow: outline) }
-        for p in parts { p.shape.draw(in: &g, color: tint(p.color).color) }
-    }
-
     /// Rasteriza el ciclista en la rejilla de píxeles de la escena: `toLocal` pasa del centro de
     /// una celda de pantalla a coordenadas del ciclista. Añade un contorno de 1 píxel.
     static func drawPixels(_ c: inout GraphicsContext, parts: [Part], screenBox: CGRect, pixel: CGFloat,

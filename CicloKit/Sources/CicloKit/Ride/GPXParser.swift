@@ -123,7 +123,9 @@ public enum GPXParser {
             segments.append(RouteSegment(length, min(max(g, -maxGrade), maxGrade)))
             k = e
         }
-        return Route(id: id, name: name, isLoop: false, segments: segments, track: track(from: points))
+        var route = Route(id: id, name: name, isLoop: false, segments: segments, track: track(from: points))
+        route.startAltitude = smooth[0]
+        return route
     }
 
     /// La traza para el mapa: un punto cada 20 m como mínimo (de sobra para dibujarla).

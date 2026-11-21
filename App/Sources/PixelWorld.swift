@@ -24,6 +24,19 @@ struct PixelZone: Identifiable, Hashable {
 
     static var folder: URL? { Bundle.main.url(forResource: "Escenarios", withExtension: nil) }
 
+    /// El escenario que pega con un tipo de paisaje; si no está instalado, el más parecido.
+    static func matching(_ scenery: Scenery) -> PixelZone? {
+        let preference: [String] = switch scenery {
+        case .snow: ["invierno", "montana", "bosque"]
+        case .mountain: ["montana", "bosque", "pradera"]
+        case .forest: ["bosque", "pradera", "prados"]
+        case .rolling: ["pradera", "prados", "bosque"]
+        case .meadow: ["prados", "pradera", "bosque"]
+        }
+        let available = Self.available
+        return preference.lazy.compactMap { id in available.first { $0.id == id } }.first ?? available.first
+    }
+
     /// Los que están instalados.
     static var available: [PixelZone] {
         guard let folder else { return [] }
@@ -256,7 +269,8 @@ final class PixelWorldScene: SKScene {
         }
         let top = average(rows: groundRow..<(groundRow + 3))
         let body = average(rows: (h - 12)..<h)
-        groundColors = (top, body, top.mix(RGB(0.85, 0.76, 0.58), zone.snow ? 0.15 : 0.6))
+        // Camino: la hierba de arriba tirando a tierra, sin pasarse (en zonas oscuras cantaba mucho).
+        groundColors = (top, body, top.mix(RGB(0.78, 0.69, 0.52), zone.snow ? 0.12 : 0.4))
     }
 
     // MARK: Cada fotograma

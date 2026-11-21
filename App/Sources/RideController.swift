@@ -440,8 +440,10 @@ final class RideController {
             }
             // `-simulador YES`: la ruta elegida en el simulador 2D, rodando.
             if UserDefaults.standard.bool(forKey: "simulador") {
-                mode = .route
-                showScene = true // empieza a rodar cuando se hayan leído las rutas GPX (abajo)
+                // Con `-entreno`, el simulador del entreno; si no, en ruta (empieza a rodar cuando
+                // se hayan leído las rutas GPX, abajo).
+                if workout == nil || !isRunning { mode = .route }
+                showScene = true
             }
         }
         ticker = Task { [weak self] in

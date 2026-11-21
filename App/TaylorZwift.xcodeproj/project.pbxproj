@@ -14,7 +14,6 @@
 		2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = 570D26A06E2F4B00568A69EC /* CicloKit */; };
 		2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C242BF3F6159617EB38F4BBF /* TrainerView.swift */; };
 		32397EFA7DC9D54BF1C8D269 /* TaylorMandosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */; };
-		35DF4BD02904C0F2A2776308 /* SceneClearLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */; };
 		390CEB0D5EB53A2E689D709C /* FitnessCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E62F35D849BBC71788A1F /* FitnessCard.swift */; };
 		3C0431E12C0D3C31BF3FE5EC /* PixelWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A62AF9A2F6EBC6F4C93E034 /* PixelWorld.swift */; };
 		3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */; };
@@ -31,6 +30,7 @@
 		7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F12F33A425BD8EE3BA6369 /* LogView.swift */; };
 		88A3CB40F5F98CC7FC9F051F /* DemoPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBF2A669AD1089602E50C21 /* DemoPanel.swift */; };
 		960E97D3AC95DDC6AFA3F0CE /* Escenarios in Resources */ = {isa = PBXBuildFile; fileRef = EA635CCD4662E8770DD609C9 /* Escenarios */; };
+		98EB65341E36A6FA70B3882B /* PixelFallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF6F993FDDCC1D8A239EE7B /* PixelFallback.swift */; };
 		9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AE67EA9B3F5BDCB7270A503 /* RideView.swift */; };
 		9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */; };
 		ADC16D87744078AA0851B2EA /* CicloNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = 63F04261BFB7770CF70BCBA9 /* CicloNetwork */; };
@@ -39,7 +39,6 @@
 		BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E10DC2A8D445E089A9F7EB6 /* RideController.swift */; };
 		C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC2B36F439B128659783D3B /* StravaService.swift */; };
 		CEBDCD17E3E6FB7DC4981590 /* RideScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00F138BCCA37643B77254B7 /* RideScene.swift */; };
-		CEF8FD454170CD69417954FE /* SceneStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */; };
 		DEA7734381A5BE871013E9D5 /* GradeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABB43D303D77746CDB2C94E /* GradeColors.swift */; };
 		E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E4515ABF42AF0C84D91FE /* ScanSection.swift */; };
 		E68AC0C67A99ADD2DA27833F /* SceneRider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A986A24FCA408C038742AA /* SceneRider.swift */; };
@@ -58,10 +57,9 @@
 		4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveMetricsView.swift; sourceTree = "<group>"; };
 		499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsService.swift; sourceTree = "<group>"; };
 		4AF3EF73BB829F6F5855356F /* CicloKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CicloKit; path = ../CicloKit; sourceTree = SOURCE_ROOT; };
-		514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneClearLine.swift; sourceTree = "<group>"; };
 		55572BB6639FE3C30213D09F /* SceneLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneLocation.swift; sourceTree = "<group>"; };
-		60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneStyles.swift; sourceTree = "<group>"; };
 		6A62AF9A2F6EBC6F4C93E034 /* PixelWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelWorld.swift; sourceTree = "<group>"; };
+		6BF6F993FDDCC1D8A239EE7B /* PixelFallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelFallback.swift; sourceTree = "<group>"; };
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		7BDA2488F1654582F648AE11 /* ControllersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllersView.swift; sourceTree = "<group>"; };
 		81A986A24FCA408C038742AA /* SceneRider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneRider.swift; sourceTree = "<group>"; };
@@ -162,6 +160,7 @@
 				499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */,
 				4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */,
 				75F12F33A425BD8EE3BA6369 /* LogView.swift */,
+				6BF6F993FDDCC1D8A239EE7B /* PixelFallback.swift */,
 				6A62AF9A2F6EBC6F4C93E034 /* PixelWorld.swift */,
 				0464B20E69550416FCED48A4 /* ProgressViews.swift */,
 				8E10DC2A8D445E089A9F7EB6 /* RideController.swift */,
@@ -170,10 +169,8 @@
 				F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */,
 				DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */,
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
-				514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */,
 				55572BB6639FE3C30213D09F /* SceneLocation.swift */,
 				81A986A24FCA408C038742AA /* SceneRider.swift */,
-				60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */,
 				FFC2B36F439B128659783D3B /* StravaService.swift */,
 				2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */,
 				A7C86DA6C149571AE01FF604 /* Theme.swift */,
@@ -316,6 +313,7 @@
 				67AE0C9ADFBAC9E6472329B0 /* IntervalsService.swift in Sources */,
 				54155FB38042E6866893AC81 /* LiveMetricsView.swift in Sources */,
 				7F883DA16C1B9A7BD8D4F147 /* LogView.swift in Sources */,
+				98EB65341E36A6FA70B3882B /* PixelFallback.swift in Sources */,
 				3C0431E12C0D3C31BF3FE5EC /* PixelWorld.swift in Sources */,
 				5063173ED488E4E607D836B6 /* ProgressViews.swift in Sources */,
 				BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */,
@@ -324,10 +322,8 @@
 				9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */,
 				14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */,
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
-				35DF4BD02904C0F2A2776308 /* SceneClearLine.swift in Sources */,
 				60017AB4614A6FE0F3973DB9 /* SceneLocation.swift in Sources */,
 				E68AC0C67A99ADD2DA27833F /* SceneRider.swift in Sources */,
-				CEF8FD454170CD69417954FE /* SceneStyles.swift in Sources */,
 				C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */,
 				B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */,
 				1D4AA0CF3E560F20C0D32728 /* Theme.swift in Sources */,

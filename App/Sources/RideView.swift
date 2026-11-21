@@ -25,11 +25,9 @@ struct RideView: View {
                     (.route, "Ruta", "map"),
                     (.erg, "ERG", "bolt"),
                 ], selection: $ride.mode)
-                if ride.mode == .route {
-                    Button("Simulador 2D", systemImage: "mountain.2.fill") { ride.showScene = true }
-                        .buttonStyle(.borderedProminent)
-                        .help("Tú de perfil sobre el relieve de la ruta, a toda la ventana (Esc para salir)")
-                }
+                Button("Simulador 2D", systemImage: "mountain.2.fill") { ride.showScene = true }
+                    .buttonStyle(.borderedProminent)
+                    .help("Tú en pixel art, a toda la ventana: en ruta, con su relieve y un escenario que pega con ella; en entrenos y ERG, el escenario que elijas (Esc para salir)")
 
                 if let summary = ride.summary, ride.mode != .workout { summaryCard(summary) }
 

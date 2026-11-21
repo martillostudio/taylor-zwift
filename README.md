@@ -25,7 +25,7 @@ Necesitas Xcode instalado (no hace falta abrirlo). Más detalle en la guía, §8
    - **Entreno**: el entreno cargado desde «Entrenar», en ERG.
    - **Ruta**: una de tus rutas (tarjetas con mapa, km, desnivel y año) en SIM con la pendiente real. «⋯ → Importar GPX…» para añadir más (Garmin, Strava, Komoot, Wikiloc).
    - **ERG**: vatios fijos.
-   En **Ruta**, el botón **«Simulador 2D»** te pone de perfil sobre el relieve de la ruta, a toda la ventana, con vatios, pulso, pendiente y marcha encima (Esc para salir).
+   **«Simulador 2D»** (en cualquier modo): tú en pixel art a toda la ventana, con un panel de datos arriba. En ruta, con su relieve real y un escenario que pega con ella (montaña, bosque, prados, nieve…); en entrenos y ERG, el escenario que elijas. Los fondos se instalan con `make escenarios` (ver la guía). Esc para salir.
 3. Mandos: **+ (dcha) o Z** = marcha más dura (+10 W en ERG, +2 % en un entreno); **− (izq) o Y** = más blanda. **A** empieza / pausa; **B** dos veces seguidas termina y guarda.
 4. Desarrollo: carretera 2×12 (24 marchas), GRX 1×12 o SRAM XPLR 1×12.
 

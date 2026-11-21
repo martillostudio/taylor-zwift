@@ -88,6 +88,8 @@ public struct Route: Identifiable, Hashable, Sendable {
     public var track: RouteTrack?
     /// Cuándo se hizo o se creó (la fecha del GPX), si se sabe.
     public var date: Date?
+    /// Altitud real de la salida (m sobre el mar), de las rutas GPX.
+    public var startAltitude: Double?
 
     /// Distancia sobre la que se suaviza un cambio de pendiente (para que no dé tirones).
     public static let smoothingMeters = 50.0
