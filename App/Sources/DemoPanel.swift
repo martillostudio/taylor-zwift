@@ -9,7 +9,6 @@ struct DemoPanel: View {
     @Environment(RideController.self) private var ride
 
     var body: some View {
-        @Bindable var hub = hub
         Card(style: .outlined) {
             VStack(alignment: .leading, spacing: Space.m) {
                 HStack {

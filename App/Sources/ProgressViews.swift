@@ -30,7 +30,7 @@ struct ProposalsCard: View {
                                     .buttonStyle(.borderedProminent)
                                 Button("Ahora no") { ride.dismiss(p) }
                                     .buttonStyle(.bordered)
-                                if ride.planPushedStart != nil, !isIntensity(p.change) {
+                                if ride.planPushedStart != nil, p.change.affectsCalendar {
                                     Text("Se actualiza también en intervals.icu y Garmin.")
                                         .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
                                 }
@@ -49,11 +49,6 @@ struct ProposalsCard: View {
         case .swap: "arrow.triangle.2.circlepath"
         case .intensity: "dial.medium"
         }
-    }
-
-    private func isIntensity(_ c: PlanProposal.Change) -> Bool {
-        if case .intensity = c { return true }
-        return false
     }
 }
 
@@ -117,9 +112,7 @@ struct TodayCard: View {
     /// La sesión del plan que cae hoy.
     private var todaySession: PlanSession? {
         guard let week = ride.currentPlanWeek else { return nil }
-        let weekStart = ride.plan.startOfWeek(week.number, start: ride.planStart)
-        let offset = Calendar.current.dateComponents([.day], from: weekStart,
-                                                     to: Calendar.current.startOfDay(for: today)).day ?? -1
+        let offset = ride.plan.dayOffset(on: today, week: week.number, start: ride.planStart)
         return week.sessions.first { $0.weekdayOffset == offset }
     }
 

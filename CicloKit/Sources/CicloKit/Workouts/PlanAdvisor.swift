@@ -9,6 +9,12 @@ public struct PlanProposal: Identifiable, Equatable, Sendable {
         case swap(key: String, workoutID: String)
         /// Intensidad por defecto para un tipo de entreno (1 = 100 %).
         case intensity(category: WorkoutCategory, to: Double)
+
+        /// Cambia el calendario (y hay que volver a mandarlo a intervals.icu).
+        public var affectsCalendar: Bool {
+            if case .intensity = self { return false }
+            return true
+        }
     }
 
     /// Estable: si la descartas, no vuelve a salir la misma.
@@ -43,7 +49,6 @@ public struct WorkoutOutcome: Equatable, Sendable {
 /// 3. **Intervalos por debajo** dos veces seguidas en un tipo de entreno → bajar ese tipo un 5 %.
 /// 4. **Tus ±** en la misma dirección dos veces seguidas en un tipo → usar esa intensidad por defecto.
 public enum PlanAdvisor {
-    public static let dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
     static let dayLongNames = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 
     public static func proposals(
@@ -57,28 +62,28 @@ public enum PlanAdvisor {
         for s in week.sessions {
             guard statuses[s.id] == .skipped, let w = s.workout, Coach.isHard(w) else { continue }
             guard let day = freeDay(in: week, from: todayOffset, statuses: statuses) else { continue }
-            let key = s.originalKey ?? s.key(week: week.number)
+            let key = s.stableKey(week: week.number)
             result.append(PlanProposal(
-                id: "mover-\(key)-\(dayNames[day])",
+                id: "mover-\(key)-\(PlanSession.dayNames[day])",
                 title: "Recupera «\(w.name)» el \(dayLongNames[day])",
                 detail: "Te la saltaste el \(dayLongNames[s.weekdayOffset]). El \(dayLongNames[day]) está libre y no va pegado a otra sesión dura.",
-                change: .move(key: key, toDay: dayNames[day])
+                change: .move(key: key, toDay: PlanSession.dayNames[day])
             ))
         }
 
         // 2. Muy cansado: lo duro de hoy o mañana, por algo suave.
         if let tsb = freshness, tsb < -20 {
+            let veryTired = tsb < -30
             let soon = week.sessions.filter { s in
                 let st = statuses[s.id]
                 return (st == .today || st == .upcoming) && (s.weekdayOffset - todayOffset) <= 1
             }
             for s in soon {
                 guard let w = s.workout, w.category != .recovery else { continue }
-                let veryTired = tsb < -30
                 guard veryTired || Coach.isHard(w) else { continue }
                 let target = veryTired ? "recuperacion-30" : "z2-60"
                 guard w.id != target, let new = Workout.library.first(where: { $0.id == target }) else { continue }
-                let key = s.originalKey ?? s.key(week: week.number)
+                let key = s.stableKey(week: week.number)
                 let when = s.weekdayOffset == todayOffset ? "hoy" : "mañana"
                 result.append(PlanProposal(
                     id: "cambiar-\(key)-\(target)",

@@ -414,7 +414,7 @@ private struct SessionCell: View {
             }
             if !status.isDone {
                 Menu("Cambiar de día", systemImage: "calendar") {
-                    ForEach(Self.days, id: \.self) { day in
+                    ForEach(PlanSession.dayNames, id: \.self) { day in
                         Button(day) { ride.moveSession(session, week: week, to: day) }
                             .disabled(day == session.day)
                     }
@@ -423,25 +423,66 @@ private struct SessionCell: View {
         }
     }
 
-    static let days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 }
 
 private struct StatusBadge: View {
     let status: PlanSessionStatus
 
     var body: some View {
-        let (text, icon, color): (String, String, Color) = switch status {
-        case .done: ("Hecha", "checkmark.circle.fill", Theme.positive)
-        case .partial(let f, _): ("\(Int((f * 100).rounded())) %", "circle.lefthalf.filled", Color.orange)
-        case .today: ("Hoy", "circle.fill", Theme.accent)
-        case .skipped: ("No hecha", "minus.circle", Color.secondary)
-        case .upcoming: ("", "", Color.clear)
-        }
-        if !text.isEmpty {
-            Label(text, systemImage: icon)
+        if let symbol = status.symbol {
+            Label(status.label, systemImage: symbol)
                 .font(Theme.font(.labelMedium))
-                .foregroundStyle(color)
+                .foregroundStyle(status.tint)
         }
+    }
+}
+
+extension PlanSessionStatus {
+    /// Icono del estado (`nil` para las que aún no tocan).
+    var symbol: String? {
+        switch self {
+        case .done: "checkmark.circle.fill"
+        case .partial: "circle.lefthalf.filled"
+        case .today: "circle.fill"
+        case .skipped: "minus.circle"
+        case .upcoming: nil
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .done: Theme.positive
+        case .partial: Color.orange
+        case .today: Theme.accent
+        case .skipped, .upcoming: Color.secondary
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .done: "Hecha"
+        case .partial(let f, _): "\(Int((f * 100).rounded())) %"
+        case .today: "Hoy"
+        case .skipped: "No hecha"
+        case .upcoming: ""
+        }
+    }
+}
+
+/// Barra de progreso en cápsula (cumplimiento de un intervalo, carga de una semana…).
+struct CapsuleBar: View {
+    let fraction: Double
+    let tint: Color
+    var height: CGFloat = 8
+
+    var body: some View {
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.neutralFill)
+                Capsule().fill(tint).frame(width: g.size.width * min(max(fraction, 0), 1))
+            }
+        }
+        .frame(height: height)
     }
 }
 
@@ -1133,14 +1174,7 @@ private struct IntervalRow: View {
         HStack(spacing: Space.s) {
             Text("\(interval.number)").font(Theme.font(.bodyMedium)).foregroundStyle(Color.secondary)
                 .frame(width: 18, alignment: .trailing)
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.neutralFill)
-                    Capsule().fill(color(interval.compliance))
-                        .frame(width: g.size.width * min(interval.compliance, 1))
-                }
-            }
-            .frame(height: 8)
+            CapsuleBar(fraction: interval.compliance, tint: color(interval.compliance))
             Text("\(interval.averageWatts)/\(interval.targetWatts) W")
                 .font(Theme.font(.bodyMedium)).monospacedDigit()
                 .frame(width: 92, alignment: .trailing)
@@ -1170,18 +1204,18 @@ private func color(_ compliance: Double) -> Color {
 struct PlanOverview: View {
     @Environment(RideController.self) private var ride
 
-    private static let days = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
     var body: some View {
         let plan = ride.plan
         let current = ride.currentPlanWeek?.number
-        let maxLoad = plan.weeks.map { plan.plannedLoad(of: $0) }.max() ?? 1
+        let loads = plan.weeks.map(plan.plannedLoad(of:))
+        let maxLoad = loads.max() ?? 1
         // Filas normales (no `Grid`): así el recuadro de la semana actual y el fondo de las
         // descargas cubren la fila entera y no cada celda por separado.
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Color.clear.frame(width: Self.labelWidth, height: 1)
-                ForEach(Self.days, id: \.self) { d in
+                ForEach(PlanSession.dayNames, id: \.self) { d in
                     Text(d.uppercased()).font(Theme.font(.labelSmall)).foregroundStyle(Color.secondary)
                         .frame(maxWidth: .infinity)
                 }
@@ -1206,7 +1240,7 @@ struct PlanOverview: View {
                             Color.clear.frame(maxWidth: .infinity, minHeight: 40)
                         }
                     }
-                    LoadCell(load: plan.plannedLoad(of: week), maxLoad: maxLoad,
+                    LoadCell(load: loads[week.number - 1], maxLoad: maxLoad,
                              done: week.sessions.filter { statuses[$0.id]?.isDone == true }.count,
                              total: week.sessions.count)
                         .frame(width: Self.loadWidth)
@@ -1235,13 +1269,13 @@ private struct OverviewCell: View {
 
     var body: some View {
         if let w = session.workout {
-            NavigationLink { WorkoutDetailView(workout: w) } label: { content(title: shortName(w), color: w.mainZone.color) }
+            NavigationLink { WorkoutDetailView(workout: w) } label: { content(title: w.shortName, color: w.mainZone.color) }
                 .buttonStyle(.plain)
                 .help("\(w.name) · \(w.durationSeconds / 60)' · TSS \(Int(w.tss.rounded()))"
                       + (w.tagline.map { "\n\($0)" } ?? "")
                       + (session.originalKey != nil ? "\nCambiada por ti (día o entreno)" : ""))
         } else {
-            content(title: "Exterior \(hours(session.outdoorHours))", color: .orange, icon: "sun.max.fill")
+            content(title: "Exterior \(Coach.hoursText(session.outdoorHours))", color: .orange, icon: "sun.max.fill")
                 .help("Salida en exterior en Z2" + (session.note.isEmpty ? "" : "\n\(session.note)"))
         }
     }
@@ -1269,30 +1303,9 @@ private struct OverviewCell: View {
 
     @ViewBuilder
     private var statusIcon: some View {
-        switch status {
-        case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.positive).font(.caption2)
-        case .partial: Image(systemName: "circle.lefthalf.filled").foregroundStyle(Color.orange).font(.caption2)
-        case .today: Image(systemName: "circle.fill").foregroundStyle(Theme.accent).font(.caption2)
-        case .skipped: Image(systemName: "minus.circle").foregroundStyle(Color.secondary).font(.caption2)
-        case .upcoming: EmptyView()
+        if let symbol = status.symbol {
+            Image(systemName: symbol).foregroundStyle(status.tint).font(.caption2)
         }
-    }
-
-    /// Nombre corto para la celda: «Z2 60'», «SS 2×20'», «VO2 4×4'», «Test rampa»…
-    private func shortName(_ w: Workout) -> String {
-        var n = w.name
-        let replacements = [
-            ("Resistencia 2 h (Z2)", "Z2 2 h"), ("Resistencia ", "Z2 "), (" (Z2)", ""),
-            ("Recuperación activa", "Recup."), ("Test de FTP de 20 minutos", "Test 20'"),
-            ("Test de rampa", "Test rampa"), ("Sweet spot", "SS"), ("VO2max", "VO2"),
-            (" (Rønnestad)", ""), (" (Billat)", ""), ("Anaeróbico", "Anaer."),
-        ]
-        for (a, b) in replacements { n = n.replacingOccurrences(of: a, with: b) }
-        return n
-    }
-
-    private func hours(_ h: Double) -> String {
-        h == h.rounded() ? "\(Int(h)) h" : String(format: "%.1f h", h).replacingOccurrences(of: ".", with: ",")
     }
 }
 
@@ -1304,13 +1317,7 @@ private struct LoadCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.neutralFill)
-                    Capsule().fill(Theme.accent.opacity(0.7)).frame(width: g.size.width * load / max(maxLoad, 1))
-                }
-            }
-            .frame(height: 6)
+            CapsuleBar(fraction: load / max(maxLoad, 1), tint: Theme.accent.opacity(0.7), height: 6)
             HStack(spacing: 4) {
                 Text("\(Int(load.rounded()))").font(Theme.font(.labelSmall, numeric: true))
                 Spacer(minLength: 0)

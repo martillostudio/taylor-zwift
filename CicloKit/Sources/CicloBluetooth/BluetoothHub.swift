@@ -220,7 +220,8 @@ public final class BluetoothHub: NSObject {
             c.batteryPercent = 80
             return c
         }
-        demoTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+        // 4 veces por segundo, como un rodillo de verdad (el ciclista integra en pasos de 0,5 s).
+        demoTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.demoStep() }
         }
         addLog("🧪 Modo prueba: rodillo, pulsómetro y mandos de mentira (FTP \(ftp) W). No se guarda ni se sube nada.")
@@ -261,10 +262,16 @@ public final class BluetoothHub: NSObject {
 
     private func demoStep() {
         let now = now()
-        let dt = demoLastStep.map { min(now - $0, 2) } ?? 0.05
+        // Con el tiempo acelerado un paso puede ser de varios segundos: se integra en trozos de 0,5 s.
+        var dt = demoLastStep.map { min(now - $0, 60) } ?? 0.25
         demoLastStep = now
-        bikeData = demoRider.step(target: trainerTarget, dt: dt)
-        heartRateBpm = demoRider.heartRateBpm
+        while dt > 0 {
+            demoRider.step(target: trainerTarget, dt: min(dt, 0.5))
+            dt -= 0.5
+        }
+        let data = demoRider.bikeData
+        if data != bikeData { bikeData = data }
+        if heartRateBpm != demoRider.heartRateBpm { heartRateBpm = demoRider.heartRateBpm }
         logBikeDataIfNeeded()
     }
 
@@ -357,10 +364,6 @@ public final class BluetoothHub: NSObject {
     public func apply(_ target: TrainerTarget) {
         trainerTarget = target
         trainerMode = target.description
-        if isDemo {
-            addLog("→ Rodillo de prueba: \(target.description)")
-            return
-        }
         sendWithControl(target.command)
     }
 
@@ -471,6 +474,11 @@ public final class BluetoothHub: NSObject {
     }
 
     private func send(_ command: FTMSCommand) {
+        // En modo prueba no hay rodillo al que escribir: el ciclista de mentira lee `trainerTarget`.
+        if isDemo {
+            addLog("→ Rodillo de prueba: \(FTMSCommand.name(ofOpcode: command.opcode))\(trainerTarget.map { " (\($0.description))" } ?? "")")
+            return
+        }
         guard let trainer, let controlPoint, trainer.state == .connected else {
             addLog("⚠️ No hay rodillo conectado (o aún no se ha encontrado su Control Point)")
             return

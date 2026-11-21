@@ -110,7 +110,7 @@ public enum Coach {
         return n > 0 ? "+\(n)" : "\(n)"
     }
 
-    static func hoursText(_ h: Double) -> String {
+    public static func hoursText(_ h: Double) -> String {
         h == h.rounded() ? "\(Int(h)) h" : "\(String(format: "%.1f", h).replacingOccurrences(of: ".", with: ",")) h"
     }
 }
@@ -246,7 +246,7 @@ extension TrainingPlan {
         copy.weeks = weeks.map { week in
             var w = week
             w.sessions = week.sessions.map { s in
-                let key = s.originalKey ?? s.key(week: week.number)
+                let key = s.stableKey(week: week.number)
                 guard let day = moves[key] else { return s }
                 var moved = s
                 moved.day = day
@@ -267,7 +267,7 @@ extension TrainingPlan {
         copy.weeks = weeks.map { week in
             var w = week
             w.sessions = week.sessions.map { s in
-                let key = s.originalKey ?? s.key(week: week.number)
+                let key = s.stableKey(week: week.number)
                 guard let id = swaps[key], Workout.library.contains(where: { $0.id == id }) else { return s }
                 var swapped = s
                 swapped.workoutID = id

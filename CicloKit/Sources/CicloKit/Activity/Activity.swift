@@ -110,7 +110,7 @@ public struct Activity: Codable, Identifiable, Equatable, Sendable {
 
     public var powerHistory: PowerHistory { PowerHistory(samples: samples.map { $0.power ?? 0 }) }
 
-    private static func average(_ values: [Int]) -> Int? {
+    static func average(_ values: [Int]) -> Int? {
         values.isEmpty ? nil : Int((Double(values.reduce(0, +)) / Double(values.count)).rounded())
     }
 }

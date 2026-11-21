@@ -4,6 +4,19 @@
 /// estudiados (4×4, 30/15 de Rønnestad, 30/30 de Billat…), escritas aquí desde cero.
 /// Las potencias van en fracción de tu FTP.
 extension Workout {
+    /// Nombre corto para celdas pequeñas (el plan de un vistazo); si no hay, el nombre.
+    public var shortName: String { Self.shortNames[id] ?? name }
+
+    static let shortNames = [
+        "test-rampa": "Test rampa", "test-20": "Test 20'", "recuperacion-30": "Recup. 30'",
+        "z2-60": "Z2 60'", "z2-90": "Z2 90'", "z2-120": "Z2 2 h", "tempo-3x10": "Tempo 3×10'",
+        "ss-2x20": "SS 2×20'", "ss-3x15": "SS 3×15'", "umbral-3x12": "Umbral 3×12'",
+        "over-unders": "Over-unders 3×(4×2'/1')", "vo2-4x4": "VO2 4×4'", "vo2-5x3": "VO2 5×3'",
+        "vo2-30-15": "30/15 3×13", "vo2-30-30": "30/30 2×10", "anaerobico-8x1": "Anaer. 8×1'",
+        "fuerza-5x5": "Fuerza 5×5' a 55 rpm", "fuerza-4x8": "Fuerza 4×8' a 60 rpm",
+        "z2-fuerza-75": "Z2 75' con 6×3' de fuerza",
+    ]
+
     public static let library: [Workout] = [
         // MARK: Tests
         Workout(

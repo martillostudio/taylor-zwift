@@ -46,21 +46,33 @@ extension PlanSession {
     /// Si hace malo, la salida en exterior se puede cambiar por «Resistencia 2 h» en el rodillo.
     public static let indoorAlternativeID = "z2-120"
 
+    /// Los días tal como van en el plan y en las sesiones movidas, de lunes a domingo.
+    public static let dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
     /// Días desde el lunes: «Lun» = 0 … «Dom» = 6.
     public var weekdayOffset: Int {
-        let days = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
         let key = day.lowercased().prefix(3)
-        return days.firstIndex { $0 == key } ?? 0
+        return Self.dayNames.firstIndex { $0.lowercased() == key } ?? 0
     }
 
     /// Clave estable para guardar las marcas manuales.
     public func key(week: Int) -> String { "s\(week)-\(id)" }
+
+    /// Clave de la sesión en el plan original, aunque la hayas movido o cambiado de entreno:
+    /// es la que usan `sesionesMovidas` y `sesionesCambiadas`.
+    public func stableKey(week: Int) -> String { originalKey ?? key(week: week) }
 }
 
 extension TrainingPlan {
     /// Lunes de la semana `number` (1…) si el plan empieza el lunes `start`.
     public func startOfWeek(_ number: Int, start: Date, calendar: Calendar = .current) -> Date {
         calendar.date(byAdding: .day, value: (number - 1) * 7, to: calendar.startOfDay(for: start)) ?? start
+    }
+
+    /// Días desde el lunes de la semana `number` hasta `date` (0 = lunes).
+    public func dayOffset(on date: Date, week number: Int, start: Date, calendar: Calendar = .current) -> Int {
+        calendar.dateComponents([.day], from: startOfWeek(number, start: start, calendar: calendar),
+                                to: calendar.startOfDay(for: date)).day ?? 0
     }
 
     /// Estado de cada sesión de una semana. Un entreno cuenta para una sesión si es el mismo

@@ -128,13 +128,9 @@ final class RideController {
     /// Lo que el «entrenador» propone cambiar del plan esta semana (ver `PlanAdvisor`).
     var planProposals: [PlanProposal] {
         guard let week = currentPlanWeek else { return [] }
-        let cal = Calendar.current
-        let todayOffset = cal.dateComponents([.day], from: plan.startOfWeek(week.number, start: planStart),
-                                             to: cal.startOfDay(for: Date())).day ?? 0
-        let monthAgo = Date().addingTimeInterval(-30 * 86_400)
-        let all = Workout.library + importedWorkouts
-        let outcomes = store.activities.filter { $0.start > monthAgo }.compactMap { a -> WorkoutOutcome? in
-            guard let id = a.workoutID, let w = all.first(where: { $0.id == id }) else { return nil }
+        let todayOffset = plan.dayOffset(on: Date(), week: week.number, start: planStart)
+        let outcomes = store.activities.compactMap { a -> WorkoutOutcome? in
+            guard let w = a.workoutID.flatMap(workout(id:)) else { return nil }
             let base = a.baseIntensity ?? 1
             return WorkoutOutcome(date: a.start, category: w.category, compliance: review(of: a)?.compliance,
                                   baseIntensity: base, finalIntensity: a.intensity ?? base)
@@ -148,10 +144,7 @@ final class RideController {
     func accept(_ p: PlanProposal) {
         switch p.change {
         case .move(let key, let day):
-            let originalDay = TrainingPlan.winter.weeks.flatMap { w in w.sessions.map { (w.number, $0) } }
-                .first { $0.1.key(week: $0.0) == key }?.1.day
-            planMoves[key] = day == originalDay ? nil : day
-            UserDefaults.standard.set(planMoves, forKey: "sesionesMovidas")
+            setMove(key: key, to: day)
         case .swap(let key, let id):
             planSwaps[key] = id
             UserDefaults.standard.set(planSwaps, forKey: "sesionesCambiadas")
@@ -163,8 +156,7 @@ final class RideController {
         hub.appendLog("🧭 Propuesta aceptada: \(p.title)")
         show("✅ \(p.title)", seconds: 3)
         // Los cambios de día o de entreno van también al calendario de intervals.icu (y a Garmin).
-        if case .intensity = p.change { return }
-        if planPushedStart != nil { Task { await pushPlanToIntervals() } }
+        if p.change.affectsCalendar, planPushedStart != nil { Task { await pushPlanToIntervals() } }
     }
 
     func dismiss(_ p: PlanProposal) {
@@ -180,13 +172,26 @@ final class RideController {
     /// Cambia una sesión de día (dentro de su semana) y, si el plan ya está en intervals.icu,
     /// lo actualiza allí.
     func moveSession(_ session: PlanSession, week: PlanWeek, to day: String) {
-        let key = session.originalKey ?? session.key(week: week.number)
-        guard let original = TrainingPlan.winter.weeks.first(where: { $0.number == week.number })?.sessions
-            .first(where: { $0.key(week: week.number) == key }) else { return }
-        if day == original.day { planMoves[key] = nil } else { planMoves[key] = day }
-        UserDefaults.standard.set(planMoves, forKey: "sesionesMovidas")
+        guard setMove(key: session.stableKey(week: week.number), to: day) else { return }
         hub.appendLog("📅 \(session.workout?.name ?? "Salida") de la semana \(week.number) pasa al \(day)")
         if planPushedStart != nil { Task { await pushPlanToIntervals() } }
+    }
+
+    /// Apunta (y guarda) que la sesión con esa clave original va otro día; si vuelve a su día, se
+    /// borra el cambio. `false` si la clave no es de ninguna sesión del plan.
+    @discardableResult
+    private func setMove(key: String, to day: String) -> Bool {
+        guard let original = TrainingPlan.winter.weeks.lazy
+            .flatMap({ w in w.sessions.map { (w.number, $0) } })
+            .first(where: { $0.1.key(week: $0.0) == key })?.1 else { return false }
+        planMoves[key] = day == original.day ? nil : day
+        UserDefaults.standard.set(planMoves, forKey: "sesionesMovidas")
+        return true
+    }
+
+    /// Un entreno de la biblioteca o importado, por su id.
+    func workout(id: String) -> Workout? {
+        Workout.library.first { $0.id == id } ?? importedWorkouts.first { $0.id == id }
     }
 
     /// Lo que se mandó a intervals.icu la última vez (sesiones y fechas), para saber si hay que
@@ -350,7 +355,6 @@ final class RideController {
         let t: Double
         let power: Int
         let heartRate: Int?
-        var cadence: Int? = nil
     }
     private(set) var trace: [TracePoint] = []
     /// Desnivel positivo virtual (ruta, libre o pendiente equivalente en ERG).
@@ -426,8 +430,7 @@ final class RideController {
         if demoScale > 0 {
             startDemo()
             hub.timeScale = demoScale
-            if let id = UserDefaults.standard.string(forKey: "entreno"),
-               let w = (Workout.library + importedWorkouts).first(where: { $0.id == id }) {
+            if let w = UserDefaults.standard.string(forKey: "entreno").flatMap(workout(id:)) {
                 load(w)
                 start()
             }
@@ -501,15 +504,20 @@ final class RideController {
 
     /// Análisis de un entreno guardado (si fue un entreno de la biblioteca o importado).
     /// Hay una muestra por segundo pedaleado, así que su posición es el segundo del entreno.
+    /// Se guarda calculado (las vistas lo piden en cada repintado).
     func review(of a: Activity) -> WorkoutReview? {
-        guard let id = a.workoutID,
-              let w = (Workout.library + importedWorkouts).first(where: { $0.id == id }) else { return nil }
+        let cacheKey = "\(a.id)-\(a.baseIntensity ?? 1)-\(maxHeartRate)"
+        if let cached = reviewCache[cacheKey] { return cached }
+        guard let w = a.workoutID.flatMap(workout(id:)) else { return nil }
         let samples = a.samples.enumerated().map { i, s in
             ReviewSample(t: Double(i), power: s.power ?? 0, heartRate: s.heartRate, cadence: s.cadence)
         }
-        return WorkoutReview(workout: w, ftp: a.ftp, samples: samples, heartRateCap: heartRateCap(for: w),
-                             baseIntensity: a.baseIntensity ?? 1)
+        let review = WorkoutReview(workout: w, ftp: a.ftp, samples: samples, heartRateCap: heartRateCap(for: w),
+                                   baseIntensity: a.baseIntensity ?? 1)
+        reviewCache[cacheKey] = review
+        return review
     }
+    @ObservationIgnored private var reviewCache: [String: WorkoutReview] = [:]
 
     var heartRateAboveCap: Bool {
         guard let cap = heartRateCap, let bpm = hub.heartRateBpm, isRunning else { return false }
@@ -632,10 +640,11 @@ final class RideController {
             ftpTest: mode == .workout ? workout?.ftpTest : nil,
             suggestedFTP: mode == .workout ? workout?.ftpTest?.estimate(from: powerHistory) : nil,
             vo2max: best5.flatMap { Physiology.vo2maxEstimate(best5MinWatts: $0, weightKg: weightKg) },
-            review: mode == .workout ? workout.map { w in
-                WorkoutReview(workout: w, ftp: ftp,
-                              samples: trace.map { ReviewSample(t: $0.t, power: $0.power, heartRate: $0.heartRate, cadence: $0.cadence) },
-                              heartRateCap: heartRateCap, baseIntensity: baseIntensity)
+            // El mismo análisis que luego sale en el Historial: con lo grabado (una muestra por segundo).
+            review: mode == .workout ? recording.flatMap { rec in
+                var r = rec
+                r.baseIntensity = baseIntensity
+                return review(of: r)
             } : nil
         )
         summary = s
@@ -1020,8 +1029,7 @@ final class RideController {
     /// Lo que se acumula una vez por segundo: traza del perfil, zonas de pulso, cadencia media.
     private func accumulateStats(_ data: IndoorBikeData) {
         if mode == .workout {
-            trace.append(TracePoint(t: workoutSeconds, power: data.powerWatts ?? 0, heartRate: hub.heartRateBpm,
-                                    cadence: data.cadenceRpm.map { Int($0.rounded()) }))
+            trace.append(TracePoint(t: workoutSeconds, power: data.powerWatts ?? 0, heartRate: hub.heartRateBpm))
         }
         if let bpm = hub.heartRateBpm, bpm > 0 {
             heartRateZoneSeconds[HeartRateZone(bpm: bpm, max: maxHeartRate), default: 0] += 1

@@ -83,8 +83,8 @@ public struct WorkoutReview: Equatable, Sendable {
                     targetWatts: Int(target.rounded()),
                     averageWatts: Int(avg.rounded()),
                     targetCadence: seg.cadence,
-                    averageCadence: cads.isEmpty ? nil : Int((Double(cads.reduce(0, +)) / Double(cads.count)).rounded()),
-                    averageHeartRate: hrs.isEmpty ? nil : Int((Double(hrs.reduce(0, +)) / Double(hrs.count)).rounded())
+                    averageCadence: Activity.average(cads),
+                    averageHeartRate: Activity.average(hrs)
                 ))
             }
         }
@@ -113,6 +113,8 @@ public struct WorkoutReview: Equatable, Sendable {
         }
 
         secondsAboveCap = heartRateCap.map { cap in samples.filter { ($0.heartRate ?? 0) > cap }.count }
+        /// Fracción del entreno por encima del tope de pulso.
+        let capShare = secondsAboveCap.map { Double($0) / max(done, 1) }
 
         // Notas.
         var notes: [Note] = []
@@ -154,14 +156,10 @@ public struct WorkoutReview: Equatable, Sendable {
                 ? Note(tone: .good, text: "Desacople aeróbico \(txt) %: el pulso aguantó estable (base aeróbica sólida).")
                 : Note(tone: .warning, text: "Desacople aeróbico \(txt) %: el pulso derivó. Hidrátate, ventila y no subas aún la duración."))
         }
-        if let s = secondsAboveCap, let cap = heartRateCap, done > 0 {
-            let share = Double(s) / max(done, 1)
-            if share > 0.1 {
-                notes.append(Note(tone: .warning,
-                                  text: "\(s / 60)' por encima de \(cap) ppm (\(Int((share * 100).rounded())) %): zona gris."))
-            } else if heartRateCap != nil {
-                notes.append(Note(tone: .good, text: "Pulso bajo el tope de \(cap) ppm casi todo el rato."))
-            }
+        if let s = secondsAboveCap, let share = capShare, let cap = heartRateCap, done > 0 {
+            notes.append(share > 0.1
+                ? Note(tone: .warning, text: "\(s / 60)' por encima de \(cap) ppm (\(Int((share * 100).rounded())) %): zona gris.")
+                : Note(tone: .good, text: "Pulso bajo el tope de \(cap) ppm casi todo el rato."))
         }
         self.notes = notes
 
@@ -173,7 +171,7 @@ public struct WorkoutReview: Equatable, Sendable {
             nextTime = "No lo terminaste: si fue por cansancio, repítelo cuando estés fresco o baja un 5 %."
         } else if let c = compliance, c < 0.9 {
             nextTime = "Baja la intensidad un 5 % (dos pulsaciones de −) o revisa tu FTP con un test."
-        } else if let s = secondsAboveCap, Double(s) / max(done, 1) > 0.1 {
+        } else if let share = capShare, share > 0.1 {
             nextTime = "Ve más suave: que el pulso no pase de \(heartRateCap ?? 0) ppm aunque bajen los vatios."
         } else if let d = decouplingPercent, d >= 5 {
             nextTime = "Repite la misma duración hasta que el desacople baje del 5 %."
