@@ -25,19 +25,23 @@ struct RideScene: View {
                     let now = timeline.date.timeIntervalSinceReferenceDate
                     let d = motion.distance(at: now, recorded: ride.session.distanceMeters,
                                             speedKmh: ride.isRunning ? ride.speedKmh ?? 0 : 0)
-                    let cadence = ride.isRunning ? hub.bikeData.cadenceRpm ?? 0 : 0
+                    let crank = motion.crank(at: now, cadence: ride.isRunning ? hub.bikeData.cadenceRpm ?? 0 : 0)
                     switch style {
                     case .silhouette:
                         SceneRenderer(route: ride.route, table: table, distance: d, time: now,
-                                      cadence: cadence, palette: palette)
+                                      crank: crank, palette: palette)
                             .draw(in: &context, size: size)
                     case .pixel:
                         PixelRenderer(cam: SceneCamera(size: size, distance: d, table: table, isLoop: ride.route.isLoop),
-                                      palette: palette, time: now, cadence: cadence)
+                                      palette: palette, time: now, crank: crank)
                             .draw(in: &context)
                     case .print:
                         PrintRenderer(cam: SceneCamera(size: size, distance: d, table: table, isLoop: ride.route.isLoop),
-                                      palette: palette, time: now, cadence: cadence)
+                                      palette: palette, time: now, crank: crank, routeName: ride.route.name)
+                            .draw(in: &context)
+                    case .clearLine:
+                        ClearLineRenderer(cam: SceneCamera(size: size, distance: d, table: table, isLoop: ride.route.isLoop),
+                                          palette: palette, time: now, crank: crank)
                             .draw(in: &context)
                     }
                 }
@@ -85,6 +89,20 @@ final class SceneMotion {
         let t = RouteElevationTable(route)
         cachedTable = t
         return t
+    }
+
+    private var smoothCadence = 0.0
+    private var crankAngle = 0.0
+    private var lastCrankTime: Double?
+
+    /// Ángulo de las bielas: se va sumando con la cadencia del rodillo, suavizada (≈ 0,6 s), así
+    /// que va a tu ritmo y un cambio de cadencia no hace saltar las piernas.
+    func crank(at now: Double, cadence: Double) -> Double {
+        let dt = lastCrankTime.map { min(max(now - $0, 0), 0.1) } ?? 0
+        lastCrankTime = now
+        smoothCadence += (cadence - smoothCadence) * (1 - exp(-dt / 0.6))
+        crankAngle = (crankAngle + dt * smoothCadence / 60 * 2 * .pi).truncatingRemainder(dividingBy: 2 * .pi)
+        return crankAngle
     }
 
     private var recorded = -1.0
@@ -240,7 +258,8 @@ private struct SceneRenderer {
     let table: RouteElevationTable
     let distance: Double
     let time: Double
-    let cadence: Double
+    /// Ángulo de las bielas (radianes), acumulado con la cadencia suavizada.
+    let crank: Double
     let palette: ScenePalette
 
     /// Metros de ruta que caben a lo ancho y dónde vas tú (fracción del ancho).
@@ -468,7 +487,7 @@ private struct SceneRenderer {
         let rear = pt(-19.7, -r), front = pt(27.8, -r), bb = pt(0, -12.7)
         let seatCluster = pt(-7.1, -36.7), headTop = pt(18.7, -39.1), headBottom = pt(20.7, -32.2)
         let saddle = pt(-9.8, -45.8), barTop = pt(24, -41)
-        let crankAngle = time * cadence / 60 * 2 * .pi
+        let crankAngle = crank
         let crank: CGFloat = 8.3
         func pedal(_ side: Double) -> CGPoint {
             pt(bb.x + CGFloat(cos(crankAngle + side)) * crank, bb.y + CGFloat(sin(crankAngle + side)) * crank)
@@ -565,9 +584,7 @@ private struct SceneRenderer {
         let h = sqrt(max(upper * upper - a * a, 0))
         let ux = dx / dist, uy = dy / dist
         let mid = CGPoint(x: shoulder.x + ux * a, y: shoulder.y + uy * a)
-        let k1 = CGPoint(x: mid.x - uy * h, y: mid.y + ux * h)
-        let k2 = CGPoint(x: mid.x + uy * h, y: mid.y - ux * h)
-        return k1.y > k2.y ? k1 : k2
+        return CGPoint(x: mid.x - uy * h, y: mid.y + ux * h)
     }
 
     /// Rodilla de una pierna de dos tramos que va de la cadera al pie, doblada hacia delante.
@@ -578,10 +595,8 @@ private struct SceneRenderer {
         let h = sqrt(max(thigh * thigh - a * a, 0))
         let ux = dx / dist, uy = dy / dist
         let mid = CGPoint(x: hip.x + ux * a, y: hip.y + uy * a)
-        // Las dos soluciones quedan a cada lado de la línea cadera–pie: la rodilla va hacia delante.
-        let k1 = CGPoint(x: mid.x - uy * h, y: mid.y + ux * h)
-        let k2 = CGPoint(x: mid.x + uy * h, y: mid.y - ux * h)
-        return k1.x > k2.x ? k1 : k2
+        // Siempre al mismo lado de la línea cadera–pie (delante): no salta al pasar por la vertical.
+        return CGPoint(x: mid.x + uy * h, y: mid.y - ux * h)
     }
 }
 

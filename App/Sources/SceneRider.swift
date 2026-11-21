@@ -39,7 +39,7 @@ struct RiderModel {
         var glasses = RGB(0.15, 0.20, 0.30)
     }
 
-    static func parts(time: Double, cadence: Double, distance: Double, kit k: Kit = Kit()) -> [Part] {
+    static func parts(crank crankAngle: Double, distance: Double, kit k: Kit = Kit()) -> [Part] {
         func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
         var parts: [Part] = []
         func cap(_ a: CGPoint, _ b: CGPoint, _ w: CGFloat, _ c: RGB, outline: Bool = true) {
@@ -53,7 +53,6 @@ struct RiderModel {
         let headTop = pt(19.2, -41.7), headBottom = pt(21.5, -33.6)
         let saddle = pt(-10.3, -47.2), stemEnd = pt(25.5, -43.6)
         let crank: CGFloat = 8.3
-        let crankAngle = time * cadence / 60 * 2 * .pi
         func pedal(_ side: Double) -> CGPoint {
             pt(bb.x + CGFloat(cos(crankAngle + side)) * crank, bb.y + CGFloat(sin(crankAngle + side)) * crank)
         }
@@ -148,8 +147,9 @@ struct RiderModel {
 }
 
 enum SceneIK {
-    /// Articulación (rodilla o codo) de dos tramos `a` y `b` entre dos puntos. La rodilla va hacia
-    /// delante; el codo, hacia abajo.
+    /// Articulación (rodilla o codo) de dos tramos `a` y `b` entre dos puntos. Siempre al mismo
+    /// lado de la línea que los une (la rodilla, delante; el codo, abajo y atrás): así no «salta»
+    /// de un lado a otro cuando la pierna pasa por la vertical.
     static func joint(from p: CGPoint, to q: CGPoint, a: CGFloat, b: CGFloat, bendForward: Bool) -> CGPoint {
         let dx = q.x - p.x, dy = q.y - p.y
         let dist = min(max(sqrt(dx * dx + dy * dy), 1), a + b - 0.01)
@@ -159,7 +159,7 @@ enum SceneIK {
         let mid = CGPoint(x: p.x + ux * along, y: p.y + uy * along)
         let k1 = CGPoint(x: mid.x - uy * h, y: mid.y + ux * h)
         let k2 = CGPoint(x: mid.x + uy * h, y: mid.y - ux * h)
-        return bendForward ? (k1.x > k2.x ? k1 : k2) : (k1.y > k2.y ? k1 : k2)
+        return bendForward ? k2 : k1
     }
 }
 

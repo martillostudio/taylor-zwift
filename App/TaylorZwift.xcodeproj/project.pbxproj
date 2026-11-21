@@ -14,6 +14,7 @@
 		2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = 570D26A06E2F4B00568A69EC /* CicloKit */; };
 		2E9CA666C9C3065DEC2DCC21 /* TrainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C242BF3F6159617EB38F4BBF /* TrainerView.swift */; };
 		32397EFA7DC9D54BF1C8D269 /* TaylorMandosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */; };
+		35DF4BD02904C0F2A2776308 /* SceneClearLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */; };
 		390CEB0D5EB53A2E689D709C /* FitnessCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E62F35D849BBC71788A1F /* FitnessCard.swift */; };
 		3C5BCFBBB190D8283D32A67E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9ACB3FCFDD16AC3C3718D901 /* Assets.xcassets */; };
 		3FF3272C7515184AAAEAD428 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4213815FF621063110F50F8B /* DevicesView.swift */; };
@@ -55,6 +56,7 @@
 		4960B56AEF74EBF0CF1B5A4F /* LiveMetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveMetricsView.swift; sourceTree = "<group>"; };
 		499B2D2C5AEE73C80A711FDF /* IntervalsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalsService.swift; sourceTree = "<group>"; };
 		4AF3EF73BB829F6F5855356F /* CicloKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CicloKit; path = ../CicloKit; sourceTree = SOURCE_ROOT; };
+		514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneClearLine.swift; sourceTree = "<group>"; };
 		55572BB6639FE3C30213D09F /* SceneLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneLocation.swift; sourceTree = "<group>"; };
 		60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneStyles.swift; sourceTree = "<group>"; };
 		75F12F33A425BD8EE3BA6369 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */,
 				DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */,
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
+				514863F3F2ABEE1C7FFD3A70 /* SceneClearLine.swift */,
 				55572BB6639FE3C30213D09F /* SceneLocation.swift */,
 				81A986A24FCA408C038742AA /* SceneRider.swift */,
 				60A5D44456A8C5F3735E86E1 /* SceneStyles.swift */,
@@ -305,6 +308,7 @@
 				9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */,
 				14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */,
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
+				35DF4BD02904C0F2A2776308 /* SceneClearLine.swift in Sources */,
 				60017AB4614A6FE0F3973DB9 /* SceneLocation.swift in Sources */,
 				E68AC0C67A99ADD2DA27833F /* SceneRider.swift in Sources */,
 				CEF8FD454170CD69417954FE /* SceneStyles.swift in Sources */,
