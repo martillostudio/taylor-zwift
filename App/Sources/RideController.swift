@@ -25,7 +25,6 @@ struct RideSummary: Equatable {
 @Observable
 final class RideController {
     enum Mode: String, CaseIterable, Identifiable {
-        case free = "Libre"
         case route = "Ruta (SIM)"
         case erg = "ERG"
         case workout = "Entreno"
@@ -58,7 +57,7 @@ final class RideController {
         }
     }
     private(set) var gears: VirtualGears
-    /// Pendiente que eliges en el modo libre (−10 % a 20 %).
+    /// Pendiente que eliges en los tramos libres de un entreno (−10 % a 20 %).
     private(set) var freeGrade = 0.0
     /// Pestaña visible (para saltar de «Entrenar» a «Rodar»).
     /// Pestaña al abrir (para desarrollar: `open TaylorZwift.app --args -pestanaInicial entrenar`).
@@ -381,7 +380,7 @@ final class RideController {
     /// Vatios objetivo ahora mismo (ERG o tramo del entreno); `nil` si vas libre.
     var targetWatts: Int? {
         switch mode {
-        case .route, .free: nil
+        case .route: nil
         case .erg: ergWatts
         case .workout: workoutProgress?.target.map { Int(($0 * intensity * Double(ftp)).rounded()) }
         }
@@ -390,7 +389,7 @@ final class RideController {
     /// En ruta y en los tramos libres de un entreno se va con marchas (SIM); si no, en ERG.
     var usesGears: Bool {
         switch mode {
-        case .route, .free: true
+        case .route: true
         case .erg: false
         case .workout: workoutProgress.map { $0.target == nil } ?? true
         }
@@ -409,7 +408,6 @@ final class RideController {
             virtualElevation = mode == .route ? route.elevation(atDistance: session.distanceMeters) : 0
         }
         let what = switch mode {
-        case .free: "libre, pendiente \(freeGradeText), marcha \(gearText)"
         case .route: "\(route.name), marcha \(gearText)"
         case .erg: "ERG \(ergWatts) W"
         case .workout: "\(workout?.name ?? "sin entreno") con FTP \(ftp) W"
@@ -428,7 +426,6 @@ final class RideController {
     /// Nombre con el que se guarda (y se sube a Strava).
     var activityName: String {
         switch mode {
-        case .free: "Entreno libre en rodillo"
         case .route: "\(route.name.components(separatedBy: " (").first ?? route.name) (rodillo)"
         case .erg: "ERG \(ergWatts) W (rodillo)"
         case .workout: workout?.name ?? "Entreno en rodillo"
@@ -452,7 +449,6 @@ final class RideController {
         cadenceCount = 0
         averageCadence = nil
         let what = switch mode {
-        case .free: "libre"
         case .route: route.name
         case .erg: "ERG"
         case .workout: workout?.name ?? "entreno"
@@ -476,7 +472,7 @@ final class RideController {
         pause()
         let best5 = powerHistory.bestAverage(seconds: 300)
         let s = RideSummary(
-            title: mode == .workout ? workout?.name ?? "Entreno" : mode == .free ? "Entreno libre" : "Salida",
+            title: mode == .workout ? workout?.name ?? "Entreno" : "Salida",
             best1Min: powerHistory.bestAverage(seconds: 60),
             best5Min: best5,
             best20Min: powerHistory.bestAverage(seconds: 1_200),
@@ -497,24 +493,14 @@ final class RideController {
         "\(freeGrade.formatted(.number.precision(.fractionLength(1)))) %"
     }
 
-    /// Modo libre: cambia la pendiente (también con la cruceta ↑/↓ del mando izquierdo).
+    /// Tramos libres de un entreno: cambia la pendiente (también con la cruceta ↑/↓ del mando izquierdo).
     func setFreeGrade(_ grade: Double) {
         let g = min(max((grade / Self.freeGradeStep).rounded() * Self.freeGradeStep, -10), 20)
         guard g != freeGrade else { return }
         freeGrade = g
-        if mode == .free || (mode == .workout && usesGears) { currentGrade = g }
+        if mode == .workout && usesGears { currentGrade = g }
         hub.appendLog("⛰ Pendiente libre: \(freeGradeText)")
         applyTarget(force: true)
-    }
-
-    /// Empieza a rodar en libre desde cualquier pestaña.
-    func startFreeRide() {
-        if mode != .free {
-            pause()
-            mode = .free
-            reset()
-        }
-        selectedTab = "rodar"
     }
 
     func acceptSuggestedFTP() {
@@ -574,7 +560,7 @@ final class RideController {
         let before = virtualElevation
         switch mode {
         case .route: virtualElevation = route.elevation(atDistance: distance)
-        case .free, .erg, .workout: virtualElevation += currentGrade / 100 * (distance - lastDistance)
+        case .erg, .workout: virtualElevation += currentGrade / 100 * (distance - lastDistance)
         }
         elevationGain += max(virtualElevation - before, 0)
         lastDistance = distance
@@ -723,8 +709,8 @@ final class RideController {
             switch action {
             case .shiftUp: harder()
             case .shiftDown: easier()
-            case .up where mode == .free || (mode == .workout && usesGears): setFreeGrade(freeGrade + Self.freeGradeStep)
-            case .down where mode == .free || (mode == .workout && usesGears): setFreeGrade(freeGrade - Self.freeGradeStep)
+            case .up where mode == .workout && usesGears: setFreeGrade(freeGrade + Self.freeGradeStep)
+            case .down where mode == .workout && usesGears: setFreeGrade(freeGrade - Self.freeGradeStep)
             case .select: togglePlayPause()
             case .back: requestFinish()
             default: break
@@ -782,7 +768,7 @@ final class RideController {
         }
 
         switch mode {
-        case .free, .erg:
+        case .erg:
             break
         case .route:
             announceClimb()
@@ -812,8 +798,6 @@ final class RideController {
         switch mode {
         case .route:
             currentGrade = route.grade(atDistance: session.distanceMeters)
-        case .free:
-            currentGrade = freeGrade
         case .erg, .workout:
             // Tramo libre: la pendiente de la cruceta. ERG: llano.
             currentGrade = usesGears ? freeGrade : 0
@@ -841,9 +825,6 @@ final class RideController {
         let heart = hub.heartRateBpm.map { " · ❤️ \($0)" } ?? ""
         let power = hub.bikeData.powerWatts.map { "\($0) W" } ?? "—"
         switch mode {
-        case .free:
-            let k = gears.k.formatted(.number.precision(.fractionLength(2)))
-            hub.appendLog("🚲 libre · km \(km) · pendiente \(freeGradeText) · marcha \(gearText) ×\(k) · \(power) · \(speed) km/h\(heart)")
         case .route:
             let grade = currentGrade.formatted(.number.precision(.fractionLength(1)))
             let k = gears.k.formatted(.number.precision(.fractionLength(2)))
@@ -873,8 +854,6 @@ final class RideController {
 
     private var desiredTarget: TrainerTarget {
         switch mode {
-        case .free:
-            .simulation(gears.simulation(gradePercent: freeGrade))
         case .route:
             .simulation(gears.simulation(gradePercent: currentGrade))
         case .erg:

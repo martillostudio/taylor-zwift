@@ -19,14 +19,13 @@ struct DevicesView: View {
                 ("mandos", "Mandos", "gamecontroller"),
                 ("pulso", "Pulsómetro", "heart"),
             ], selection: $section)
-            .frame(maxWidth: 520)
             switch section {
             case "mandos": ControllersView()
             case "pulso": HeartRateView()
             default: TrainerView()
             }
         }
-        .padding(24)
+        .screenPadding()
         .background(Theme.background)
     }
 }

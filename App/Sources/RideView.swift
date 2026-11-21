@@ -19,13 +19,11 @@ struct RideView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.l) {
                 header
-                // Sin «Libre»: el entreno libre se empieza desde Entrenar y aquí cuenta como «Entreno».
                 SegmentedPicker(options: [
                     (RideController.Mode.workout, "Entreno", "list.bullet.rectangle"),
                     (.route, "Ruta", "map"),
                     (.erg, "ERG", "bolt"),
-                ], selection: Binding(get: { ride.mode == .free ? .workout : ride.mode },
-                                      set: { ride.mode = $0 }))
+                ], selection: $ride.mode)
 
                 if let summary = ride.summary, ride.mode != .workout { summaryCard(summary) }
 
@@ -43,7 +41,6 @@ struct RideView: View {
                 }
 
                 switch ride.mode {
-                case .free: freeCard
                 case .route: routeCards
                 case .erg: ergCard
                 case .workout: workoutCard
@@ -51,9 +48,8 @@ struct RideView: View {
 
                 if ride.usesGears, !gearsInHero { gearCard }
             }
-            .padding(Space.xl)
+            .screenPadding()
             .padding(.bottom, 96) // sitio para la barra de acciones flotante
-            .frame(maxWidth: Space.contentWidth)
             .frame(maxWidth: .infinity)
         }
         .background(Theme.background)
@@ -113,32 +109,6 @@ struct RideView: View {
         case .connected: .green
         case .connecting: .orange
         case .disconnected: Color.secondary
-        }
-    }
-
-    // MARK: Modo libre
-
-    private var freeCard: some View {
-        Card(style: .filled) {
-            VStack(alignment: .leading, spacing: 14) {
-                SectionTitle(title: "Entreno libre", subtitle: "Tú eliges la pendiente (o con la cruceta ↑/↓ del mando izquierdo) y la marcha.")
-                HStack(spacing: 16) {
-                    GradeTile(grade: ride.freeGrade)
-                    IconButton(systemImage: "minus") { ride.setFreeGrade(ride.freeGrade - RideController.freeGradeStep) }
-                    Slider(value: Binding(get: { ride.freeGrade }, set: { ride.setFreeGrade($0) }),
-                           in: -10...20, step: RideController.freeGradeStep)
-                        .tint(GradeBand(gradePercent: ride.freeGrade).color)
-                    IconButton(systemImage: "plus") { ride.setFreeGrade(ride.freeGrade + RideController.freeGradeStep) }
-                }
-                HStack(spacing: 8) {
-                    ForEach([-2.0, 0, 3, 6, 8, 10, 12], id: \.self) { g in
-                        Button { ride.setFreeGrade(g) } label: {
-                            Chip(title: "\(Int(g)) %", selected: ride.freeGrade == g, dot: GradeBand(gradePercent: g).color)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
         }
     }
 
@@ -403,38 +373,61 @@ struct GearControl: View {
     @Environment(RideController.self) private var ride
 
     var body: some View {
-        @Bindable var ride = ride
-        HStack(spacing: compact ? Space.l : 20) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("MARCHA").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(ride.gears.number)")
-                        .font(Theme.font(compact ? .headlineMedium : .displayMedium, numeric: true).weight(.semibold))
-                    Text("/ \(ride.gears.count)").font(Theme.font(.titleMedium)).foregroundStyle(Color.secondary)
-                    if compact {
-                        Text("\(ride.gears.gear.label) · \(meters) m").font(Theme.font(.titleSmall))
-                            .foregroundStyle(Color.secondary)
-                    }
-                }
-                if !compact {
-                    Text("\(ride.gears.gear.label) · \(meters) m por pedalada")
-                        .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
-                }
+        // En iPhone no cabe todo en una fila: el desarrollo baja a su propia línea.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: compact ? Space.l : 20) {
+                gearInfo
+                GearStrip(count: ride.gears.count, current: ride.gears.index)
+                Spacer(minLength: 0)
+                buttons
+                drivetrainPicker
             }
-            .fixedSize()
-            GearStrip(count: ride.gears.count, current: ride.gears.index)
-                .layoutPriority(-1)
-            Spacer(minLength: 0)
-            IconButton(systemImage: "minus", size: compact ? 48 : 56) { ride.easier() }
-                .help("Marcha más blanda")
-            IconButton(systemImage: "plus", size: compact ? 48 : 56) { ride.harder() }
-                .help("Marcha más dura")
-            Picker("Desarrollo", selection: $ride.drivetrain) {
-                ForEach(Drivetrain.all) { Text($0.name).tag($0) }
+            VStack(alignment: .leading, spacing: Space.m) {
+                HStack(spacing: Space.l) {
+                    gearInfo
+                    Spacer(minLength: 0)
+                    buttons
+                }
+                drivetrainPicker
             }
-            .labelsHidden()
-            .fixedSize()
         }
+    }
+
+    private var gearInfo: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("MARCHA").font(Theme.font(.labelMedium)).foregroundStyle(Color.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(ride.gears.number)")
+                    .font(Theme.font(compact ? .headlineMedium : .displayMedium, numeric: true).weight(.semibold))
+                Text("/ \(ride.gears.count)").font(Theme.font(.titleMedium)).foregroundStyle(Color.secondary)
+                if compact {
+                    Text("\(ride.gears.gear.label) · \(meters) m").font(Theme.font(.titleSmall))
+                        .foregroundStyle(Color.secondary)
+                }
+            }
+            if !compact {
+                Text("\(ride.gears.gear.label) · \(meters) m por pedalada")
+                    .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
+            }
+        }
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        IconButton(systemImage: "minus", size: compact ? 48 : 56) { ride.easier() }
+            .help("Marcha más blanda")
+        IconButton(systemImage: "plus", size: compact ? 48 : 56) { ride.harder() }
+            .help("Marcha más dura")
+    }
+
+    private var drivetrainPicker: some View {
+        @Bindable var ride = ride
+        return Picker("Desarrollo", selection: $ride.drivetrain) {
+            ForEach(Drivetrain.all) { Text($0.name).tag($0) }
+        }
+        .labelsHidden()
+        .fixedSize()
     }
 
     private var meters: String {

@@ -36,7 +36,7 @@ struct HistoryView: View {
                         }
                     }
                 }
-                .padding(24)
+                .screenPadding()
             }
             .background(Theme.background)
         }
@@ -416,7 +416,7 @@ struct ActivityDetailView: View {
                 Text("El .fit se puede importar a mano en Garmin Connect, intervals.icu o TrainingPeaks.")
                     .font(Theme.font(.bodySmall)).foregroundStyle(Color.secondary)
             }
-            .padding(24)
+            .screenPadding()
         }
         .background(Theme.background)
         .navigationTitle(a.name)

@@ -11,9 +11,6 @@ enum Space {
     static let m: CGFloat = 12
     static let l: CGFloat = 16
     static let xl: CGFloat = 24
-    /// Ancho máximo del contenido en pantallas grandes (en un Mac a pantalla completa
-    /// las filas de datos no deben estirarse sin fin).
-    static let contentWidth: CGFloat = 1_080
 }
 
 // MARK: - Celda de dato
@@ -202,7 +199,7 @@ struct LiveStrip: View {
         let km = Item(title: "Distancia",
                       value: (ride.session.distanceMeters / 1000).formatted(.number.precision(.fractionLength(1))), unit: "km")
         switch ride.mode {
-        case .free, .route:
+        case .route:
             return [time, km, Item(title: "Desnivel", value: "+\(Int(ride.elevationGain.rounded()))", unit: "m"), avg]
         case .erg:
             return [time, avg, Item(title: "Trabajo", value: "\(ride.session.workKilojoules)", unit: "kJ"),

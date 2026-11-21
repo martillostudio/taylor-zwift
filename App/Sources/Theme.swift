@@ -243,3 +243,25 @@ struct Destination: Identifiable {
     let title: String
     let systemImage: String
 }
+
+// MARK: - Márgenes de pantalla
+
+/// Margen de cada pantalla: 16 pt en iPhone (o iPad en ventana estrecha), 24 pt en el resto.
+/// El contenido ocupa todo el ancho; las rejillas se reparten en columnas según el sitio.
+struct ScreenPadding: ViewModifier {
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.padding(sizeClass == .compact ? 16 : 24)
+        #else
+        content.padding(24)
+        #endif
+    }
+}
+
+extension View {
+    func screenPadding() -> some View { modifier(ScreenPadding()) }
+}

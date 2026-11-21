@@ -48,14 +48,13 @@ struct WorkoutsView: View {
     private var zwoTypes: [UTType] {
         [UTType(filenameExtension: "zwo"), .xml].compactMap { $0 }
     }
-    private let columns = [GridItem(.adaptive(minimum: 250, maximum: 380), spacing: 16)]
+    private let columns = [GridItem(.adaptive(minimum: 260), spacing: 16, alignment: .top)]
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     ProfileBox()
-                    FreeRideCard()
                     FitnessCard()
                     PlanBox()
 
@@ -63,7 +62,7 @@ struct WorkoutsView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Entreno cargado").font(Theme.font(.titleLarge)).foregroundStyle(Color.primary)
                             NavigationLink { WorkoutDetailView(workout: w) } label: {
-                                WorkoutCard(workout: w).frame(maxWidth: 380)
+                                WorkoutCard(workout: w).frame(maxWidth: 440)
                             }
                             .buttonStyle(.plain)
                         }
@@ -106,7 +105,7 @@ struct WorkoutsView: View {
                         }
                     }
                 }
-                .padding(24)
+                .screenPadding()
             }
             .background(Theme.background)
             .navigationTitle("Entrenar")
@@ -139,28 +138,6 @@ struct WorkoutsView: View {
             }
             if !errors.isEmpty { importError = errors.joined(separator: "\n") }
         }
-    }
-}
-
-/// Acceso al entreno libre: sin plan ni estructura, a tu aire.
-private struct FreeRideCard: View {
-    @Environment(RideController.self) private var ride
-
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "bicycle.circle.fill").font(.system(size: 40)).foregroundStyle(Color.accentColor)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Entreno libre").font(Theme.font(.titleLarge)).foregroundStyle(Color.primary)
-                Text("Sin plan ni intervalos: eliges la pendiente y la marcha y ruedas a tu aire. Cuenta distancia, tiempo, potencia y pulso.")
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button("Rodar libre", systemImage: "play.fill") { ride.startFreeRide() }
-                .buttonStyle(.borderedProminent)
-        }
-        .padding(14)
-        .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium).strokeBorder(Theme.separator))
     }
 }
 
@@ -513,7 +490,7 @@ struct PlanView: View {
                     .background(week.isRecovery ? Color.green.opacity(0.06) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
                 }
             }
-            .padding(24)
+            .screenPadding()
         }
         .background(Theme.background)
         .navigationTitle(ride.plan.name)
@@ -530,7 +507,8 @@ struct WorkoutCard: View {
         VStack(alignment: .leading, spacing: 8) {
             WorkoutChart(workout: workout, height: compact ? 40 : 60, showAxes: false)
             HStack(alignment: .firstTextBaseline) {
-                Text(workout.name).font(Theme.font(.titleMedium)).foregroundStyle(Color.primary).lineLimit(2)
+                Text(workout.name).font(Theme.font(.titleMedium)).foregroundStyle(Color.primary)
+                    .lineLimit(2, reservesSpace: !compact)
                 Spacer(minLength: 4)
                 if workout.ftpTest != nil {
                     Text("TEST").font(.caption2.bold())
@@ -539,7 +517,8 @@ struct WorkoutCard: View {
                 }
             }
             Text(workout.shortDescription)
-                .font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                .font(.subheadline).foregroundStyle(.secondary)
+                .lineLimit(2, reservesSpace: !compact)
             ZoneBar(workout: workout)
             HStack(spacing: 12) {
                 Label(formatDuration(workout.durationSeconds), systemImage: "clock")
@@ -548,12 +527,14 @@ struct WorkoutCard: View {
                     Label("rpm", systemImage: "gauge.with.dots.needle.33percent")
                 }
                 Spacer(minLength: 0)
-                Text("Z\(zone.rawValue) \(zone.name)")
-                    .font(.caption2.bold())
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .foregroundStyle(zone == .z4 ? Color.black : Color.white)
-                    .background(zone.color, in: Capsule())
+                // Siempre en una línea: si no cabe el nombre de la zona, solo «Z7».
+                ViewThatFits(in: .horizontal) {
+                    zoneBadge("Z\(zone.rawValue) \(zone.name)", zone)
+                    zoneBadge("Z\(zone.rawValue)", zone)
+                }
+                .layoutPriority(1)
             }
+            .lineLimit(1)
             .font(.caption)
             .foregroundStyle(.secondary)
         }
@@ -562,11 +543,22 @@ struct WorkoutCard: View {
         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.medium))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium).strokeBorder(Theme.separator))
         .overlay(alignment: .top) {
-            UnevenRoundedRectangle(topLeadingRadius: 14, topTrailingRadius: 14)
+            Rectangle()
                 .fill(zone.color)
                 .frame(height: 4)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
+    }
+
+    private func zoneBadge(_ text: String, _ zone: PowerZone) -> some View {
+        Text(text)
+            .font(.caption2.bold())
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .foregroundStyle(zone == .z4 ? Color.black : Color.white)
+            .background(zone.color, in: Capsule())
     }
 }
 
@@ -752,9 +744,8 @@ struct WorkoutDetailView: View {
                     Card(style: .outlined) { segmentsList }
                 }
             }
-            .padding(Space.xl)
+            .screenPadding()
             .padding(.bottom, 96)
-            .frame(maxWidth: Space.contentWidth)
             .frame(maxWidth: .infinity)
         }
         .background(Theme.background)
