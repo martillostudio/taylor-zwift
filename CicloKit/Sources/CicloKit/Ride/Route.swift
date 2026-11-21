@@ -86,17 +86,21 @@ public struct Route: Identifiable, Hashable, Sendable {
     public var isLoop: Bool
     /// Recorrido en el mapa (rutas GPX); `nil` en las rutas inventadas.
     public var track: RouteTrack?
+    /// Cuándo se hizo o se creó (la fecha del GPX), si se sabe.
+    public var date: Date?
 
     /// Distancia sobre la que se suaviza un cambio de pendiente (para que no dé tirones).
     public static let smoothingMeters = 50.0
 
-    public init(id: String, name: String, isLoop: Bool, segments: [RouteSegment], track: RouteTrack? = nil) {
+    public init(id: String, name: String, isLoop: Bool, segments: [RouteSegment], track: RouteTrack? = nil,
+                date: Date? = nil) {
         precondition(!segments.isEmpty)
         self.id = id
         self.name = name
         self.isLoop = isLoop
         self.segments = segments
         self.track = track
+        self.date = date
     }
 
     /// Dónde estás en el mapa tras `d` metros (escalado por si el perfil y la traza difieren
@@ -108,6 +112,9 @@ public struct Route: Identifiable, Hashable, Sendable {
     }
 
     public var lengthMeters: Double { segments.reduce(0) { $0 + $1.lengthMeters } }
+
+    /// Desnivel por kilómetro (m/km): cuanto más bajo, más suave.
+    public var climbPerKm: Double { climbMeters / max(lengthMeters / 1000, 0.1) }
 
     /// Desnivel positivo acumulado de una vuelta.
     public var climbMeters: Double {

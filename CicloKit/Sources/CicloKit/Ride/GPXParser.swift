@@ -35,12 +35,20 @@ public enum GPXParser {
     static let maxGrade = 20.0
 
     public static func parse(_ data: Data, id: String, fallbackName: String = "Ruta importada") throws -> Route {
-        let (name, points) = try readPoints(data)
+        let (name, points, date) = try readPointsAndDate(data)
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return try route(from: points, id: id, name: clean.isEmpty ? fallbackName : clean)
+        var r = try route(from: points, id: id, name: clean.isEmpty ? fallbackName : clean)
+        r.date = date
+        return r
     }
 
     public static func readPoints(_ data: Data) throws -> (name: String, points: [TrackPoint]) {
+        let r = try readPointsAndDate(data)
+        return (r.name, r.points)
+    }
+
+    /// Como `readPoints`, más la fecha: la de `<metadata><time>` o la del primer punto.
+    static func readPointsAndDate(_ data: Data) throws -> (name: String, points: [TrackPoint], date: Date?) {
         let delegate = Delegate()
         let parser = XMLParser(data: data)
         parser.delegate = delegate
@@ -48,7 +56,11 @@ public enum GPXParser {
             throw Error.invalidXML(parser.parserError?.localizedDescription ?? "XML no válido")
         }
         // Si hay track, ese; si no, la ruta (rtept).
-        return (delegate.name, delegate.trackPoints.isEmpty ? delegate.routePoints : delegate.trackPoints)
+        let date = delegate.firstTime.flatMap { t in
+            (try? Date(t, strategy: .iso8601))
+                ?? (try? Date(t, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
+        }
+        return (delegate.name, delegate.trackPoints.isEmpty ? delegate.routePoints : delegate.trackPoints, date)
     }
 
     /// Distancia en metros entre dos puntos (fórmula del semiverseno).
@@ -145,6 +157,8 @@ public enum GPXParser {
         private var text = ""
         private var depthInPoint = false
         private var nameLocked = false
+        /// El primer `<time>` del fichero (el de los metadatos o el del primer punto).
+        var firstTime: String?
 
         func parser(_ parser: XMLParser, didStartElement element: String, namespaceURI: String?,
                     qualifiedName: String?, attributes: [String: String] = [:]) {
@@ -165,6 +179,11 @@ public enum GPXParser {
         func parser(_ parser: XMLParser, didEndElement element: String, namespaceURI: String?, qualifiedName: String?) {
             let tag = element.lowercased()
             switch tag {
+            case "time":
+                if firstTime == nil {
+                    let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { firstTime = t }
+                }
             case "ele":
                 current?.elevation = Double(text.trimmingCharacters(in: .whitespacesAndNewlines))
             case "trkpt", "rtept":

@@ -49,8 +49,13 @@ final class RideController {
     var mode: Mode = .route {
         didSet { if mode != oldValue { applyTarget(force: true) } }
     }
-    var route: Route = .rolling {
-        didSet { if route != oldValue { reset() } }
+    /// Ruta elegida. Solo hay rutas tuyas (GPX); `.flat` es lo que queda si no tienes ninguna.
+    var route: Route = .flat {
+        didSet {
+            guard route != oldValue else { return }
+            reset()
+            if route.id.hasPrefix("gpx-") { UserDefaults.standard.set(route.id, forKey: "rutaElegida") }
+        }
     }
     private(set) var gears: VirtualGears
     /// Pendiente que eliges en el modo libre (−10 % a 20 %).
@@ -288,8 +293,14 @@ final class RideController {
         // Las rutas GPX se leen en segundo plano: con muchas, tardaría en abrir la ventana.
         Task { [weak self] in
             let routes = await Task.detached(priority: .userInitiated) { Self.loadRoutes() }.value
-            self?.importedRoutes = (self?.importedRoutes ?? []).filter { r in !routes.contains { $0.id == r.id } } + routes
-            self?.importedRoutes.sort { $0.name < $1.name }
+            guard let self else { return }
+            importedRoutes = importedRoutes.filter { r in !routes.contains { $0.id == r.id } } + routes
+            importedRoutes.sort { $0.name < $1.name }
+            // La última que elegiste (o la primera), si no estás rodando ya otra.
+            if !isRunning, !route.id.hasPrefix("gpx-") {
+                let saved = UserDefaults.standard.string(forKey: "rutaElegida")
+                if let r = importedRoutes.first(where: { $0.id == saved }) ?? importedRoutes.first { route = r }
+            }
         }
         hub.onButtonPress = { [weak self] pressed in self?.handleButtons(pressed) }
         // Al despertar un mando dormido, la pulsación que lo despertó se pierde: avisamos de que ya vale.
@@ -656,7 +667,7 @@ final class RideController {
     /// Rutas importadas de ficheros GPX (se guardan en Application Support/Rutas).
     private(set) var importedRoutes: [Route] = []
 
-    var allRoutes: [Route] { Route.builtIn + importedRoutes }
+    var allRoutes: [Route] { importedRoutes }
 
     nonisolated private static var routesFolder: URL {
         let base = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
@@ -684,7 +695,7 @@ final class RideController {
         guard r.id.hasPrefix("gpx-") else { return }
         try? FileManager.default.removeItem(at: Self.routesFolder.appendingPathComponent("\(r.id).gpx"))
         importedRoutes.removeAll { $0.id == r.id }
-        if route.id == r.id { route = .rolling }
+        if route.id == r.id { route = importedRoutes.first ?? .flat }
     }
 
     nonisolated private static func loadRoutes() -> [Route] {

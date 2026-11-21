@@ -138,39 +138,21 @@ struct RideView: View {
 
     @ViewBuilder
     private var routeCards: some View {
-        @Bindable var ride = ride
+        // Elegir ruta solo antes de empezar: cambiarla a mitad (aunque sea en pausa) cerraría la salida.
+        if !ride.isRunning, ride.session.movingSeconds == 0 {
+            RoutePicker { importingGPX = true }
+        }
+        if ride.route.id.hasPrefix("gpx-") {
+            selectedRouteCards
+        }
+    }
+
+    @ViewBuilder
+    private var selectedRouteCards: some View {
         M3Card(style: .filled) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    M3SectionTitle(title: ride.route.name,
-                                   subtitle: "\(km(ride.route.lengthMeters)) km · +\(Int(ride.route.climbMeters)) m\(ride.route.isLoop ? " por vuelta" : "")")
-                    Spacer()
-                    Picker("Ruta", selection: $ride.route) {
-                        Section("Incluidas") {
-                            ForEach(Route.builtIn) { Text($0.name).tag($0) }
-                        }
-                        if !ride.importedRoutes.isEmpty {
-                            Section("Mis rutas") {
-                                ForEach(ride.importedRoutes) { Text($0.name).tag($0) }
-                            }
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                    Menu {
-                        Button("Importar GPX…", systemImage: "square.and.arrow.down") { importingGPX = true }
-                        if ride.route.id.hasPrefix("gpx-") {
-                            Button("Borrar «\(ride.route.name)»", systemImage: "trash", role: .destructive) {
-                                ride.deleteRoute(ride.route)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle").font(.system(size: 20))
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                    .help("Importar una ruta GPX (de Garmin Connect, Strava, Komoot…)")
-                }
+                M3SectionTitle(title: ride.route.name,
+                               subtitle: "\(km(ride.route.lengthMeters)) km · +\(Int(ride.route.climbMeters)) m\(ride.route.isLoop ? " por vuelta" : "")")
                 HStack(alignment: .center, spacing: 16) {
                     GradeTile(grade: ride.currentGrade)
                     VStack(alignment: .leading, spacing: 4) {

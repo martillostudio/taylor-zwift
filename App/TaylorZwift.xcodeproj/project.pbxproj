@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */; };
 		1F7E58A93F3223F2E6AC08FC /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = EFA79C8CCB44F8868239749D /* CicloKit */; };
 		28B48B94B70446F8BE9CFA49 /* ActivityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CBA6D3C397E76000063ABFD /* ActivityStore.swift */; };
 		2DB772514EEDF3C018D8598E /* CicloKit in Frameworks */ = {isa = PBXBuildFile; productRef = 570D26A06E2F4B00568A69EC /* CicloKit */; };
@@ -60,6 +61,7 @@
 		B07644EFF6B1887C7FB084FE /* TaylorZwift.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TaylorZwift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C242BF3F6159617EB38F4BBF /* TrainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainerView.swift; sourceTree = "<group>"; };
 		CABB43D303D77746CDB2C94E /* GradeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradeColors.swift; sourceTree = "<group>"; };
+		DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
 		EE4F8A9697782D2BE00D4BDF /* TaylorMandosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaylorMandosApp.swift; sourceTree = "<group>"; };
 		F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapCard.swift; sourceTree = "<group>"; };
 		FB15B0F57235C1FC9B567FA2 /* BridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeView.swift; sourceTree = "<group>"; };
@@ -144,6 +146,7 @@
 				8E10DC2A8D445E089A9F7EB6 /* RideController.swift */,
 				9AE67EA9B3F5BDCB7270A503 /* RideView.swift */,
 				F3B35109B8D88ECB2F79BADC /* RouteMapCard.swift */,
+				DE9AC1FD8892B91B59AE0346 /* RoutePicker.swift */,
 				016E4515ABF42AF0C84D91FE /* ScanSection.swift */,
 				FFC2B36F439B128659783D3B /* StravaService.swift */,
 				2958E6BA372E368B7CCF173E /* TaylorZwiftApp.swift */,
@@ -280,6 +283,7 @@
 				BD93B16CFDA084F34EFD939B /* RideController.swift in Sources */,
 				9C83FAA506F341B17EF1E8C6 /* RideView.swift in Sources */,
 				9E07D3132867CEB4694C0656 /* RouteMapCard.swift in Sources */,
+				14A1FAFF0CE19F5BDDE455F2 /* RoutePicker.swift in Sources */,
 				E403BF0282B1CF57281E2095 /* ScanSection.swift in Sources */,
 				C4913ED1F0CB4E82CB85D2EE /* StravaService.swift in Sources */,
 				B9B04BA5EB1E0F3E59B549C2 /* TaylorZwiftApp.swift in Sources */,

@@ -83,4 +83,23 @@ import Testing
         #expect(Route.rolling.track == nil)
         #expect(Route.rolling.mapPosition(atDistance: 100) == nil)
     }
+
+    @Test func readsDate() throws {
+        let base = String(decoding: gpx(points: 200) { _ in 50 }, as: UTF8.self)
+        let withMeta = base.replacingOccurrences(of: "<metadata>", with: "<metadata><time>2026-09-27T08:15:00Z</time>")
+        let r = try GPXParser.parse(Data(withMeta.utf8), id: "t")
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        #expect(r.date.map { cal.component(.year, from: $0) } == 2026)
+        #expect(r.date.map { cal.component(.month, from: $0) } == 9)
+        // Con milisegundos, en el primer punto.
+        let inPoint = base.replacingOccurrences(of: "<ele>50.0</ele></trkpt>", with: "<ele>50.0</ele><time>2025-05-01T10:00:00.000Z</time></trkpt>")
+        #expect(try GPXParser.parse(Data(inPoint.utf8), id: "t").date.map { cal.component(.year, from: $0) } == 2025)
+        // Sin fecha.
+        #expect(try GPXParser.parse(Data(base.utf8), id: "t").date == nil)
+    }
+
+    @Test func climbPerKm() {
+        #expect(abs(Route.climb.climbPerKm - 48) < 0.5) // 480 m en 10 km
+    }
 }
