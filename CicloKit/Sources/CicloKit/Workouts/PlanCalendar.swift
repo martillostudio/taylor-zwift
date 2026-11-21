@@ -14,13 +14,28 @@ public struct PlannedEvent: Equatable, Sendable {
 }
 
 extension TrainingPlan {
+    /// El test de rampa está escrito hasta el 224 % del FTP para que nadie se quede sin escalones,
+    /// pero casi todo el mundo para hacia el 130 %. En el calendario se corta ahí (+ 5' suaves)
+    /// para que la duración y la carga previstas sean realistas.
+    static func forCalendar(_ w: Workout) -> Workout {
+        guard w.ftpTest == .ramp else { return w }
+        var steps: [WorkoutStep] = []
+        for step in w.steps {
+            if case .steady(_, let p) = step, p > 1.31 { break }
+            steps.append(step)
+        }
+        steps.append(.ramp(seconds: 300, from: 0.50, to: 0.40))
+        return Workout(id: w.id, name: w.name, category: w.category, summary: w.summary,
+                       tagline: w.tagline, ftpTest: w.ftpTest, steps: steps)
+    }
+
     /// Todas las sesiones del plan con su fecha, si empieza el lunes `start`.
     public func calendarEvents(start: Date, calendar: Calendar = .current) -> [PlannedEvent] {
         weeks.flatMap { week in
             week.sessions.map { session in
                 let day = calendar.date(byAdding: .day, value: session.weekdayOffset,
                                         to: startOfWeek(week.number, start: start, calendar: calendar)) ?? start
-                let w = session.workout
+                let w = session.workout.map(Self.forCalendar)
                 var text = "Semana \(week.number) · \(week.block): \(week.focus)."
                 if let w { text += "\n\n" + w.summary }
                 if !session.note.isEmpty { text += "\n\n" + session.note }
@@ -30,8 +45,7 @@ extension TrainingPlan {
                     name: w?.name ?? "Salida en exterior",
                     description: text,
                     workout: w,
-                    // La rampa acaba cuando no puedes más: unos 25' en vez de los 37' escritos.
-                    seconds: w.map { $0.ftpTest == .ramp ? 1_500 : $0.durationSeconds } ?? 3 * 3_600,
+                    seconds: w?.durationSeconds ?? 3 * 3_600,
                     load: w.map { Int($0.tss.rounded()) }
                 )
             }

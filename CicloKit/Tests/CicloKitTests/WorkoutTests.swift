@@ -171,7 +171,8 @@ struct ZwoEncoderTests {
         let first = events[0] // martes 24: test de rampa
         #expect(cal.component(.day, from: first.date) == 24)
         #expect(first.workout?.id == "test-rampa")
-        #expect(first.seconds == 1_500)
+        #expect(first.seconds == 1_560) // 7' + 14 escalones (hasta el 128 %) + 5'
+        #expect((first.load ?? 0) < 45)
         let outdoor = events.first { $0.workout == nil }
         #expect(outdoor?.name == "Salida en exterior")
         #expect(outdoor?.load == nil)
